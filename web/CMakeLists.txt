@@ -109,8 +109,8 @@ target_link_options(battlecalc_web PRIVATE -O2
     -sSTACK_SIZE=4MB -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=64MB -sMAXIMUM_MEMORY=1GB
     -sFULL_ES3=1 -sMAX_WEBGL_VERSION=2 -sMIN_WEBGL_VERSION=1 -sFORCE_FILESYSTEM=1
     -sMODULARIZE=1 -sEXPORT_NAME=createBattleCalc -sINVOKE_RUN=0 -sEXIT_RUNTIME=0
-    "-sEXPORTED_FUNCTIONS=['_main','_web_stop','_web_reload','_web_heap_bytes']"
-    "-sEXPORTED_RUNTIME_METHODS=['callMain','FS','UTF8ToString']"
+    "-sEXPORTED_FUNCTIONS=['_main','_web_stop','_web_reload','_web_heap_bytes','_web_paste']"
+    "-sEXPORTED_RUNTIME_METHODS=['callMain','FS','UTF8ToString','ccall']"
     "SHELL:--preload-file ${A}/fonts/DejaVuSans.ttf@/assets/fonts/DejaVuSans.ttf"
     "SHELL:--preload-file ${A}/icons/ffta_icons16.png@/assets/icons/ffta_icons16.png")
 set_target_properties(battlecalc_web PROPERTIES SUFFIX ".js" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/site")

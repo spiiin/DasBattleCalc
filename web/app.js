@@ -43,5 +43,21 @@ createBattleCalc({
 // SDL - a dragged unit stuck to the cursor, the UI waited for a release.
 $('canvas').addEventListener('pointerdown', e => $('canvas').setPointerCapture(e.pointerId));
 
+// Ctrl+V: SDL's clipboard lives in the page only, and the browser one can
+// only be read asynchronously - read it here and type the text into the
+// app (web_paste); SDL does not see this Ctrl+V.
+// e.code: the V key in any layout (e.key is 'м' in the Russian one); any
+// focus but our file inputs (after a permission prompt it can be <body>).
+document.addEventListener('keydown', e => {
+  if (!runtime || !(e.ctrlKey || e.metaKey) || e.code !== 'KeyV' || e.target.tagName === 'INPUT') return;
+  if (!navigator.clipboard || !navigator.clipboard.readText) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  navigator.clipboard.readText()
+    .then(text => { if (text) runtime.ccall('web_paste', null, ['string'], [text]); })
+    .catch(err => console.warn('paste: ' + err))
+    .finally(() => $('canvas').focus());
+}, true);
+
 $('state').onchange = () => put($('state'), STATE, 'state');
 $('rom').onchange = () => put($('rom'), ROM, 'rom');

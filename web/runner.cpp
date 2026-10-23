@@ -7,8 +7,10 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <emscripten.h>
+#include "imgui.h"
 #include <cstdio>
 #include <memory>
+#include <string>
 
 namespace {
 struct Session {
@@ -33,6 +35,24 @@ template <typename F> SDL_AppResult invoke(F && call) {
 
 extern "C" EMSCRIPTEN_KEEPALIVE void web_stop() { stop_requested = true; }
 extern "C" EMSCRIPTEN_KEEPALIVE void web_reload() { reload_requested = true; }
+// Ctrl+V: the page read the browser clipboard (app.js) and hands the text
+// over (newlines kept, CR not). It becomes SDL's clipboard; while Ctrl is
+// still held ImGui pastes it on a V press (it ignores typed characters
+// with Ctrl down), after Ctrl was let go it is typed in.
+extern "C" EMSCRIPTEN_KEEPALIVE void web_paste(const char * text) {
+    std::string s;
+    for (const char * c = text; *c; ++c)
+        if (*c != '\r') s += *c;
+    SDL_SetClipboardText(s.c_str());
+    if (!ImGui::GetCurrentContext()) return;
+    ImGuiIO & io = ImGui::GetIO();
+    if (io.KeyCtrl || io.KeySuper) {
+        io.AddKeyEvent(ImGuiKey_V, true);
+        io.AddKeyEvent(ImGuiKey_V, false);
+    } else {
+        io.AddInputCharactersUTF8(s.c_str());
+    }
+}
 // script heap + string heap in bytes (to watch it from the page console)
 extern "C" EMSCRIPTEN_KEEPALIVE double web_heap_bytes() {
     if (!g_session || !g_session->context) return 0;
