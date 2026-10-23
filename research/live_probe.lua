@@ -7,6 +7,7 @@
 -- PROBE_TRIALS, PROBE_PLAN ("frame:Button,..."), PROBE_PATCHES
 -- ("addr:size:val;..."), PROBE_TARGET (record), PROBE_WRAPPER (target's).
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
 local TRIALS = tonumber(os.getenv("PROBE_TRIALS") or "20")
 local SEED_AT = tonumber(os.getenv("PROBE_SEED_AT") or "500")
@@ -42,7 +43,7 @@ if os.getenv("PROBE_TRACE") then
 end
 local function rd16(a) return memory.read_u16_le(a, "System Bus") end
 math.randomseed(tonumber(os.getenv("PROBE_RNG") or "1"))
-client.speedmode(6400)
+speed.fast(6400)
 for t = 1, TRIALS do
   savestate.load(STATE)
   crit, roll = 0, -1
@@ -84,4 +85,4 @@ for t = 1, TRIALS do
   if #trace > 0 then log:write("  " .. table.concat(trace, " ") .. "\n") end
 end
 log:close()
-client.exit()
+speed.exit()

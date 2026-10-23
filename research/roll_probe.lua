@@ -4,6 +4,7 @@
 -- random seed to 0x030034B0 and runs PROBE_RUN frames. Logged per trial:
 -- hit (the hit branch 0x080A28A4 ran), crit (0x080A2978 ran).
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
 local TRIALS = tonumber(os.getenv("PROBE_TRIALS") or "100")
 local SEED_AT = tonumber(os.getenv("PROBE_SEED_AT") or "500")
@@ -19,7 +20,7 @@ local hit, crit = 0, 0
 event.on_bus_exec(function() hit = 1 end, 0x080A28A4)
 event.on_bus_exec(function() crit = 1 end, 0x080A2978)
 math.randomseed(tonumber(os.getenv("PROBE_RNG") or "1"))
-client.speedmode(6400)
+speed.fast(6400)
 savestate.load(STATE)
 for f = 0, SEED_AT - 1 do
   local b = plan[f]
@@ -45,4 +46,4 @@ for t = 1, TRIALS do
   log:write(string.format("%d %d\n", hit, crit))
 end
 log:close()
-client.exit()
+speed.exit()

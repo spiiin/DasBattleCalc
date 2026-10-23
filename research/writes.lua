@@ -1,6 +1,7 @@
 -- Logs every write to the CT (+0xD0) and reserve (+0xD4) fields of the
 -- battle units, with the program counter, while running an input plan.
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
 local FRAMES = tonumber(os.getenv("PROBE_FRAMES") or "1200")
 local PLAN = os.getenv("PROBE_PLAN") or ""
@@ -28,7 +29,7 @@ for _, u in ipairs(UNITS) do
 end
 
 savestate.load(STATE)
-client.speedmode(800)
+speed.fast(800)
 for f = 0, FRAMES do
   frame = f
   local b = plan[f]
@@ -36,4 +37,4 @@ for f = 0, FRAMES do
   emu.frameadvance()
 end
 log:close()
-client.exit()
+speed.exit()

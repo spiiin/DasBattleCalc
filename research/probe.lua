@@ -5,6 +5,7 @@
 -- Output: research/probe_log.txt and research/shots/fNNNNN.png.
 
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
 local FRAMES = tonumber(os.getenv("PROBE_FRAMES") or "1200")
 local SHOT_EVERY = tonumber(os.getenv("PROBE_SHOT_EVERY") or "120")
@@ -21,7 +22,7 @@ for f, b in string.gmatch(PLAN, "(%d+):(%a+)") do
 end
 
 savestate.load(STATE)
-client.speedmode(800)
+speed.fast(800)
 local log = io.open(OUT .. "probe_log.txt", "w")
 local last = ""
 for frame = 0, FRAMES do
@@ -48,4 +49,4 @@ for frame = 0, FRAMES do
   emu.frameadvance()
 end
 log:close()
-client.exit()
+speed.exit()

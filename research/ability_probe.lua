@@ -6,6 +6,7 @@
 -- both unit records (CT bytes +0xD0..+0xD5 left out).
 -- PROBE_CASES = "name=pick:K;addr:size:val;...|..."
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
 local FRAMES = tonumber(os.getenv("PROBE_FRAMES") or "1100")
 local UNITS = { 0x02000080, 0x020031D4, 0x020030CC }
@@ -26,7 +27,7 @@ local function dump_ewram(file)
   f:write(table.concat(parts))
   f:close()
 end
-client.speedmode(1600)
+speed.fast(1600)
 for case in string.gmatch(os.getenv("PROBE_CASES") or "base=", "[^|]+") do
   local name, patches = string.match(case, "([^=]*)=(.*)")
   local pick = tonumber(string.match(patches, "pick:(%d+)") or "0")
@@ -82,4 +83,4 @@ for case in string.gmatch(os.getenv("PROBE_CASES") or "base=", "[^|]+") do
   client.screenshot(string.format("%sshots/ab_%s_after.png", OUT, name))
 end
 log:close()
-client.exit()
+speed.exit()

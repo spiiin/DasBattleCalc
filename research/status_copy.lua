@@ -3,6 +3,7 @@
 -- (0x108 bytes) and Status (A, Down x3, A) is opened; the screen then
 -- shows that unit's stats. Output: shots/copy_<record>.png.
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
 local MARC = 0x02000080
 local WRAPPERS = 0x020223AC
@@ -17,7 +18,7 @@ for k = 0, 11 do
 end
 
 local MACRO = { {90, "A"}, {120, "Down"}, {135, "Down"}, {150, "Down"}, {170, "A"} }
-client.speedmode(1600)
+speed.fast(1600)
 for _, src in ipairs(recs) do
   savestate.load(STATE)
   local bytes = {}
@@ -33,4 +34,4 @@ for _, src in ipairs(recs) do
     emu.frameadvance()
   end
 end
-client.exit()
+speed.exit()

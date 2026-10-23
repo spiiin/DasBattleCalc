@@ -1,6 +1,7 @@
 -- Runs an input plan and dumps EWRAM / IWRAM at the given frames:
 -- PROBE_DUMPS = "300,420" -> dump_300_ewram.bin, dump_300_iwram.bin ...
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = os.getenv("PROBE_STATE") or "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
 local PLAN = os.getenv("PROBE_PLAN") or ""
 local plan, dumps, last = {}, {}, 0
@@ -21,7 +22,7 @@ local function dump(name, domain, size, f)
   file:close()
 end
 savestate.load(STATE)
-client.speedmode(800)
+speed.fast(800)
 for f = 0, last do
   local b = plan[f]
   if b then joypad.set({ [b] = true }) end
@@ -32,4 +33,4 @@ for f = 0, last do
   end
   emu.frameadvance()
 end
-client.exit()
+speed.exit()

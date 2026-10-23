@@ -1,6 +1,7 @@
 -- Logs registers and stack words when the CPU reaches given addresses.
 -- PROBE_EXEC = "name:0xADDR,..."; output research/exec_log.txt.
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = os.getenv("PROBE_STATE") or "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
 local FRAMES = tonumber(os.getenv("PROBE_FRAMES") or "600")
 local PLAN = os.getenv("PROBE_PLAN") or ""
@@ -24,7 +25,7 @@ for name, a in string.gmatch(os.getenv("PROBE_EXEC") or "", "(%w+):(0x%x+)") do
   end, tonumber(a))
 end
 savestate.load(STATE)
-client.speedmode(800)
+speed.fast(800)
 for f = 0, FRAMES do
   frame = f
   local b = plan[f]
@@ -39,4 +40,4 @@ for f = 0, FRAMES do
   emu.frameadvance()
 end
 log:close()
-client.exit()
+speed.exit()

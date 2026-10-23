@@ -4,6 +4,7 @@
 --   frame idx record ct reserve speed status(E8..ED) items(5) b104
 -- A macro presses buttons so player turns end with Wait.
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = os.getenv("PROBE_STATE") or
   "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
 local FRAMES = tonumber(os.getenv("PROBE_FRAMES") or "20000")
@@ -30,7 +31,7 @@ local MACRO = { {0, "B"}, {10, "B"}, {20, "A"}, {40, "Down"}, {50, "Down"}, {60,
 local PERIOD = 300
 
 savestate.load(STATE)
-client.speedmode(1600)
+speed.fast(1600)
 local log = io.open(OUT .. "long_log.txt", "w")
 local last = ""
 for frame = 0, FRAMES do
@@ -68,4 +69,4 @@ for frame = 0, FRAMES do
   emu.frameadvance()
 end
 log:close()
-client.exit()
+speed.exit()

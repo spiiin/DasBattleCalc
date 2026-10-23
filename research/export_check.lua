@@ -3,6 +3,7 @@
 -- PROBE_PLAN buttons and takes screenshots: does the game accept it?
 -- PROBE_STATE (the exported file), PROBE_LOG, PROBE_SHOTS (prefix).
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = os.getenv("PROBE_STATE")
 local FRAMES = tonumber(os.getenv("PROBE_FRAMES") or "120")
 local SHOTS = os.getenv("PROBE_SHOTS") or (OUT .. "export_shot")
@@ -28,7 +29,7 @@ local function dump(tag)
     w = w + 0x90
   end
 end
-client.speedmode(800)
+speed.fast(800)
 savestate.load(STATE)
 dump("load")
 for f = 0, FRAMES do
@@ -39,4 +40,4 @@ for f = 0, FRAMES do
 end
 dump("after")
 log:close()
-client.exit()
+speed.exit()

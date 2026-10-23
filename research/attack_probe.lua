@@ -4,13 +4,14 @@
 -- (0x0812C8C6 r0) are logged. PROBE_CASES = "name=addr:size:val;...|..."
 -- ("copy0xSRC>0xDST" copies a 0x108-byte unit record).
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
 local PLAN = { [90] = "A", [130] = "Down", [150] = "A", [200] = "A", [300] = "Left", [360] = "A" }
 local log = io.open(OUT .. "attack_probe_log.txt", "w")
 local dmg, hit = "-", "-"
 event.on_bus_exec(function() dmg = tostring(emu.getregister("R0")) end, 0x0813023C)
 event.on_bus_exec(function() hit = tostring(emu.getregister("R0")) end, 0x0812C8C6)
-client.speedmode(1600)
+speed.fast(1600)
 for case in string.gmatch(os.getenv("PROBE_CASES") or "base=", "[^|]+") do
   local name, patches = string.match(case, "([^=]*)=(.*)")
   savestate.load(STATE)
@@ -33,4 +34,4 @@ for case in string.gmatch(os.getenv("PROBE_CASES") or "base=", "[^|]+") do
   log:write(string.format("%s dmg=%s hit=%s\n", name, dmg, hit))
 end
 log:close()
-client.exit()
+speed.exit()

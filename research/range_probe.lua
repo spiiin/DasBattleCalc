@@ -4,6 +4,7 @@
 -- (at its return 0x080A0002) is logged: case cx cy tx ty result.
 -- PROBE_CASES = "name=w:ITEM;h:X,Y,H;...|..."
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
 local MARC = 0x02000080
 local PLAN = { [90] = "A", [130] = "Down", [150] = "A", [200] = "A" }
@@ -20,7 +21,7 @@ event.on_bus_exec(function()
   local ty = r10 > 255 and (r10 >> 24) & 0xff or r10
   log:write(string.format("%s %d %d %d %d %d\n", name, cx, cy, tx, ty, emu.getregister("R0")))
 end, 0x080A0002)
-client.speedmode(1600)
+speed.fast(1600)
 for case in string.gmatch(os.getenv("PROBE_CASES") or "base=", "[^|]+") do
   local n, patches = string.match(case, "([^=]*)=(.*)")
   name = n
@@ -42,4 +43,4 @@ for case in string.gmatch(os.getenv("PROBE_CASES") or "base=", "[^|]+") do
   client.screenshot(string.format("%sshots/range_%s.png", OUT, n))
 end
 log:close()
-client.exit()
+speed.exit()

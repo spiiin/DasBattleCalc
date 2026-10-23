@@ -1,6 +1,7 @@
 -- Logs reads of chosen addresses (PC, LR) while running an input plan.
 -- PROBE_ADDRS = "name:0xADDR,..."; output research/reads_log.txt.
 local OUT = "C:/src/DasBattleCalc/research/"
+local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
 local FRAMES = tonumber(os.getenv("PROBE_FRAMES") or "600")
 local FROM = tonumber(os.getenv("PROBE_FROM") or "0")
@@ -23,7 +24,7 @@ for name, a in string.gmatch(ADDRS, "(%w+):(0x%x+)") do
   end, addr)
 end
 savestate.load(STATE)
-client.speedmode(800)
+speed.fast(800)
 for f = 0, FRAMES do
   frame = f
   local b = plan[f]
@@ -31,4 +32,4 @@ for f = 0, FRAMES do
   emu.frameadvance()
 end
 log:close()
-client.exit()
+speed.exit()
