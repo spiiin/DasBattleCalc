@@ -3,6 +3,10 @@
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <string>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 #define STBTT_STATIC
 #define STB_TRUETYPE_IMPLEMENTATION
@@ -390,4 +394,24 @@ int gui_script_end() {
     int last = -1;
     for (auto & a : g_script) last = a.frame + (a.op == "drag" ? 10 : 2) > last ? a.frame + (a.op == "drag" ? 10 : 2) : last;
     return last;
+}
+
+const char * gui_save_text(const char * path, const char * text) {
+    static std::string error;
+    error.clear();
+    FILE * f = fopen(path, "wb");
+    size_t n = strlen(text);
+    if (!f || fwrite(text, 1, n, f) != n) error = "can not write the file";
+    if (f) fclose(f);
+#ifdef __EMSCRIPTEN__
+    if (error.empty())
+        EM_ASM({
+            const p = UTF8ToString($0);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([FS.readFile(p)], {type: 'text/csv'}));
+            a.download = p.split('/').pop();
+            a.click();
+        }, path);
+#endif
+    return error.c_str();
 }

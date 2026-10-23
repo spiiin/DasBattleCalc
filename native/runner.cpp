@@ -22,6 +22,9 @@ static int run_script(const char * path) {
     auto access = make_smart<FsFileAccess>();
     access->addFsRoot("dassdl3", DASSDL3_MODULE_ROOT_DIR);
     access->addFsRoot("dasimgui", std::string(DAS_ROOT_DIR) + "/modules/dasImgui/daslib");
+    // dasPEG (parser generator): require peg/peg; its own detail/ modules
+    access->addFsRoot("peg", std::string(DAS_ROOT_DIR) + "/modules/dasPEG/peg");
+    access->addFsRoot("detail", std::string(DAS_ROOT_DIR) + "/modules/dasPEG/peg/detail");
     auto program = compileDaScript(path, access, out, modules);
     auto print_errors = [&] {
         for (const auto & err : program->errors)

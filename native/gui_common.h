@@ -36,6 +36,9 @@ void gui_no_clip(SDL_Renderer * r);
 
 // Screenshots.
 bool gui_save_renderer_png(SDL_Renderer * r, const char * path);
+// Writes text to path ("" or the error); in the browser the file is also
+// handed to the user as a download (its name: the last part of path).
+const char * gui_save_text(const char * path, const char * text);
 
 // Command line after the script name: --name value.
 void gui_set_args(int argc, char ** argv);

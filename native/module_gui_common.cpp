@@ -27,6 +27,7 @@ public:
         GUI_BIND(gui_clip);
         GUI_BIND(gui_no_clip);
         GUI_BIND(gui_save_renderer_png);
+        GUI_BIND(gui_save_text);
         GUI_BIND(gui_arg);
         GUI_BIND(gui_arg_int);
         GUI_BIND(gui_project_dir);

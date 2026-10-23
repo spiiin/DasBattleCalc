@@ -1,5 +1,6 @@
 options gen2
 options indenting = 4
+options stack = 1000000     // the dasPEG parser of the Explore language recurses
 // every frame builds strings and arrays (UI text, lists): the default
 // linear heap only grows, so collect it between frames
 options persistent_heap

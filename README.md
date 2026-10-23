@@ -36,6 +36,8 @@ build\bin\battlecalc.exe tests\test_ffta_abilities.das --state <QuickSave1.State
 build\bin\battlecalc.exe tests\test_ffta_magic.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
 build\bin\battlecalc.exe tests\test_ffta_reactions.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
 build\bin\battlecalc.exe tests\test_ffta_export.das --state <QuickSave1.State> --rom <FFTA (USA).zip> --out <new.State>
+build\bin\battlecalc.exe tests\test_ffta_explore.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
+build\bin\battlecalc.exe tests\test_explore.das
 ```
 
 ### Веб-версия (standalone AOT)
@@ -96,7 +98,9 @@ python -m http.server 8090 --bind 127.0.0.1 --directory build-web\site
     атакующий в Attack), правый клик — цель, перетаскивание — на свободную клетку, Q / E или кнопки — поворот.
     Изменения влияют только на расчёты (сейв не меняется); подсказка на клетке — координаты и высота.
   - **Screen** — кадр игры, сохранённый в сейве.
-- **Calc**, две вкладки:
+  - **Chart** — график последнего эксперимента вкладки Explore: линии, столбики или точки, линейная или
+    логарифмическая шкала по каждой оси, легенда, подсказка с точкой под мышью.
+- **Calc**, три вкладки:
   - **Turn order** — порядок ходов: таблица с прокруткой (сторона цветом, «+N» тиков от текущего момента, номер хода
     юнита, чем юнит закончит ход; клик выбирает юнита), число ходов вперёд — поле «Turns ahead» (1..200).
   - **Attack** — атакующий, действие (Fight или изученная способность), цель (списком или на поле) и сторона
@@ -112,6 +116,48 @@ python -m http.server 8090 --bind 127.0.0.1 --directory build-web\site
     удар — урон и шанс. «Real» шанс — с учётом ГСЧ игры (два соседних числа броска связаны; таблица
     `research/roll_table.py`). Модель — `scripts/games/ffta/ffta_attack.das`, формулы — `research/notes.md`
     («Attack», «Fight reach», «Abilities», «Ability effects», «Reactions», «Real hits»).
+  - **Explore** — эксперименты: как меняется результат атаки при переборе параметров. Слева — скрипт (список
+    готовых примеров, Run или Ctrl+Enter; подсветка синтаксиса: операторы, параметры, метрики, новые столбцы, числа;
+    имя, которого нет, — красным; строка с ошибкой — красным фоном), справа — таблица точек (клик по заголовку —
+    сортировка; полосу между ними можно перетаскивать; **CSV** — таблица в текущем порядке: на десктопе файл
+    `<сейв>.explore.csv` рядом с сейвом, в вебе — скачивание), график — во вкладке Battle → Chart. Сцена — атакующий, цель, действие и сторона вкладки Attack.
+
+### Язык экспериментов (Explore)
+
+Оператор — одна строка (внутри `( )` строку можно переносить), `//` — комментарий. Разбор — грамматика dasPEG
+(`scripts/core/explore.das`), вычисление — наше.
+
+```
+vary atk.watk 50..300 step 10        // ось: параметр и его значения (точек — произведение осей, до 20000)
+vary tgt.wdef 50, 100, 150, 200      // вторая ось
+avg = expected                       // вычисляемый столбец
+ko = ceil(tgt.hp / max(avg, 0.01))   // параметр, прочитанный формулой, становится столбцом
+where reach && avg > 0               // оставить строки
+sort avg desc                        // или: sort avg
+plot avg, damage by atk.watk per tgt.wdef log y title "Урон"
+scene Marc vs Euver with Fire from back   // иначе — как на вкладке Attack
+```
+
+- **vary** `путь значения`. Значения: `от..до` или `от..до step шаг` (оба конца включены; `300..100` — вниз),
+  список `a, b, c`, генераторы игры: `jobs` (работы расы), `weapons` / `weapons "Sword"`, `supports`, `reactions`,
+  `actions` (изученные + Fight), `sides`.
+- **Параметры** `atk.*` / `tgt.*` (длинные `attacker.*` / `target.*` значат то же): `watk wdef mpow mres speed evade
+  move jump` (база, как в инспекторе; `watk_total` … — с экипировкой, только чтение), `hp max_hp mp ct level`, `job`,
+  `weapon`, `support`, `reaction`, `status.<имя>` (0 / 1: `status.protect`, `status.haste` …). Сцены: `action`
+  (способность), `side` (1 спереди, 2 сбоку, 3 сзади, 0 — по позициям).
+- **Столбцы каждой точки**: оси, `damage dmg_min dmg_max crit_damage hit hit_real crit expected reach mp_cost attack
+  defense base evade distance`.
+- **имя = выражение** — новый столбец; **where** условие; **sort** выражение `[asc|desc]`.
+- **plot** `y1, y2, …` и в любом порядке: `by x` (по умолчанию первая ось), `per серия` (линия / группа на каждое
+  значение), `line` / `bar` / `scatter` (по умолчанию line для чисел, bar для подписей), `log x` / `log y` /
+  `log xy`, `title "…"`.
+- **scene** в любом сочетании: `A vs B` (атакующий и цель по имени), `with Действие` (`with "First Aid"` — имя с
+  пробелом в кавычках), `from front|side|back|auto`.
+- **Выражения**: числа, `"строки"`, `true / false`, `+ - * / %`, `< <= > >= == !=`, `&& || !`, `a ? b : c`,
+  функции `abs min max clamp round floor ceil sqrt pow exp log log10 log2`. Значение — число или подпись с числом
+  (работа: имя и id; сравнение и сортировка — по имени).
+- Ошибки — с номером строки: синтаксис («near '…'»), неизвестный оператор, столбец (со списком столбцов), функция,
+  параметр.
 
 ## Как устроено
 
@@ -129,8 +175,11 @@ scripts/
   core/game.das      интерфейс GameModule, лог
   core/gba_struct    чтение структур из памяти GBA по аннотациям @offset (daslib/apply)
   core/result_try    макросы try_ok / ensure: выход из функции с первой ошибкой ("" = успех)
+  core/explore       язык экспериментов: грамматика dasPEG, выражения, таблица, шаги, данные графика
   ui/                bl_imgui (виджеты Blendish), bnd_const, inspector
-  games/ffta/        ffta_battle.das (RAM -> юниты, модель порядка ходов), ffta.das (панели)
+  games/ffta/        ffta_battle.das (RAM -> юниты, модель порядка ходов), ffta.das (панели), ffta_explore.das
+                     (параметры, значения осей и метрики экспериментов)
+  ui/explore_view    таблица (сортировка, только видимые строки) и график (линии, столбики, точки, лог-шкалы)
 research/          исследование FFTA: notes.md (результаты), Lua-скрипты BizHawk, дизассемблер Thumb, симулятор
 tests/             тесты на daslang
 assets/            шрифт DejaVu Sans, иконки (свой пиксель-арт, `icons/make_icons.py`)

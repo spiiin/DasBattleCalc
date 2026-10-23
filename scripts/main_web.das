@@ -1,5 +1,6 @@
 options gen2
 options indenting = 4
+options stack = 1000000     // the dasPEG parser of the Explore language recurses
 // every frame builds strings and arrays: the host collects the heap
 // between frames (web/runner.cpp), which needs these two
 options persistent_heap

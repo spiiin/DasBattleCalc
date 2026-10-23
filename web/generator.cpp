@@ -20,6 +20,8 @@ static int generate() {
     auto access = make_smart<FsFileAccess>();
     access->addFsRoot("dassdl3", "/dassdl3");
     access->addFsRoot("dasimgui", "/dasimgui");
+    access->addFsRoot("peg", "/das/modules/dasPEG/peg");
+    access->addFsRoot("detail", "/das/modules/dasPEG/peg/detail");
     CodeOfPolicies policy;
     policy.aot_module = true;
     policy.tune_frozen = true;

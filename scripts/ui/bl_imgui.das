@@ -16,6 +16,7 @@ require bnd_const   // BND_CORNER_* constants
 require icons       // ICON_* of ffta_icons16.png
 require math
 require strings
+require daslib/strings_boost
 
 // ------------------------------------------------------------ theme
 
@@ -160,7 +161,15 @@ def icon_label_value(x, y, w, h : float; icon : int; color : uint; center : bool
         bl_icon(x + u(4.0), y + u(2.0), icon)
         pleft += u(16.0)
     }
-    let s = value == "" ? caption : (caption == "" ? value : "{caption}: {value}")
+    var s = value == "" ? caption : (caption == "" ? value : "{caption}: {value}")
+    // longer than the widget: cut with "..." (it would overflow the frame)
+    let room = w - pleft - u(BND_PAD_RIGHT)
+    if (w > 0.0 && text_width(s) > room) {
+        while (length(s) > 0 && text_width("{s}...") > room) {
+            s = slice(s, 0, length(s) - 1)
+        }
+        s = "{s}..."
+    }
     let baseline = y + u(14.0)
     var tx = x + pleft
     if (center) {
@@ -352,6 +361,99 @@ def bl_text_field(id : string; var buf : ImGuiInputTextBuffer; w : float; sharp 
     return changed
 }
 
+// A piece of a line of code in its color (bl_code_area).
+struct CodeSpan {
+    start : int                     // bytes of the line, stop not included
+    stop : int
+    color : uint
+}
+
+// A multi-line code editor: ImGui's InputTextMultiline (caret, selection,
+// clipboard, undo) with its own text transparent, and the same text drawn
+// over it in colors from colorize (parts it leaves out: the default
+// color). The field is as large as its text and an outer child scrolls
+// it, so the overlay knows where every line is. error_line (from 1) gets
+// a red background; 0: none.
+def bl_code_area(id : string; var buf : ImGuiInputTextBuffer; w, h : float; error_line : int;
+                 colorize : block<(line : string; var spans : array<CodeSpan>) : void>) : bool {
+    let p = GetCursorScreenPos()
+    let active = text_active == id
+    // a dark field, as code editors have (colored words on light grey read badly)
+    let fg = 0xdcdcdcffu
+    var bg = GetWindowDrawList()
+    *bg |> AddRectFilled(ImVec2(p.x, p.y), ImVec2(p.x + w, p.y + h), abgr(active ? 0x2a2a2affu : 0x323232ffu),
+        u(BND_TEXT_RADIUS), ImDrawFlags.None)
+    *bg |> AddRect(ImVec2(p.x, p.y), ImVec2(p.x + w, p.y + h), abgr(active ? bt.menu_item.inner_sel : 0x1e1e1effu),
+        u(BND_TEXT_RADIUS), ImDrawFlags.None, 1.0)
+    let padx = u(BND_PAD_LEFT)
+    let pady = u(4.0)
+    let lh = GetFontSize()
+    var lines <- split(to_string(buf), "\n")
+    var widest = 0.0
+    for (l in lines) {
+        widest = max(widest, text_width(l))
+    }
+    PushStyleColor(ImGuiCol.ChildBg, 0u)
+    BeginChild("{id}_scroll", ImVec2(w, h), ImGuiChildFlags.None, ImGuiWindowFlags.HorizontalScrollbar)
+    let room = GetContentRegionAvail()
+    let fw = max(room.x, widest + padx * 2.0 + u(24.0))
+    let fh = max(room.y, float(length(lines) + 1) * lh + pady * 2.0)
+    let origin = GetCursorScreenPos()
+    var dl = GetWindowDrawList()
+    if (error_line > 0 && error_line <= length(lines)) {
+        let ey = origin.y + pady + float(error_line - 1) * lh
+        *dl |> AddRectFilled(ImVec2(origin.x, ey), ImVec2(origin.x + fw, ey + lh), abgr(0xd0404060u), 0.0,
+            ImDrawFlags.None)
+    }
+    PushStyleColor(ImGuiCol.FrameBg, 0u)
+    PushStyleColor(ImGuiCol.FrameBgHovered, abgr(0xffffff0au))
+    PushStyleColor(ImGuiCol.FrameBgActive, 0u)
+    PushStyleColor(ImGuiCol.Text, 0u)
+    PushStyleColor(ImGuiCol.InputTextCursor, abgr(fg))
+    // see-through: the field draws the selection in its own child window,
+    // which ImGui renders over this window's colored text
+    PushStyleColor(ImGuiCol.TextSelectedBg, abgr(0x4a7ad070u))
+    PushStyleVar(ImGuiStyleVar.FramePadding, ImVec2(padx, pady))
+    let changed = InputTextMultiline("##{id}", buf, float2(fw, fh), ImGuiInputTextFlags.None)
+    if (IsItemActive()) {
+        text_active = id
+    } elif (active) {
+        text_active = ""
+    }
+    PopStyleVar(1)
+    PopStyleColor(6)
+    // the text again, in colors (after an edit: the new text)
+    if (changed) {
+        lines <- split(to_string(buf), "\n")
+    }
+    for (i in range(length(lines))) {
+        let line = lines[i]
+        let ly = origin.y + pady + float(i) * lh
+        if (ly > origin.y + fh || line == "") {
+            continue
+        }
+        var spans : array<CodeSpan>
+        invoke(colorize, line, spans)
+        var at = 0
+        for (k in range(length(spans) + 1)) {
+            let start = k < length(spans) ? spans[k].start : length(line)
+            if (start > at) {
+                let x = origin.x + padx + text_width(slice(line, 0, at))
+                *dl |> AddText(ImVec2(x, ly), abgr(fg), slice(line, at, start))
+            }
+            if (k < length(spans)) {
+                let sp = spans[k]
+                let x = origin.x + padx + text_width(slice(line, 0, sp.start))
+                *dl |> AddText(ImVec2(x, ly), abgr(sp.color), slice(line, sp.start, sp.stop))
+                at = sp.stop
+            }
+        }
+    }
+    EndChild()
+    PopStyleColor(1)
+    return changed
+}
+
 // bndTextField over a string value: drawn as a label, a click edits it in
 // place with one shared buffer (only one field is edited at a time).
 var private str_editing = ""
@@ -450,7 +552,8 @@ def bl_menu_item(caption : string; icon : int = -1) : bool {
 
 // Popup frame colors (bndMenuBackground) for menus and choice lists.
 def bl_push_popup_style() {
-    PushStyleColor(ImGuiCol.PopupBg, abgr(bt.menu.inner))
+    // opaque: what is under a popup would show through the menu color
+    PushStyleColor(ImGuiCol.PopupBg, abgr(bt.menu.inner | 0xffu))
     PushStyleColor(ImGuiCol.Border, abgr(transparent(bt.menu.outline)))
     PushStyleVar(ImGuiStyleVar.WindowPadding, ImVec2(0.0, u(3.0)))
 }

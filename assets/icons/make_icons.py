@@ -349,6 +349,27 @@ def triangle(down):
     return outline(g)
 
 
+def bar_chart():
+    return outline(from_rows([
+        "................",
+        "................",
+        "............GG..",
+        "............GG..",
+        "........YY..GG..",
+        "........YY..GG..",
+        "........YY..GG..",
+        "....BB..YY..GG..",
+        "....BB..YY..GG..",
+        "....BB..YY..GG..",
+        "....BB..YY..GG..",
+        "....BB..YY..GG..",
+        "..WWWWWWWWWWWWW.",
+        "................",
+        "................",
+        "................",
+    ]))
+
+
 # order = ids in scripts/ui/icons.das (6 per row)
 ICONS = [
     ('info', info()), ('turns', hourglass()), ('attack', sword()), ('unit', helmet(False)),
@@ -357,6 +378,7 @@ ICONS = [
     ('screen', screen()), ('load', refresh()),
     ('turn_ccw', curved(False)), ('turn_cw', curved(True)), ('export', scroll_out()), ('fit', corners()),
     ('open', triangle(True)), ('closed', triangle(False)),
+    ('chart', bar_chart()),
 ]
 
 

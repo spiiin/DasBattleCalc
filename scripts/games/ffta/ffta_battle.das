@@ -157,6 +157,17 @@ def ffta_text(ptr : uint; max_len : int = 24) : string {
             res += "'"
         } elif (c == 0xFF) {
             res += "-"
+        } elif (c >= 0xA7 && c <= 0xB0) {
+            // digits: "Masamune 100", "LV3 Def-less", "Excalibur2"
+            res += to_char(c - 0xA7 + '0')
+        } elif (c == 0xE5) {
+            res += "."
+        } elif (c == 0xEB) {
+            res += "?"
+        } elif (c == 0xEF) {
+            res += ":"                  // "Steal: Armor", "Aim: Legs"
+        } elif (c == 0xFE) {
+            res += "+"                  // "Weapon Atk+"
         } elif (c >= 0xB1 && c <= 0xCA) {
             res += to_char(c - 0xB1 + 'A')
         } elif (c >= 0xCB && c <= 0xE4) {

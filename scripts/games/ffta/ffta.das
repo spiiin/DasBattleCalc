@@ -20,10 +20,13 @@ require ../../ui/bl_imgui.das
 require ../../ui/inspector.das
 require ../../core/game.das
 require ../../core/result_try.das
+require ../../core/explore.das
+require ../../ui/explore_view.das
 require ../../app/shell.das
 require ffta_battle
 require ffta_attack
 require ffta_field
+require ffta_explore
 
 let MAX_TURNS = 200
 
@@ -47,6 +50,64 @@ def turn_columns(x, w : float) : TurnColumns {
 let STAT_SHORT = fixed_array<string>("Atk", "Def", "Pow", "Res", "Spd", "Eva", "Move", "Jump")
 
 let STAT_LABELS = fixed_array<string>("W.Atk", "W.Def", "M.Pow", "M.Res", "Speed", "Evade", "Move", "Jump")
+
+// Explore: ready experiments (the editor starts with the first)
+let EXPLORE_NAMES = fixed_array<string>("Damage by W.Atk and target W.Def", "Every weapon", "Side and Protect",
+    "Damage by target W.Def (log)", "Every action")
+let EXPLORE_EXAMPLES = fixed_array<string>(
+    "// the attacker and target of the Attack tab: Fight by base W.Atk,\n// one line per target W.Def\nvary atk.watk 50..300 step 10\nvary tgt.wdef 50, 100, 150, 200\navg = expected\nwhere reach\nplot avg by atk.watk per tgt.wdef title \"Average damage per Fight\"\n",
+    "// every weapon in the attacker's hands, best first\nvary atk.weapon weapons\navg = expected\nwhere reach\nsort avg desc\nplot damage, avg by atk.weapon bar\n",
+    "vary side sides\nvary tgt.status.protect 0, 1\nplot damage by side per tgt.status.protect bar\n",
+    "// damage falls to 1 as W.Def grows: a log scale shows the whole range\nvary tgt.wdef 0..990 step 10\nhits_to_ko = ceil(tgt.hp / max(expected, 0.01))\nplot expected, hits_to_ko by tgt.wdef log y\n",
+    "vary action actions\navg = expected\nsort avg desc\nplot avg, mp_cost by action bar\n")
+
+// Explore editor colors: what a word of the script is
+let EXPLORE_GENERATORS = fixed_array<string>("jobs", "weapons", "supports", "reactions", "actions", "sides")
+
+def explore_color(sp : HlSpan; defs : array<string>; att : BattleUnit) : uint {
+    if (sp.kind == HL_STMT) {
+        return 0xf0c040ffu              // vary where sort plot scene
+    } elif (sp.kind == HL_WORD) {
+        return 0x80b8f0ffu              // by per step log bar ...
+    } elif (sp.kind == HL_NUM) {
+        return 0xf0a060ffu
+    } elif (sp.kind == HL_STR) {
+        return 0xb0e090ffu
+    } elif (sp.kind == HL_COMMENT) {
+        return 0x8c8c8cffu
+    } elif (sp.kind == HL_FUNC) {
+        return 0xc8a0f0ffu
+    } elif (sp.kind == HL_OP) {
+        return 0xc8c8c8ffu
+    } elif (sp.kind == HL_DEF) {
+        return 0xf0e0a0ffu              // a new column
+    } elif (sp.kind != HL_NAME) {
+        return 0xdcdcdcffu
+    }
+    let name = sp.text
+    if (find_index(EXPLORE_GENERATORS, name) >= 0) {
+        return 0xc8a0f0ffu
+    }
+    if (find_index(METRICS, name) >= 0) {
+        return 0x60d0d0ffu              // a column of every point
+    }
+    if (find_index(defs, name) >= 0) {
+        return 0xf0e0a0ffu
+    }
+    if (name == "side" || name == "action") {
+        return 0x90d070ffu
+    }
+    let dot = find(name, ".")
+    if (dot > 0) {
+        let owner = slice(name, 0, dot)
+        var v : Value
+        if ((owner == "atk" || owner == "tgt" || owner == "attacker" || owner == "target")
+                && unit_param(att, slice(name, dot + 1), v)) {
+            return 0x90d070ffu          // a parameter
+        }
+    }
+    return 0xff7070ffu                  // nothing by this name: a typo?
+}
 
 let KIND_FILTERS = fixed_array<string>("All", "Weapons", "Shields", "Head", "Body", "Shoes, armlets, rings")
 
@@ -94,6 +155,17 @@ class FftaGame : GameModule {
     turns : array<Turn>
     selected : int = -1
     turns_ahead : int = 24
+    // Explore: the script, its table and chart
+    explore_src : ImGuiInputTextBuffer = ImGuiInputTextBuffer(EXPLORE_EXAMPLES[0], 8192)
+    explore_example : int = 0
+    explore_table : ETable = ETable()
+    explore_chart : Chart = Chart()
+    explore_error : string
+    explore_info : string
+    explore_version : int = 0
+    explore_ran : bool = false
+    explore_tview : TableView = TableView()
+    explore_split : float = 0.42      // the editor's share of the width (the bar drags it)
     stats_open : bool = true
     calc_tab : int = 0                // 0 turn order, 1 attack
     scene_tab : int = 0               // 0 field, 1 the game screen
@@ -625,12 +697,18 @@ class FftaGame : GameModule {
             scene_tab = 0
         }
         SetCursorScreenPos(ImVec2(x + u(8.0) + tw, y + u(6.0)))
-        if (bl_radio_button("tab_screen", "Screen", ICON_SCREEN, tw, BND_CORNER_LEFT, scene_tab == 1)) {
+        if (bl_radio_button("tab_screen", "Screen", ICON_SCREEN, tw, BND_CORNER_ALL, scene_tab == 1)) {
             scene_tab = 1
+        }
+        SetCursorScreenPos(ImVec2(x + u(8.0) + tw * 2.0, y + u(6.0)))
+        if (bl_radio_button("tab_chart", "Chart", ICON_CHART, tw, BND_CORNER_LEFT, scene_tab == 2)) {
+            scene_tab = 2
         }
         let ty = y + u(32.0)
         if (scene_tab == 0) {
             self->field_view(x, ty, w, y + h - ty)
+        } elif (scene_tab == 2) {
+            self->chart_view(x + u(8.0), ty, w - u(16.0), y + h - ty - u(6.0))
         } else {
             self->screen_view(x, ty, w, y + h - ty)
         }
@@ -669,6 +747,183 @@ class FftaGame : GameModule {
         bl_label("Click: select   Right click: target   Drag: move   Q / E: turn   Wheel: zoom")
     }
 
+    // the scene of the Attack tab, changed by scene(attacker = "Marc",
+    // target = "Euver", action = "Fire", side = 3); "" or the error
+    def explore_scene(s : Script; var sc : Scene) : string {
+        attacker = clamp(attacker, 0, length(units) - 1)
+        target = clamp(target, 0, length(units) - 1)
+        var att = attacker
+        var tgt = target
+        let a0 = units[attacker]
+        var ability = action > 0 && action - 1 < a0.action_count ? a0.actions[action - 1] : 0
+        var side = side_choice
+        for (a in s.scene) {
+            let v = eval_const(a.exprs[0], a.exprs[0].root)
+            if (a.name == "attacker" || a.name == "target") {
+                var found = -1
+                for (i in range(length(units))) {
+                    if (units[i].name == v.text) {
+                        found = i
+                    }
+                }
+                if (found < 0) {
+                    let all = join([for (un in units); un.name], ", ")
+                    return "line {a.line}: no unit '{v.text}' ({all})"
+                }
+                if (a.name == "attacker") {
+                    att = found
+                } else {
+                    tgt = found
+                }
+            } elif (a.name == "action") {
+                ability = v.text == "Fight" ? 0 : -1
+                for (k in range(units[att].action_count)) {
+                    if (ability_name(units[att].actions[k]) == v.text) {
+                        ability = units[att].actions[k]
+                    }
+                }
+                if (ability < 0) {
+                    return "line {a.line}: {units[att].name} has no action '{v.text}'"
+                }
+            } elif (a.name == "side") {
+                side = clamp(int(v.num), 0, 3)
+            } else {
+                return "line {a.line}: scene( ) takes attacker, target, action, side - not '{a.name}'"
+            }
+        }
+        sc = Scene(att = units[att], tgt = units[tgt], ability = ability, side = side)
+        return ""
+    }
+
+    def explore_run() : void {
+        explore_ran = true
+        let t0 = ref_time_ticks()
+        var s = Script()
+        var sc = Scene()
+        var err = parse_script(to_string(explore_src), s)
+        if (err == "") {
+            err = self->explore_scene(s, sc)
+        }
+        if (err == "") {
+            err = run_experiment(battle_map, sc, s, explore_table)
+        }
+        if (err == "") {
+            let xn = length(explore_table.names) > 0 ? explore_table.names[0] : "damage"
+            err = build_chart(s, explore_table, xn, "damage", explore_chart)
+        }
+        if (err != "") {
+            explore_table = ETable()
+            explore_chart = Chart()
+        }
+        explore_error = err
+        explore_version++
+        let ms = get_time_usec(t0) / 1000
+        explore_info = err == "" ? "{length(explore_table.rows)} rows x {length(explore_table.names)} columns, {ms} ms" : ""
+    }
+
+    // Calculation > Explore: examples, Run; the script; the table
+    def explore_view(x, y, w, h : float) : void {
+        if (!explore_ran) {
+            self->explore_run()
+        }
+        let ew = floor(w * explore_split)
+        // the bar between the editor and the table: drag to resize
+        SetCursorScreenPos(ImVec2(x + ew + u(1.0), y + u(26.0)))
+        InvisibleButton("##explore_split", ImVec2(u(6.0), max(u(10.0), h - u(26.0))))
+        if (IsItemHovered() || IsItemActive()) {
+            SetMouseCursor(ImGuiMouseCursor.ResizeEW)
+            *GetWindowDrawList() |> AddRectFilled(ImVec2(x + ew + u(3.0), y + u(26.0)), ImVec2(x + ew + u(5.0), y + h),
+                abgr(bt.menu_item.inner_sel), 0.0, ImDrawFlags.None)
+        }
+        if (IsItemActive()) {
+            explore_split = clamp((GetMousePos().x - x - u(4.0)) / w, 0.15, 0.85)
+        }
+        SetCursorScreenPos(ImVec2(x, y))
+        var pick = explore_example
+        var names <- [for (n in EXPLORE_NAMES); n]
+        if (bl_choice("explore_example", names, pick, ew - u(88.0))) {
+            explore_example = pick
+            explore_src = ImGuiInputTextBuffer(EXPLORE_EXAMPLES[pick], 8192)
+            self->explore_run()
+        }
+        SetCursorScreenPos(ImVec2(x + ew - u(80.0), y))
+        let run_click = bl_tool_button("explore_run", "Run", ICON_CHART, u(80.0))
+        let eh = h - u(26.0) - (explore_error != "" ? u(22.0) : 0.0)
+        SetCursorScreenPos(ImVec2(x, y + u(26.0)))
+        // the columns the script makes (name = ...), the line of the error
+        var defs : array<string>
+        for (line in split(to_string(explore_src), "\n")) {
+            var spans : array<HlSpan>
+            highlight_line(line, spans)
+            if (length(spans) > 0 && spans[0].kind == HL_DEF) {
+                defs |> push(spans[0].text)
+            }
+        }
+        var error_line = 0
+        if (starts_with(explore_error, "line ")) {
+            error_line = to_int(slice(explore_error, 5, max(5, find(explore_error, ":"))))
+        }
+        let att = units[clamp(attacker, 0, length(units) - 1)]
+        bl_code_area("explore_src", explore_src, ew, max(u(40.0), eh), error_line) $(line; var out) {
+            var spans : array<HlSpan>
+            highlight_line(line, spans)
+            for (sp in spans) {
+                out |> push(CodeSpan(start = sp.start, stop = sp.stop, color = explore_color(sp, defs, att)))
+            }
+        }
+        let editing = IsItemActive()
+        // Ctrl+Enter in the editor runs it too
+        if (run_click || (editing && GetIO().KeyCtrl && IsKeyPressed(ImGuiKey.Enter, false))) {
+            self->explore_run()
+        }
+        if (explore_error != "") {
+            SetCursorScreenPos(ImVec2(x, y + h - u(21.0)))
+            bl_label(explore_error, ICON_INFO, ew, 0xff8080ffu)
+            if (IsItemHovered()) {
+                bl_tooltip(explore_error)
+            }
+        }
+        let tx = x + ew + u(8.0)
+        let tw = w - ew - u(8.0)
+        let cw = u(70.0)
+        SetCursorScreenPos(ImVec2(tx, y))
+        bl_label(explore_info != "" ? "{explore_info}; chart: Battle > Chart" : "", ICON_INFO, tw - cw - u(4.0))
+        SetCursorScreenPos(ImVec2(tx + tw - cw, y))
+        if (bl_tool_button("explore_csv", "CSV", ICON_EXPORT, cw) && length(explore_table.names) > 0) {
+            self->explore_csv()
+        }
+        draw_etable("explore_table", explore_table, explore_version, explore_tview, tx, y + u(26.0), tw, h - u(26.0))
+    }
+
+    // the table as CSV in the order it is shown, next to the state: on the
+    // desktop a file, in the browser a download (gui_save_text)
+    def explore_csv() : void {
+        let dot = find(state_path, ".", max(0, length(state_path) - 6))
+        let base = dot >= 0 ? slice(state_path, 0, dot) : state_path
+        let path = "{base}.explore.csv"
+        let err = gui_save_text(path, table_csv(explore_table, explore_tview.order))
+        message = err != "" ? "CSV: {err}" : "table saved to {path}"
+        log_line(message)
+    }
+
+    // Battle > Chart: the chart of the last Explore run
+    def chart_view(x, y, w, h : float) : void {
+        if (!explore_ran && length(units) > 0) {
+            self->explore_run()
+        }
+        if (explore_error != "") {
+            SetCursorScreenPos(ImVec2(x + u(4.0), y + u(6.0)))
+            bl_label("Explore: {explore_error}", ICON_INFO)
+            return
+        }
+        if (length(explore_chart.series) == 0) {
+            SetCursorScreenPos(ImVec2(x + u(4.0), y + u(6.0)))
+            bl_label("No data: write an experiment in Calculation > Explore", ICON_INFO)
+            return
+        }
+        draw_chart("explore_chart", explore_chart, x, y, w, h)
+    }
+
     def screen_view(x, y, w, h : float) : void {
         if (!gba_frame_update(shell_renderer())) {
             SetCursorScreenPos(ImVec2(x + u(12.0), y + u(12.0)))
@@ -697,12 +952,18 @@ class FftaGame : GameModule {
             calc_tab = 0
         }
         SetCursorScreenPos(ImVec2(x + tw, y))
-        if (bl_radio_button("tab_attack", "Attack", ICON_ATTACK, tw, BND_CORNER_LEFT, calc_tab == 1)) {
+        if (bl_radio_button("tab_attack", "Attack", ICON_ATTACK, tw, BND_CORNER_ALL, calc_tab == 1)) {
             calc_tab = 1
+        }
+        SetCursorScreenPos(ImVec2(x + tw * 2.0, y))
+        if (bl_radio_button("tab_explore", "Explore", ICON_CHART, tw, BND_CORNER_LEFT, calc_tab == 2)) {
+            calc_tab = 2
         }
         let ty = y + u(28.0)
         if (calc_tab == 1) {
             self->attack_view(x, ty, w, y + h - ty)
+        } elif (calc_tab == 2) {
+            self->explore_view(x, ty, w, y + h - ty)
         } else {
             self->turn_order(x, ty, w, y + h - ty)
         }

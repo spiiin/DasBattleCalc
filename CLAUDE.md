@@ -8,7 +8,7 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
 - `build.bat` (VS 2022 x64 + Ninja) -> `build\bin\battlecalc.exe [script.das] [опции]`; по умолчанию `scripts/main.das`.
 - Картинку проверяем `--shot file.png`, ввод — `--script "F click X Y; F shot file.png"` (см. `native/gui_common.cpp`).
 - Тест модели FFTA: `battlecalc tests\test_ffta_turn_order.das --state <QuickSave1.State> --rom <FFTA.zip>`;
-  характеристики и снаряжение — `tests\test_ffta_stats.das`, атака — `tests/test_ffta_attack.das`, дальность — `tests/test_ffta_reach.das`, способности — `tests/test_ffta_abilities.das`, магия — `tests/test_ffta_magic.das`, реакции — `tests/test_ffta_reactions.das`, экспорт сейва — `tests/test_ffta_export.das` (+ `--out <new.State>`; проверка
+  характеристики и снаряжение — `tests\test_ffta_stats.das`, атака — `tests/test_ffta_attack.das`, дальность — `tests/test_ffta_reach.das`, способности — `tests/test_ffta_abilities.das`, магия — `tests/test_ffta_magic.das`, реакции — `tests/test_ffta_reactions.das`, экспорт сейва — `tests/test_ffta_export.das`, Explore — `tests/test_ffta_explore.das` и `tests/test_explore.das` (язык, без сейва) (+ `--out <new.State>`; проверка
   в эмуляторе — `research/export_check.lua`, `PROBE_STATE`)
   (те же аргументы; прогнозы игры для сверки — `research/attack_probe.lua`). Экраны Status юнитов для сверки —
   `research/status_copy.lua` (запись юнита копируется в запись Marc, затем открывается Status).
@@ -32,7 +32,15 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
 
 - `require` подпапок: из `scripts/main.das` — `require app/shell`; между подпапками — `require ../ui/bl_imgui.das`
   (с `.das`); корни FsFileAccess плоские (`root/имя.das`), подпапки в них не работают.
-- Зарезервированы: `label`, `addr` (аннотация подписи поля — `@caption`).
+- Зарезервированы: `label`, `addr` (аннотация подписи поля — `@caption`), `expect`, `range`.
+- **dasPEG** (язык Explore, `scripts/core/explore.das`): модуль `peg` daScript помечен `no_aot` — для веба нужна
+  локальная правка (см. `CLAUDE.local.md`); корни модулей `peg` / `detail` — в `native/runner.cpp` и
+  `web/generator.cpp`. Все правила грамматики возвращают ОДИН тип (`PNode?`): кэши правил разных типов дают
+  обобщённые экземпляры с одним именем (internal error 50609 в интерпретаторе, «no matching function» в AOT C++).
+  Действия правил без побочных эффектов (PEG откатывается). Парсер рекурсивный — программам нужен
+  `options stack = 1000000` (main.das, main_web.das, тесты Explore). Позиций в действиях нет: скрипт делится на
+  операторы до разбора (`split_statements`), номер строки — от начала оператора.
+- Параметр `var s : string` — локальная копия; вернуть строку через параметр — `var s : string&`.
 - Цепочка «"" или текст ошибки» — макросы `scripts/core/result_try.das`: `try_ok(call, "Префикс: ")` и
   `ensure(cond, msg)` возвращают из функции (`: string`) первую ошибку; пример — `FftaGame.load_files`, тест —
   `tests/test_result_try.das` (без аргументов). В веб попадает только раскрытый код.
