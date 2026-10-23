@@ -1,0 +1,81 @@
+00 + sets - clears - | First Aid, Friend, Rockbeast
+01 + sets - clears - | Earth Veil, Hand Slap, Spellbind, Suffocate
+02 - sets E8&02 clears - | Quicken, Smile
+03 - sets EC&08,EC&20,EC&80,ED&02 clears - | Dragon Force
+0a - sets E8&10 clears - | Astra, Mog Shield
+0b - sets - clears - | Chakra, Esuna, First Aid, Mog Aid, Nurse, Sacrifice
+0c + sets E9&01 clears E8&10 | Frogsong, Poison Frog, Toad
+0d - sets - clears - | Maiden Kiss
+0e + sets EA&08 clears - | Cover
+10 - sets - clears - | Draw Weapon
+11 - sets EA&01 clears - | Advice
+12 + sets - clears - | Elementalshift
+13 + sets EA&80 clears E8&10 | Ring, Shadowbind, Stillness, Stop, Stopshot
+14 + sets EC&04 clears - | Howl of Rage, Shadowstick, Speedbreak, Warcry
+16 + sets EB&80 clears E8&10 | Aim? Arm, Dagger, Fire Whip, Mythril, Resonate
+17 - sets - clears - | Bandage
+18 + sets EB&40 clears E8&10 | Aim? Legs, Goo, Heavy Dust, Wood Veil
+19 - sets - clears - | Bandage
+1a + sets - clears - | Furycircle, Mog Attack, Presence, Rush, Tremor
+1b + sets E8&80 clears E8&10 | Catnip, Firebomb, Provoke
+1c + sets EA&80,EA&40 clears E8&10 | Hastebreak
+1d + sets - clears E8&10 | Aim? Vitals
+1e + sets - clears E8&10 | Acid
+1f - sets E8&08 clears - | Aura, Gold Battery, Kirin
+20 - sets E8&20 clears - | Carbuncle, Reflect
+21 - sets E8&04 clears - | Angel Whisper, Aura, Auto-Life
+22 - sets - clears - | Mog Peek, Sensor
+23 + sets E9&04 clears E8&10 | Blackout, Blind, Blindshot, Devil Gaze, Metal Veil, Sandstorm
+24 - sets - clears - | Eye Drops
+25 + sets EA&02 clears - | Mow Down
+29 + sets EB&10 clears E8&10 | Ball, Confushot, Evil Gaze, Fire Veil, Stare
+2a + sets EA&10 clears E8&10 | Black Ingot, Checkmate, Death Sickle, Kiss, Life Render, Nightmare
+2b + sets EA&40,E9&04,EB&10 clears E8&10 | Bad Breath
+2c + sets - clears - | Burial, Exorcise, Oust, Parley, Wyrmtamer
+2d + sets EB&04 clears E8&10 | Azoth, Chroma Gem, Mythril, Night, Nightmare, Sheep Count
+2e + sets E8&40,ED&10 clears E8&10,ED&10 | Blaster, Break, Rockseal
+2f - sets - clears - | Soft
+30 + sets ED&01,ED&04 clears - | Guard-Off
+31 + sets - clears - | Aim? Armor
+32 + sets - clears E8&10 | Death, LV? Death, Last Breath, Roulette
+33 + sets EA&40 clears E8&10 | Ague, Earth Veil, Sliprain, Slow, Spellbind
+34 - sets EA&20 clears - | Haste, Red Spring
+35 + sets - clears - | Amber Gleam, Blue Screw, Dispel, Holy Sign, Hunting, Unspell
+36 + sets - clears - | Soundwave
+37 + sets EC&02 clears - | Expert Guard
+38 + sets EB&08 clears E8&10 | Aphonia, Devil Gaze, Silence, Silenshot, Water Veil
+39 - sets - clears - | Echo Screen
+3a + sets E9&80 clears - | Hibernate
+3b + sets - clears - | Steal? Ability, Steal? Access?, Steal? Armor, Steal? EXP, Steal? Gil, Steal? Helm
+3c - sets E9&10 clears - | Conceal
+3d + sets E9&02 clears E8&10 | Abyss, Beso Toxico, Bio, Green Gear, Miasma, Poison
+3e - sets - clears - | Antidote
+3f + sets E9&08 clears E8&10 | Zombify
+40 - sets - clears - | Capture, First Aid, Gold Battery, Holy Water
+41 + sets - clears - | Munch
+42 + sets - clears - | Aim? Weapon
+43 + sets - clears - | Drop Weapon
+45 + sets EC&10 clears - | Circle, Logos, Powerbreak
+46 - sets E9&40 clears - | Boost, Cheer
+47 + sets EC&01 clears E8&10 | Addle, Oblivion
+48 + sets ED&01 clears - | LV? Def-less
+49 - sets EC&80 clears - | Mighty Guard
+4a + sets - clears - | Capture
+4c + sets EC&40 clears - | Circle, Logos, Mindbreak
+4d + sets ED&04 clears - | LV? Def-less
+4e - sets ED&02 clears - | Mighty Guard
+4f - sets - clears - | Cureall
+50 + sets EB&20 clears E8&10 | Charmshot, Cupid, Kiss, Logos, Tail Wag
+51 + sets - clears - | Blank Card, Lawshift
+52 - sets EB&02 clears - | ????? Wool, Barrier, Protect, Yellow Spring
+53 - sets EB&01 clears - | ????? Wool, Barrier, Shell, Yellow Spring
+54 - sets E9&20 clears - | Defense, Mog Guard
+56 - sets ED&08 clears - | Bomb, Bug, Dragon, Fairy, Flan, Floateye
+57 - sets EA&04 clears - | Bomb, Bug, Dragon, Flan, Floateye, Goblin
+58 + sets - clears - | Abate, Aim? Arm, First Aid, Gold Battery
+59 + sets - clears E8&10 | Bind, First Aid
+5b - sets - clears - | Gold Battery, Yellow Clip
+5c + sets - clears - | Yellow Card
+cf - sets - clears - | First Aid
+d3 - sets - clears - | First Aid
+ff - sets - clears - | Aim? Arm

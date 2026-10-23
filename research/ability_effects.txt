@@ -1,0 +1,351 @@
+1 Cure pow40 rng4 area5/1 el7 flags81611000 26c1s-1f08131961 15c1s1f0813189d
+2 Cura pow60 rng4 area5/2 el7 flags81611000 26c1s-1f08131961 15c1s1f0813189d
+3 Curaga pow80 rng4 area5/3 el7 flags81611000 26c1s-1f08131961 15c1s1f0813189d
+4 Esuna pow0 rng4 area5/2 el0 flags81611000 0bc0s-1f08131481
+5 Life pow90 rng4 area1/0 el7 flags80611000 44c1s-1f08131a61 15c1s1f0813189d
+6 Full-Life pow100 rng4 area1/0 el7 flags80611000 27c1s-1f08131a51 15c1s1f0813189d
+7 Auto-Life pow0 rng4 area1/0 el7 flags81611000 21c0s-1f08131481
+8 Shell pow0 rng4 area5/2 el0 flags81611000 53c0s-1f08131481
+9 Protect pow0 rng4 area5/2 el0 flags81611000 52c0s-1f08131481
+10 Dispel pow0 rng3 area5/2 el0 flags01611000 35c0s1f08131481
+11 Holy pow50 rng3 area5/1 el7 flags21f11200 15c1s1f0813189d
+12 Barrier pow0 rng3 area1/0 el0 flags01611000 53c0s-1f08131481 52c0s-1f08131481
+13 Judge pow0 rng3 area1/0 el0 flags20e11000 07c4s1f08131485
+14 Break pow0 rng3 area1/0 el0 flags20e11000 2ec0s1f08131481
+15 Water pow34 rng3 area5/2 el4 flags21f11200 15c1s1f0813189d
+16 Aero pow34 rng3 area5/2 el2 flags21f11200 15c1s1f0813189d
+17 Drain pow30 rng4 area1/0 el0 flags20f11200 15c1s1f081319fd 26c1s-1f08131751
+18 Blind pow0 rng4 area1/0 el0 flags20e11000 23c0s1f08131481
+19 Raise pow45 rng4 area5/2 el7 flags01611000 26c1s-1f08131961 15c1s1f0813189d 44c1s-1f08131a61
+20 Giga Flare pow65 rng3 area5/1 el0 flags21f11200 15c1s1f0813189d
+21 Bio pow45 rng3 area5/1 el0 flags21f11200 15c1s1f0813189d 3dc0s1f08131481
+22 Ultima Blow pow0 rng128 area1/0 el0 flags20b21600 15c1s1f08131a99
+23 Fire pow30 rng4 area5/1 el1 flagsa1f51a00 15c1s1f0813189d
+24 Fira pow40 rng4 area5/2 el1 flagsa1f51a00 15c1s1f0813189d
+25 Firaga pow50 rng4 area5/3 el1 flagsa1f51a00 15c1s1f0813189d
+26 Thunder pow30 rng4 area5/1 el6 flagsa1f51a00 15c1s1f0813189d
+27 Thundara pow40 rng4 area5/2 el6 flagsa1f51a00 15c1s1f0813189d
+28 Thundaga pow50 rng4 area5/3 el6 flagsa1f51a00 15c1s1f0813189d
+29 Blizzard pow30 rng4 area5/1 el5 flagsa1f51a00 15c1s1f0813189d
+30 Blizzara pow40 rng4 area5/2 el5 flagsa1f51a00 15c1s1f0813189d
+31 Blizzaga pow50 rng4 area5/3 el5 flagsa1f51a00 15c1s1f0813189d
+32 Sleep pow0 rng4 area5/2 el0 flagsa1e11000 2dc0s1f08131481
+34 Quicken pow0 rng3 area1/0 el0 flags80611000 02c0s-1f08131481
+35 Slow pow0 rng3 area5/2 el0 flagsa1e11000 33c0s1f08131481
+36 Reflect pow0 rng3 area1/0 el0 flags81611000 20c0s-1f08131481
+38 Stop pow0 rng3 area5/2 el0 flagsa1e11000 13c0s1f08131481
+39 Quarter pow0 rng3 area1/0 el0 flagsa0f11200 15c1s1f08131545
+40 Demi pow0 rng3 area1/0 el0 flagsa0f11200 15c1s1f0813151d
+41 Silence pow0 rng3 area5/2 el0 flagsa1e11000 38c0s1f08131481
+42 Haste pow0 rng3 area1/0 el0 flags81611000 34c0s-1f08131481
+43 Prominence pow20 rng0 area64/0 el1 flags20711200 15c1s1f0813189d
+44 Tempest pow17 rng0 area64/0 el6 flags20711200 15c1s1f0813189d
+45 Freezeblink pow20 rng0 area64/0 el5 flags20711200 15c1s1f0813189d
+46 Star Cross pow17 rng0 area64/0 el7 flags20711200 15c1s1f0813189d
+47 Stardust pow20 rng0 area64/0 el0 flags20711200 15c1s1f0813189d
+48 Deluge pow17 rng0 area64/0 el4 flags20711200 15c1s1f0813189d
+49 Soil Evidence pow17 rng0 area64/0 el3 flags20711200 15c1s1f0813189d
+50 Wild Tornado pow17 rng0 area64/0 el2 flags20711200 15c1s1f0813189d
+51 Fire Whip pow30 rng4 area1/0 el1 flags20f11200 15c1s1f0813189d 16c0s1f08131481
+52 Earth Heal pow40 rng4 area1/0 el3 flags01611000 26c1s-1f08131961
+53 White Flame pow40 rng3 area5/2 el1 flags01611000 26c1s-1f08131961
+54 Shining Air pow30 rng4 area1/0 el2 flags20f11200 15c1s1f0813189d 23c0s1f08131481
+55 Evil Gaze pow30 rng4 area1/0 el8 flags20f11200 26c1s-1f08131961 15c1s1f0813189d 29c0s1f08131481
+56 Heavy Dust pow30 rng4 area1/0 el3 flags20f11200 15c1s1f0813189d 18c0s1f08131481
+57 Sliprain pow30 rng4 area1/0 el4 flags20f11200 15c1s1f0813189d 33c0s1f08131481
+58 Elementalshift pow0 rng4 area1/0 el0 flags01e11000 12c0s1f08131481
+59 Astra pow0 rng4 area5/2 el0 flags01611000 0ac0s-1f08131481
+60 Rasp pow60 rng3 area5/1 el0 flags21e11000 08c2s1f08131931
+61 Death pow0 rng3 area1/0 el8 flags20e11000 26c1s-1f08131761 32c0s1f08131481
+62 Meteor pow50 rng3 area5/2 el0 flags21f11200 15c1s1f0813189d
+63 Flare pow65 rng3 area1/0 el0 flags20f11200 15c1s1f0813189d
+64 Poison pow0 rng4 area5/2 el8 flags21e11000 3dc0s1f08131481
+65 Toad pow0 rng3 area1/0 el0 flags20e11000 0cc0s1f08131481
+68 Unicorn pow40 rng4 area13/2 el7 flags01611000 26c1s-1f08131961 0bc0s-1f08131481 15c1s1f0813189d
+69 Ifrit pow40 rng4 area13/2 el1 flags21f11200 15c1s1f0813189d
+70 Ramuh pow40 rng4 area13/2 el6 flags21f11200 15c1s1f0813189d
+71 Shiva pow40 rng4 area13/2 el5 flags21f11200 15c1s1f0813189d
+72 Kirin pow0 rng4 area13/2 el0 flags01611000 1fc0s-1f08131481
+73 Carbuncle pow0 rng4 area13/2 el0 flags01611000 20c0s-1f08131481
+74 Phoenix pow0 rng4 area13/2 el7 flags01611000 27c1s-1f08131a51 15c1s1f08131761
+75 Madeen pow52 rng4 area13/2 el7 flags21f11200 15c1s1f0813189d
+76 First Aid pow25 rng0 area1/0 el0 flags01621000 26c1s-1f08131961 0bc0s-1f08131481
+77 Powerbreak pow0 rng128 area1/0 el0 flags20621000 45c0s1f08131481
+78 Mindbreak pow0 rng128 area1/0 el0 flags20621000 4cc0s1f08131481
+79 Magicbreak pow0 rng128 area1/0 el0 flags20621400 08c2s1f08131931
+80 Speedbreak pow0 rng128 area1/0 el0 flags20621000 14c0s1f08131481
+81 Mug pow0 rng128 area1/0 el0 flags20721400 28c6s1f081318f9 15c1s1f0813189d
+82 Provoke pow0 rng1 area1/0 el0 flags20601000 1bc0s1f08131481
+83 Sensor pow0 rng4 area1/0 el0 flags00621000 22c0s-1f08131481
+84 Body Slam pow45 rng1 area1/0 el0 flags20721400 15c1s1f0813189d 15c1s1f08131a79
+85 Greased Bolt pow0 rng128 area1/0 el0 flags60721400 15c1s1f0813189d
+86 Downsize pow0 rng128 area1/0 el0 flags20721200 15c1s1f0813151d
+87 Nurse pow30 rng0 area5/2 el0 flags01621000 26c1s-1f08131961 0bc0s-1f08131481
+88 Cover pow0 rng4 area1/0 el0 flags00621000 0ec0s1f08131481
+90 Subdue pow0 rng128 area1/0 el0 flags20721400 15c1s1f08131805
+91 Parley pow0 rng1 area1/0 el0 flags00600000 2cc0s1f08131481
+92 Saint Cross pow35 rng0 area4/2 el7 flags20721600 15c1s1f0813189d
+93 Holy Blade pow0 rng128 area1/0 el7 flags20721600 15c1s1f081318d5
+94 Defense pow0 rng0 area1/0 el0 flags01621000 54c0s-1f08131481
+95 Drop Weapon pow0 rng128 area1/0 el0 flags20420000 43c0s1f08131481
+96 Tremor pow30 rng0 area4/2 el0 flags20721400 15c1s1f0813189d 1ac0s1f08131481
+97 Hibernate pow0 rng0 area1/0 el0 flags01621000 3ac0s1f08131481
+98 Mow Down pow40 rng0 area4/2 el0 flags20721400 15c1s1f0813189d 25c0s1f08131481
+99 Aura pow0 rng0 area1/0 el0 flags01621000 21c0s-1f08131481 1fc0s-1f08131481
+100 Expert Guard pow0 rng0 area1/0 el0 flags01621000 37c0s1f08131481
+101 Meltdown pow0 rng0 area4/2 el0 flags20721000 15c1s1f08131839 15c1s1f08131839
+102 Whirlwind pow25 rng0 area4/2 el0 flags20721400 15c1s1f0813189d
+103 Earth Render pow34 rng64 area128/0 el3 flags20721400 15c1s1f0813189d
+104 Chakra pow35 rng0 area1/0 el0 flags01621000 26c1s-1f08131961 0bc0s-1f08131481
+105 Revive pow0 rng1 area1/0 el0 flags00621000 44c1s-1f08131a61
+106 Exorcise pow0 rng1 area1/0 el7 flags20621000 2cc0s1f08131481
+107 Holy Sign pow0 rng1 area1/0 el0 flags00621000 35c0s1f08131481
+108 Air Render pow45 rng3 area1/0 el0 flags20721400 15c1s1f0813189d
+109 Far Fist pow35 rng4 area5/2 el0 flags20721400 15c1s1f0813189d
+110 Air Blast pow35 rng64 area4/2 el2 flags20721400 15c1s1f0813189d
+111 Backdraft pow60 rng1 area1/0 el1 flags20721400 15c1s1f0813189d 15c1s1f08131a79
+112 Rush pow0 rng128 area1/0 el0 flags20721400 15c1s1f0813189d 1ac0s1f08131481
+113 Wild Swing pow0 rng0 area4/2 el0 flags20721400 15c1s1f0813189d
+114 Beatdown pow0 rng128 area1/0 el0 flags20721400 15c1s1f081318d5
+115 Blitz pow0 rng128 area1/0 el0 flags20721400 15c1s1f08131ac1
+116 Fire Sword pow54 rng1 area1/0 el1 flags20721600 15c1s1f0813189d
+117 Bolt Sword pow54 rng1 area1/0 el6 flags20721600 15c1s1f0813189d
+118 Ice Sword pow54 rng1 area1/0 el5 flags20721600 15c1s1f0813189d
+119 Ultima Sword pow0 rng128 area1/0 el0 flags20321600 15c1s1f08131a99
+120 Warcry pow0 rng0 area4/2 el0 flags20601000 14c0s1f08131481
+121 Cheer pow0 rng0 area1/0 el0 flags01621000 46c0s-1f08131481
+122 Soul Sphere pow0 rng4 area5/2 el0 flags21621000 08c2s1f08131931
+123 Lifebreak pow0 rng128 area1/0 el8 flags20721000 15c1s1f08131869 26c1s-1f08131869
+124 Jump pow0 rng4 area1/0 el0 flags20721400 15c1s1f0813189d
+125 Lancet pow35 rng1 area1/0 el0 flags20721400 15c1s1f081319fd 26c1s-1f08131751
+126 Wyrmtamer pow0 rng1 area1/0 el0 flags00600000 2cc0s1f08131481
+127 Fire Breath pow40 rng64 area4/2 el1 flags20761c00 15c1s1f0813189d
+128 Bolt Breath pow40 rng64 area4/2 el6 flags20761c00 15c1s1f0813189d
+129 Ice Breath pow40 rng64 area4/2 el5 flags20761c00 15c1s1f0813189d
+130 Wyrmkiller pow0 rng128 area1/0 el0 flags20721400 15c1s1f0813189d 15c1s1f081318d5
+131 Bangaa Cry pow45 rng64 area4/2 el0 flags20701400 15c1s1f0813189d
+132 Mog Attack pow0 rng128 area1/0 el0 flags20721400 15c1s1f0813189d 1ac0s1f08131481
+133 Mog Guard pow0 rng0 area1/0 el0 flags01621000 54c0s-1f08131481
+134 Mog Lance pow0 rng3 area1/0 el0 flags20721400 15c1s1f0813189d
+135 Mog Rush pow0 rng128 area1/0 el0 flags20721400 15c1s1f081318d5
+136 Mog Shield pow0 rng4 area1/0 el0 flags01621000 0ac0s-1f08131481
+137 Mog Peek pow0 rng4 area1/0 el0 flags00621000 22c0s-1f08131481
+138 Mog Aid pow35 rng0 area1/0 el0 flags01621000 26c1s-1f08131961 0bc0s-1f08131481
+139 Ultima Charge pow0 rng128 area1/0 el0 flags20321600 15c1s1f08131a99
+140 Swarmstrike pow0 rng128 area1/0 el0 flags20721400 15c1s1f08131ac1 3dc0s1f08131481
+141 Shadowstick pow0 rng128 area1/0 el0 flags20621000 14c0s1f08131481
+142 Checkmate pow0 rng128 area1/0 el0 flags20621000 2ac0s1f08131481
+143 Featherblow pow0 rng128 area1/0 el0 flags20721400 15c1s1f08131ac1
+144 Swallowtail pow0 rng0 area4/2 el0 flags20721400 15c1s1f0813189d
+145 Manastrike pow0 rng128 area1/0 el0 flags20621400 08c2s1f08131931
+146 Piercethrough pow0 rng64 area2/2 el0 flags20721400 15c1s1f0813189d
+147 Nighthawk pow0 rng4 area1/0 el0 flags20721400 15c1s1f0813189d
+148 Throw pow0 rng4 area1/0 el0 flags20721100 15c1s1f08131989
+149 Wood Veil pow15 rng4 area1/0 el0 flags20701200 15c1s1f0813189d 18c0s1f08131481
+150 Fire Veil pow15 rng4 area1/0 el1 flags20701200 15c1s1f0813189d 29c0s1f08131481
+151 Earth Veil pow15 rng4 area1/0 el3 flags20701200 15c1s1f0813189d 33c0s1f08131481 01c0s1f08131481
+152 Metal Veil pow15 rng4 area1/0 el0 flags20701200 15c1s1f0813189d 23c0s1f08131481
+153 Water Veil pow15 rng4 area1/0 el4 flags20701200 15c1s1f0813189d 38c0s1f08131481
+154 Unspell pow0 rng1 area1/0 el0 flags01601200 35c0s1f08131481
+155 Oblivion pow0 rng1 area1/0 el0 flags20601000 47c0s1f08131481
+156 Shadowbind pow0 rng1 area1/0 el0 flags20621000 13c0s1f08131481
+157 Last Breath pow0 rng1 area1/0 el8 flags20621000 26c1s-1f08131761 32c0s1f08131481
+158 Aphonia pow0 rng1 area1/0 el0 flags20621000 38c0s1f08131481
+159 Nightmare pow0 rng1 area1/0 el0 flags20621000 2ac0s1f08131481 2dc0s1f08131481
+160 Ague pow0 rng1 area1/0 el0 flags20621000 33c0s1f08131481
+161 Rockseal pow0 rng1 area1/0 el0 flags20621000 2ec0s1f08131481
+162 Ultima Masher pow0 rng128 area1/0 el0 flags20321600 15c1s1f08131a99
+163 Steal? Armor pow0 rng1 area1/0 el0 flags20621000 3bc0s1f08131711
+164 Steal? Shield pow0 rng1 area1/0 el0 flags20621000 3bc0s1f08131891
+165 Steal? Access? pow0 rng1 area1/0 el0 flags20621000 3bc0s1f08131585
+166 Steal? Helm pow0 rng1 area1/0 el0 flags20621000 3bc0s1f08131715
+167 Steal? Weapon pow0 rng1 area1/0 el0 flags20621000 3bc0s1f081319c1
+168 Steal? Gil pow0 rng1 area1/0 el0 flags20621000 3bc0s1f0813158d
+169 Steal? EXP pow0 rng1 area1/0 el0 flags20621000 3bc0s1f08131719
+170 Steal? JP pow0 rng1 area1/0 el0 flags20621000 3bc0s1f0813156d
+171 Steal? Ability pow0 rng1 area1/0 el0 flags20621000 3bc0s1f08131589
+172 Boost pow0 rng0 area1/0 el0 flags01621000 46c0s-1f08131481
+173 Aim? Legs pow0 rng128 area1/0 el0 flags20621000 18c0s1f08131481
+174 Aim? Arm pow0 rng128 area1/0 el0 flags20621000 16c0s1f08131481
+175 Cupid pow0 rng128 area1/0 el0 flags20621000 50c0s1f08131481
+176 Burial pow0 rng128 area1/0 el0 flags20621000 2cc0s1f08131481
+177 Take Aim pow0 rng128 area1/0 el0 flags20721400 15c1s1f08131ac1
+178 Faster pow0 rng128 area1/0 el0 flags60721400 15c1s1f0813189d
+179 Blackout pow0 rng128 area1/0 el0 flags20621000 23c0s1f08131481
+180 Sonic Boom pow0 rng4 area5/2 el0 flags21721400 15c1s1f0813189d
+181 Oust pow0 rng128 area1/0 el0 flags00600000 2cc0s1f08131481
+182 Advice pow0 rng1 area1/0 el0 flags00601000 11c0s-1f08131481
+183 Aim? Vitals pow0 rng128 area1/0 el0 flags20621000 1dc0s1f08131481
+184 Hunting pow0 rng128 area1/0 el0 flags20721400 15c1s1f08131ac1 35c0s1f08131481
+185 Addle pow0 rng128 area1/0 el0 flags20621000 47c0s1f08131481
+186 Ultima Shot pow0 rng128 area1/0 el0 flags20321600 15c1s1f08131a99
+187 Sidewinder pow0 rng128 area1/0 el0 flags20721400 15c1s1f0813189d 15c1s1f081318d5
+188 Capture pow0 rng128 area1/0 el0 flags20620000 4ac0s1f08131481
+189 Goblin pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+190 Flan pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+191 Bomb pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+192 Dragon pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+193 Lamia pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+194 Bug pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+195 Tonberry pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+196 Panther pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+197 Malboro pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+198 Floateye pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+199 Undead pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+200 Fairy pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+201 Rockbeast pow0 rng4 area1/0 el0 flags00401000 56c0s-1f08131481
+202 Goblin pow0 rng0 area1/0 el0 flags01000000 57c0s-1f08131481
+203 Flan pow0 rng0 area1/0 el0 flags01000000 57c0s-1f08131481
+204 Bomb pow0 rng0 area1/0 el0 flags01000000 57c0s-1f08131481
+205 Dragon pow0 rng0 area1/0 el0 flags01000000 57c0s-1f08131481
+206 Lamia pow0 rng0 area1/0 el0 flags01000000 57c0s-1f08131481
+207 Bug pow0 rng0 area1/0 el0 flags01000000 57c0s-1f08131481
+208 Panther pow0 rng0 area1/0 el0 flags01000000 57c0s-1f08131481
+209 Malboro pow0 rng0 area1/0 el0 flags01000000 57c0s-1f08131481
+210 Floateye pow0 rng0 area1/0 el0 flags01000000 57c0s-1f08131481
+211 Hurl pow0 rng4 area1/0 el0 flags20721100 4bc1s1f081319c5
+212 Ring pow0 rng4 area1/0 el0 flags20621000 13c0s1f08131481
+213 Firebomb pow30 rng4 area1/0 el1 flags20721400 15c1s1f0813189d 1bc0s1f08131481
+214 Ball pow0 rng4 area1/0 el0 flags20621000 29c0s1f08131481
+215 Dagger pow35 rng4 area1/0 el0 flags20721400 15c1s1f0813189d 16c0s1f08131481
+216 Smile pow0 rng4 area1/0 el0 flags00621000 02c0s-1f08131481
+217 Gil Toss pow0 rng4 area1/0 el0 flags20621000 0fc6s1f081314d1 15c1s1f081314d1
+219 Beso Toxico pow0 rng128 area1/0 el0 flags20721400 15c1s1f0813189d 3dc0s1f08131481
+220 Death Sickle pow0 rng128 area1/0 el0 flags20621000 2ac0s1f08131481
+221 Conceal pow0 rng0 area1/0 el0 flags01621000 3cc0s-1f08131481
+222 Doom Archer pow0 rng128 area1/0 el0 flags20721000 04c3s1f08131869
+223 Doubleshot pow0 rng128 area1/0 el0 flags20721400 15c1s1f08131ac1 15c1s1f08131ac1
+224 Aim? Armor pow0 rng128 area1/0 el0 flags20621000 31c0s1f08131481
+225 Aim? Weapon pow0 rng128 area1/0 el0 flags20621000 42c0s1f08131481
+226 Aim? Wallet pow0 rng128 area1/0 el0 flags20621000 28c6s1f08131695
+227 Sheep Count pow0 rng4 area5/2 el0 flags21601000 2dc0s1f08131481
+228 ????? Wool pow0 rng0 area1/0 el0 flags01601000 53c0s-1f08131481 52c0s-1f08131481
+229 Cuisine pow0 rng1 area1/0 el0 flags01601000 26c1s-1f08131761
+230 Tail Wag pow0 rng1 area1/0 el0 flags20601000 50c0s1f08131481
+231 Chocobo Rush pow45 rng64 area128/0 el0 flags21701600 15c1s1f0813189d
+232 Frogsong pow0 rng4 area1/0 el0 flags20601000 0cc0s1f08131481
+233 Friend pow0 rng4 area13/2 el0 flags01e01200 00c0s1f08131481
+234 Catnip pow0 rng1 area1/0 el0 flags20601000 1bc0s1f08131481
+235 Fireshot pow0 rng128 area1/0 el1 flags20721400 15c1s1f0813189d
+236 Boltshot pow0 rng128 area1/0 el6 flags20721400 15c1s1f0813189d
+237 Iceshot pow0 rng128 area1/0 el5 flags20721400 15c1s1f0813189d
+238 Confushot pow0 rng128 area1/0 el0 flags20721400 15c1s1f0813189d 29c0s1f08131481
+239 Charmshot pow0 rng128 area1/0 el0 flags20721400 15c1s1f0813189d 50c0s1f08131481
+240 Blindshot pow0 rng128 area1/0 el0 flags20721400 15c1s1f0813189d 23c0s1f08131481
+241 Silenshot pow0 rng128 area1/0 el0 flags20721400 15c1s1f0813189d 38c0s1f08131481
+242 Stopshot pow0 rng128 area1/0 el0 flags20721400 15c1s1f0813189d 13c0s1f08131481
+243 Red Spring pow0 rng0 area64/0 el0 flags00621000 34c0s-1f08131481
+244 Blue Screw pow0 rng0 area64/0 el0 flags00621000 35c0s1f08131481
+245 Green Gear pow0 rng0 area64/0 el0 flags20621000 3dc0s1f08131481
+246 Silver Disc pow0 rng0 area64/0 el0 flags20621000 23c0s1f08131481
+247 Gold Battery pow40 rng0 area64/0 el0 flags00621000 26c1s-1f08131961
+248 Black Ingot pow0 rng0 area64/0 el0 flags20621000 2ac0s1f08131481
+249 Chroma Gem pow0 rng0 area64/0 el0 flags20621000 2dc0s1f08131481
+250 Yellow Spring pow0 rng0 area64/0 el0 flags00621000 53c0s-1f08131481 52c0s-1f08131481
+251 Potion pow40 rng1 area1/1 el7 flags01621000 26c1s-1f08131961 15c1s1f0813189d
+252 Hi-Potion pow60 rng1 area1/1 el7 flags01621000 26c1s-1f08131961 15c1s1f0813189d
+253 X-Potion pow80 rng1 area1/1 el7 flags01621000 26c1s-1f08131961 15c1s1f0813189d
+254 Ether pow0 rng1 area1/1 el0 flags01621000 09c2s-1f0813195d
+255 Elixir pow100 rng1 area1/1 el7 flags01621000 26c1s-1f08131761 09c2s-1f081317bd 15c1s1f0813189d
+256 Phoenix Down pow90 rng1 area1/1 el7 flags01621000 44c1s-1f08131a61 15c1s1f0813189d
+257 Echo Screen pow0 rng1 area1/1 el0 flags01621000 39c0s-1f08131481
+258 Maiden Kiss pow0 rng1 area1/1 el0 flags01621000 0dc0s-1f08131481
+259 Soft pow0 rng1 area1/1 el0 flags01621000 2fc0s-1f08131481
+260 Holy Water pow0 rng1 area1/1 el0 flags01621000 40c0s-1f08131481
+261 Antidote pow0 rng1 area1/1 el0 flags01621000 3ec0s-1f08131481
+262 Eye Drops pow0 rng1 area1/1 el0 flags01621000 24c0s-1f08131481
+263 Bandage pow0 rng1 area1/1 el0 flags01621000 19c0s-1f08131481 17c0s-1f08131481
+264 Cureall pow0 rng1 area1/1 el0 flags01621000 4fc0s-1f08131481
+265 Draw Weapon pow0 rng0 area1/0 el0 flags01420000 10c0s-1f08131481
+266 Goblin Punch pow30 rng1 area1/0 el0 flags203f1e00 15c1s1f0813163d
+267 Magic Hammer pow38 rng3 area1/0 el0 flags202f1c00 08c2s1f08131931
+268 Mutilate pow0 rng1 area1/0 el0 flags20361a00 15c1s1f081315f9 26c1s-1f08131751
+269 Acid pow0 rng3 area1/0 el0 flags202f1800 1ec0s1f08131481
+270 Sacrifice pow0 rng1 area1/0 el0 flags00261000 26c1s-1f08131761 0bc0s-1f08131481 15c1s1f08131761
+271 Blowup pow15 rng0 area4/2 el0 flags213b1a00 15c1s1f081315d5 15c1s1f08131761
+272 Flame Attack pow40 rng3 area1/0 el1 flags20361800 15c1s1f0813189d
+273 Chill pow40 rng0 area4/2 el5 flags20361800 15c1s1f0813189d 15c1s1f0813189d
+274 Mighty Guard pow0 rng1 area1/0 el0 flags012f1800 4ec0s-1f08131481 49c0s-1f08131481
+275 Guard-Off pow0 rng1 area1/0 el0 flags202f1800 30c0s1f08131481
+276 Dragon Force pow0 rng1 area1/0 el0 flags012f1800 03c0s-1f08131481
+277 Night pow0 rng0 area64/0 el0 flags202f1800 2dc0s1f08131481
+278 Twister pow0 rng3 area5/2 el0 flags213f1a00 15c1s1f0813151d
+279 Hand Slap pow45 rng1 area1/0 el0 flags20361c00 15c1s1f0813189d 01c0s1f08131481
+280 Poison Frog pow0 rng3 area1/0 el0 flags20261800 3dc0s1f08131481 0cc0s1f08131481
+281 Kiss pow0 rng1 area1/0 el0 flags20261800 2ac0s1f08131481 50c0s1f08131481
+282 LV? Def-less pow0 rng3 area5/2 el0 flags212f1800 48c0s1f08131481 4dc0s1f08131481
+283 Sandstorm pow40 rng0 area4/2 el3 flags20361c00 15c1s1f0813189d 23c0s1f08131481
+284 LV? Death pow0 rng3 area5/2 el8 flags21261800 32c0s1f08131481 26c1s-1f08131761
+285 Suffocate pow0 rng1 area1/0 el0 flags20261800 01c0s1f08131481
+286 Resonate pow0 rng0 area64/0 el0 flags20251800 16c0s1f08131481
+287 Limit Glove pow0 rng1 area1/0 el0 flags20371a00 15c1s1f08131705
+288 Matra Magic pow0 rng3 area1/0 el0 flags202e1800 05c8s1f08131481
+289 Munch pow47 rng1 area1/0 el0 flags20361c00 15c1s1f0813189d 41c0s1f08131481
+290 Knife pow0 rng1 area1/0 el0 flags20371a00 06c1s1f08131781
+291 Karma pow0 rng1 area1/0 el0 flags20321000 15c1s1f081317c5
+292 Voodoo pow0 rng1 area1/0 el0 flags20321000 15c1s1f081314fd
+293 Poison Claw pow30 rng1 area1/0 el0 flags203f1e00 15c1s1f0813189d 3dc0s1f08131481
+294 Hastebreak pow0 rng1 area1/0 el0 flags202f1800 1cc0s1f08131481
+295 Rend pow35 rng1 area1/0 el0 flags20361c00 15c1s1f0813189d
+296 Blaster pow0 rng3 area1/0 el0 flags20261800 2ec0s1f08131481
+297 Bad Breath pow0 rng1 area1/0 el0 flags202f1800 2bc0s1f08131481
+298 Goo pow0 rng1 area1/0 el0 flags20261800 18c0s1f08131481
+299 Soundwave pow0 rng3 area5/2 el0 flags01241800 36c0s1f08131481
+300 Stare pow0 rng64 area4/2 el0 flags202f1800 29c0s1f08131481
+301 Roulette pow0 rng0 area64/0 el8 flags202f1800 32c0s1f08131481 26c1s-1f08131761
+302 Devil Gaze pow0 rng64 area4/2 el0 flags20261800 23c0s1f08131481 38c0s1f08131481
+303 Circle pow0 rng3 area1/0 el0 flags20261800 45c0s1f08131481 4cc0s1f08131481
+304 Drain Touch pow20 rng1 area1/0 el0 flags203f1e00 15c1s1f081319fd 26c1s-1f08131751
+305 LV? S-Flare pow55 rng0 area64/0 el8 flags203f1e00 15c1s1f0813189d 26c1s-1f08131961
+306 Miasma pow20 rng3 area5/2 el0 flags21361c00 15c1s1f0813189d 3dc0s1f08131481
+307 Zombify pow45 rng1 area1/0 el8 flags20241c00 3fc0s1f08131481
+308 White Wind pow0 rng3 area5/2 el0 flags012f1800 26c1s-1f08131839
+309 Angel Whisper pow30 rng3 area1/0 el7 flags012d1800 26c1s-1f08131961 21c0s-1f08131481 15c1s1f0813189d
+310 Meteorite pow50 rng3 area1/0 el0 flags20361a00 15c1s1f0813189d
+311 LV?D Holy pow65 rng0 area64/0 el7 flags20360a00 15c1s1f0813189d
+312 Adrammalech pow85 rng0 area64/0 el0 flags20121400 15c1s1f0813189d
+313 Mateus pow85 rng0 area64/0 el0 flags20121400 15c1s1f0813189d
+314 Ultima pow85 rng0 area64/0 el0 flags20021000 08c2s1f08131931
+315 Exodus pow85 rng0 area64/0 el0 flags20021000 08c2s1f08131931
+316 Famfrit pow85 rng0 area64/0 el0 flags20121000 15c1s1f0813189d
+317 Explode pow40 rng3 area5/1 el1 flags21301200 15c1s1f0813189d
+318 Stillness pow0 rng3 area5/2 el0 flags21201200 13c0s1f08131481
+319 Azoth pow0 rng0 area64/0 el0 flags20201200 2dc0s1f08131481
+320 Omega pow0 rng128 area1/0 el0 flags20321600 15c1s1f081318d5
+321 Abyss pow48 rng3 area5/1 el0 flags21301200 15c1s1f0813189d 3dc0s1f08131481
+322 Life Render pow0 rng128 area1/0 el0 flags20321400 15c1s1f0813189d 2ac0s1f08131481
+323 Heart Render pow0 rng128 area1/0 el0 flags20221400 08c2s1f08131931
+324 Ripcircle pow45 rng0 area4/2 el0 flags20321400 15c1s1f0813189d
+325 Furycircle pow50 rng0 area4/2 el0 flags20321400 15c1s1f0813189d 1ac0s1f08131481
+326 Lawshift pow0 rng0 area64/0 el0 flags40021000 51c0s1f08131481
+327 Amber Gleam pow0 rng0 area64/0 el0 flags00201000 35c0s1f08131481
+328 Alpha pow99 rng4 area5/2 el0 flags21301400 15c1s1f0813189d
+329 Descent pow0 rng0 area64/0 el0 flags00001000 15c1s1f0813189d
+330 Magi pow50 rng0 area64/0 el0 flags20301000 15c1s1f0813189d
+331 Spellbind pow50 rng4 area1/0 el0 flags20321400 15c1s1f0813189d 33c0s1f08131481 01c0s1f08131481
+332 Breath of God pow40 rng4 area5/2 el0 flags20321400 15c1s1f0813189d
+333 Lightspeed pow45 rng1 area1/0 el0 flags60321400 15c1s1f0813189d
+334 Firestream pow35 rng64 area128/0 el1 flags20321400 15c1s1f0813189d
+335 Howl of Rage pow0 rng0 area4/2 el0 flags20201000 14c0s1f08131481
+336 Presence pow50 rng1 area1/0 el0 flags20321400 15c1s1f0813189d 1ac0s1f08131481
+337 Logos pow0 rng3 area5/0 el0 flags20201000 45c0s1f08131481 4cc0s1f08131481 50c0s1f08131481
+338 Abate pow0 rng0 area64/0 el0 flags00021400 58c0s1f08131481
+339 Judge Sword pow0 rng128 area1/0 el0 flags20321400 15c1s1f0813189d 07c4s1f08131485
+340 Bind pow0 rng3 area1/0 el0 flags20221400 59c0s1f08131481
+341 JP Gift pow0 rng1 area1/0 el0 flags40021400 5ac4s-1f08131485
+342 Yellow Clip pow0 rng1 area1/0 el0 flags40021400 5bc0s-1f08131481
+343 Judge Sword pow0 rng128 area1/0 el0 flags20321400 15c1s1f0813189d 07c4s1f08131485
+344 Yellow Card pow0 rng1 area1/0 el0 flags20221400 5cc0s1f08131481
+345 Palaistra pow0 rng0 area4/2 el0 flags20321400 15c1s1f0813189d
+346 Blank Card pow0 rng0 area64/0 el0 flags40021400 51c0s1f08131481
+351 Mythril pow0 rng23 area3/1 el10 flags08051f00 2dc0s1f08131481 16c0s1f08131481 15c1s1f08131a79 0fc6s1f081314d1
+379 Gold Battery pow128 rng0 area128/202 el182 flags7380bd80 d9c48s-1f00000000 40c0s-1f08131481 5bc0s-1f08131481 15c1s1f081319fd
+380 First Aid pow222 rng207 area177/205 el1 flags01c7cbd3 80c22s-1f08131e8d 80c22s-1f00000000 d3c0s-1f00000001
+381 First Aid pow216 rng210 area1/195 el1 flagsd6d60001 80c22s-1f00000000 cfc0s-1f00000000 59c0s1f08131481 58c0s1f08131481
+384 Rockbeast pow205 rng206 area178/203 el1 flagscfd6cfcb 80c22s-1f00000000 00c0s1f08131481
+391 Gold Battery pow223 rng207 area181/219 el188 flagsb1ccd3d6 80c22s-1f08131e8d 80c22s-1f08131e8d
+393 First Aid pow222 rng0 area211/221 el1 flagsd880db80 40c0s-1f08131481 00c0s1f08131481 40c0s-1f08131481
+402 Gold Battery pow128 rng218 area206/0 el181 flagsca80d640 1fc0s-1f08131481 40c0s-1f08131481 5bc0s-1f08131481 40c0s-1f08131481
+411 Gold Battery pow216 rng0 area217/225 el179 flagsd1ce0001 15c1s1f081318d5 58c0s1f08131481
+412 Capture pow178 rng221 area0/128 el1 flags80cd4073 40c0s-1f08131481 15c1s1f08131ac1 40c0s-1f08131481 80c22s-1f00000000
+414 Aim? Arm pow189 rng204 area0/1 el1 flags0001c3d7 58c0s1f08131481 ffc0s-1f00000000 80c22s-1f08131e8d 5ac4s-1f08131485

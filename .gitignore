@@ -1,0 +1,16 @@
+build/
+build-web/
+local.cfg
+build.log
+*.log
+shots/
+# research artifacts: the ROM, RAM dumps, logs, emulator screenshots
+research/rom.gba
+research/*.bin
+research/*.zst
+research/*.bmp
+research/*.png
+research/*_log.txt
+research/shots/
+__pycache__/
+CLAUDE.local.md

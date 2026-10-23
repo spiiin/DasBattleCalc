@@ -1,0 +1,767 @@
+0 -
+1 Turn Order
+2 Mission
+3 Law Cards
+4 Options
+5 Flee
+6 Save Now
+7 Laws
+8 Move
+9 Action
+10 Wait
+11 Status
+12 Fight
+13 Snowball
+14 Totema
+15 Combo
+16 Party
+17 Clan
+18 Link
+19 Area List
+20 System
+21 Save
+22 Load
+23 Back
+24 Release
+25 Pardon
+26 Leave
+27 Suspended
+28 Bail
+29 Sentence
+30 Trade
+31 Gossip
+32 Leave
+33 Buy
+34 Sell
+35 Trade Items
+36 List
+37 Back
+38 ????
+39 Play
+40 Release
+41 Rumors
+42 Missions
+43 Quit Mission
+44 Leave
+45 Equip
+46 Abilities
+47 Change Jobs
+48 Dismiss
+49 Set
+50 List
+51 Sort Units
+52 Sort Items
+53 Change
+54 Confirm
+55 Do it
+56 Cancel
+57 Yes
+58 No
+59 Mission List
+60 Report
+61 Clan Turf
+62 Mission Item
+63 Support Clan
+64 ?---?
+65 Treasure Hunt
+66 ?used
+67 OK
+68 Paid
+69 Equipped
+70 Team Up
+71 Trade Items
+72 Trade Units
+73 Unmorph
+74 ?Enhance?
+75 ?---?
+76 Equipped
+77 Mission Item
+78 Law Cards
+79 Law Cards
+80 Totema
+81 Totema
+82 Totema
+83 Totema
+84 Totema
+85 Plains
+86 Forest
+87 Desert
+88 Marsh
+89 Mountain
+90 Cave
+91 Town
+92 Jagd
+93 Shop
+94 Pub
+95 Prison
+96 Card Keeper
+97 Monster Bank
+98 Combat
+99 Magic
+100 Smithing
+101 Craft
+102 Appraise
+103 Gather
+104 Negotiate
+105 Track
+106 Item
+107 Blue Magic
+108 Red Magic
+109 Trick
+110 Control
+111 Hunt
+112 Chivalry
+113 Prayer
+114 Song
+115 Black Magic
+116 Sagacity Skill
+117 Phantasm Skill
+118 Sacred Tech
+119 Blaze
+120 Sandstorm
+121 Rot
+122 Corner
+123 Stunt
+124 Gunmanship
+125 Defend
+126 Summon Magic
+127 Stench
+128 White Magic
+129 Debilitate
+130 Spirit Magic
+131 Battle Tech
+132 Monk Tech
+133 Sharpshoot
+134 Punch
+135 Charge
+136 Fighter Tech
+137 Time Magic
+138 Lunge Tech
+139 Icewyrm
+140 Morph
+141 Melt
+142 Ninja Skill
+143 Steal
+144 Aim
+145 Pandora
+146 Rake
+147 Spellblade Tech
+148 Gaze
+149 Call
+150 Dragon Tech
+151 Alchemy Skill
+152 Grudge
+153 Rune
+154 Hermetics
+155 Dark Magic
+156 Flair
+157 Genesis
+158 Wicca
+159 Expulse
+160 Magestorm
+161 Hit
+162 Chill
+163 Scorch
+164 Boom?
+165 Dragonblaze
+166 Dragonbolt
+167 Poison Fang
+168 Adhere
+169 Crush
+170 Malice
+171 Scratch
+172 Reek
+173 Glare
+174 Illude
+175 Fluoresce
+176 Advanced Law
+177 Judgement
+178 Blank Card
+179 Damage ?? MP
+180 Turbo MP
+181 Earth Heal
+182 Aim? Armor
+183 Ice Breath
+184 Item
+185 Blue Screw
+186 Red Spring
+187 Steal? Access?
+188 Mog Rush
+189 Devil Gaze
+190 Nightmare
+191 Aim? Legs
+192 Astra
+193 Death Sickle
+194 Mog Attack
+195 Steal? Ability
+196 Ultima Charge
+197 Ultima Masher
+198 Ultima Shot
+199 Ultima Sword
+200 Ultima Blow
+201 Full-Life
+202 Undead
+203 Fireshot
+204 Capture
+205 Zombify
+206 Ifrit
+207 Rockbeast
+208 ????? Wool
+209 Aim? Weapon
+210 Water
+211 Voodoo
+212 Aim? Arm
+213 Whirlwind
+214 Air Blast
+215 Aero
+216 Ether
+217 X-Potion
+218 Esuna
+219 Elixir
+220 Oust
+221 First Aid
+222 Aura
+223 Ague
+224 Warcry
+225 Maiden Kiss
+226 Mog Guard
+227 Guard-Off
+228 Carbuncle
+229 Soundwave
+230 Unspell
+231 Nurse
+232 Counter
+233 Addle
+234 Frogsong
+235 Firebomb
+236 Shadowbind
+237 Monkey Grip
+238 Fire Veil
+239 Cover
+240 Steal? Helm
+241 Munch
+242 Body Slam
+243 Iceshot
+244 Yellow Spring
+245 Giga Flare
+246 Catch
+247 Aim? Vitals
+248 Resonate
+249 Kirin
+250 Gil Toss
+251 Mug
+252 Steal? Gil
+253 Cheer
+254 Metal Veil
+255 Silver Disc
+256 Gold Battery
+257 Soft
+258 Quicken
+259 Air Render
+260 Bad Breath
+261 Kiss
+262 Demi
+263 Quarter
+264 Mythril
+265 Steal? JP
+266 Black Ingot
+267 Cure
+268 Curaga
+269 Cura
+270 Steal? EXP
+271 Evil Gaze
+272 Weapon Atk?
+273 Parley
+274 Goblin
+275 Goblin Punch
+276 Bug
+277 Confushot
+278 Circle
+279 Sidewinder
+280 Aim? Wallet
+281 Silence
+282 Silenshot
+283 Star Cross
+284 Cuisine
+285 Thunder
+286 Bolt Sword
+287 Bolt Breath
+288 Thundaga
+289 Thundara
+290 Sandstorm
+291 Shiva
+292 Shell
+293 Aphonia
+294 Greased Bolt
+295 Tail Wag
+296 Roulette
+297 Blowup
+298 Shining Air
+299 Jump
+300 Judge
+301 Absorb MP
+302 Miasma
+303 Half MP
+304 Advice
+305 Mog Lance
+306 Water Veil
+307 Stardust
+308 Shadowstick
+309 Stop
+310 Stopshot
+311 Chill
+312 Speedbreak
+313 Smile
+314 Featherblow
+315 Sliprain
+316 Sleep
+317 Slow
+318 Swallowtail
+319 Holy Sign
+320 Concentrate
+321 Holy Water
+322 Saint Cross
+323 Conceal
+324 Reveal
+325 Soil Evidence
+326 Draw Weapon
+327 Soul Sphere
+328 Last Breath
+329 Geomancy
+330 Revive
+331 Sonic Boom
+332 Wild Tornado
+333 Swarmstrike
+334 Shieldbearer
+335 Steal? Shield
+336 Boost
+337 Mog Peek
+338 Checkmate
+339 Suffocate
+340 Charmshot
+341 Chakra
+342 Provoke
+343 Chocobo Rush
+344 Earth Render
+345 Twister
+346 Subdue
+347 Death
+348 Dispel
+349 Angel Whisper
+350 Tempest
+351 Hibernate
+352 Toad
+353 Poison Frog
+354 Antidote
+355 Poison Claw
+356 Earth Veil
+357 Friend
+358 Dragon
+359 Wyrmkiller
+360 Dragon Force
+361 Drain
+362 Drain Touch
+363 Tonberry
+364 Nighthawk
+365 Dagger
+366 Mow Down
+367 Throw
+368 Bonecrusher
+369 Chroma Gem
+370 Double Sword
+371 Stare
+372 Rend
+373 Goo
+374 Take Aim
+375 Piercethrough
+376 Cupid
+377 Expert Guard
+378 Bio
+379 Hi-Potion
+380 Tremor
+381 Exorcise
+382 Backdraft
+383 Far Fist
+384 Strikeback
+385 Barrier
+386 Powerbreak
+387 Bangaa Cry
+388 Panther
+389 Bandage
+390 Hunting
+391 Cureall
+392 Mog Aid
+393 Sheep Count
+394 Hand Slap
+395 Last Quicken
+396 Last Berserk
+397 Last Haste
+398 Fire
+399 Fire Whip
+400 Fire Sword
+401 Fire Breath
+402 Firaga
+403 Fira
+404 Faster
+405 Rockseal
+406 Beatdown
+407 Phoenix
+408 Phoenix Down
+409 Steal? Weapon
+410 Burial
+411 Drop Weapon
+412 Meteorite
+413 Blind
+414 Blindshot
+415 Blaster
+416 Blackout
+417 Freezeblink
+418 Blizzaga
+419 Blizzard
+420 Ice Sword
+421 Blizzara
+422 Blitz
+423 Flan
+424 Manastrike
+425 Flare
+426 Break
+427 Flame Attack
+428 Floateye
+429 Protect
+430 Elementalshift
+431 Prominence
+432 Haste
+433 Hastebreak
+434 Heavy Dust
+435 Poison
+436 Oblivion
+437 Weapon Def?
+438 Knife
+439 Hurl
+440 Potion
+441 Holy
+442 Holy Blade
+443 Ball
+444 Bomb
+445 White Wind
+446 White Flame
+447 Beso Toxico
+448 Mighty Guard
+449 Mindbreak
+450 Magic Hammer
+451 Magicbreak
+452 Catnip
+453 Doom Archer
+454 Madeen
+455 Matra Magic
+456 Return Magic
+457 Magic Pow?
+458 Defense
+459 Raise
+460 Reflex
+461 Green Gear
+462 Sensor
+463 Mutilate
+464 Karma
+465 Eye Drops
+466 Meteor
+467 Immunity
+468 Maintenance
+469 Wood Veil
+470 Malboro
+471 Return Fire
+472 Block Arrows
+473 Echo Screen
+474 Sacrifice
+475 Unicorn
+476 Acid
+477 Fairy
+478 Night
+479 Steal? Armor
+480 Learning
+481 Downsize
+482 Lifebreak
+483 Rasp
+484 Rush
+485 Lamia
+486 Ramuh
+487 Boltshot
+488 Meltdown
+489 Auto-Regen
+490 Reflect
+491 Limit Glove
+492 Lancet
+493 Wyrmtamer
+494 Dragonheart
+495 Doublehand
+496 Auto-Life
+497 Life
+498 Mog Shield
+499 LV? S-Flare
+500 LV? Def-less
+501 LV? Death
+502 LV?D Holy
+503 Doubleshot
+504 Doublecast
+505 Deluge
+506 Wild Swing
+507 Ring
+508 Explode
+509 Stillness
+510 Azoth
+511 Omega
+512 Abyss
+513 Life Render
+514 Heart Render
+515 Ripcircle
+516 Furycircle
+517 Lawshift
+518 Amber Gleam
+519 Alpha
+520 Descent
+521 Magi
+522 Spellbind
+523 Breath of God
+524 Lightspeed
+525 Firestream
+526 Howl of Rage
+527 Presence
+528 Logos
+529 Adrammalech
+530 Mateus
+531 Ultima
+532 Exodus
+533 Famfrit
+534 Abate
+535 Judge Sword
+536 Bind
+537 JP Gift
+538 Yellow Clip
+539 Judge Sword
+540 Yellow Card
+541 Palaistra
+542 Blank Card
+543 Blue Combo
+544 Red Combo
+545 Hunt Combo
+546 Knight Combo
+547 Pray Combo
+548 Black Combo
+549 Wise Combo
+550 Sacred Combo
+551 Thief Combo
+552 Killer Combo
+553 Juggle Combo
+554 Gun Combo
+555 Defend Combo
+556 Summon Combo
+557 White Combo
+558 Spirit Combo
+559 Combat Combo
+560 Sniper Combo
+561 Spell Combo
+562 Charge Combo
+563 Fight Combo
+564 Animal Combo
+565 Time Combo
+566 Lunge Combo
+567 Morph Combo
+568 Ninja Combo
+569 Gadget Combo
+570 Bow Combo
+571 Sword Combo
+572 Beast Combo
+573 Monk Combo
+574 Dragon Combo
+575 Gold Combo
+576 Dummy
+577 Dummy
+578 Dummy
+579 Dummy
+580 Dummy
+581 Dummy
+582 Dummy
+583 Dummy
+584 Dummy
+585 Dummy
+586 Dummy
+587 Dummy
+588 Dummy
+589 Dummy
+590 Dummy
+591 Dummy
+592 Dummy
+593 Dummy
+594 Dummy
+595 Dummy
+596 Dummy
+597 Dummy
+598 Dummy
+599 Dummy
+600 Dummy
+601 Dummy
+602 Dummy
+603 Dummy
+604 Dummy
+605 Dummy
+606 Dummy
+607 Dummy
+608 Dummy
+609 Dummy
+610 Dummy
+611 Dummy
+612 Dummy
+613 Dummy
+614 Dummy
+615 Dummy
+616 Dummy
+617 Dummy
+618 Dummy
+619 Dummy
+620 Dummy
+621 Dummy
+622 Dummy
+623 Dummy
+624 Dummy
+625 Dummy
+626 Dummy
+627 Dummy
+628 Dummy
+629 Dummy
+630 Dummy
+631 Dummy
+632 Dummy
+633 Dummy
+634 Dummy
+635 Dummy
+636 Dummy
+637 Dummy
+638 Dummy
+639 Dummy
+640 Dummy
+641 Dummy
+642 Dummy
+643 Dummy
+644 Dummy
+645 Dummy
+646 Dummy
+647 Dummy
+648 Dummy
+649 Dummy
+650 Dummy
+651 Dummy
+652 Dummy
+653 Dummy
+654 Dummy
+655 Dummy
+656 Dummy
+657 Dummy
+658 Dummy
+659 Dummy
+660 Dummy
+661 Dummy
+662 Dummy
+663 Dummy
+664 Dummy
+665 Dummy
+666 Dummy
+667 Dummy
+668 Dummy
+669 Dummy
+670 Dummy
+671 Dummy
+672 Dummy
+673 Dummy
+674 Dummy
+675 Dummy
+676 Dummy
+677 Dummy
+678 Dummy
+679 Dummy
+680 Dummy
+681 Dummy
+682 Dummy
+683 Dummy
+684 Dummy
+685 Dummy
+686 Dummy
+687 Sword?
+688 Sharp Sword?
+689 Bent Sword?
+690 Rusty Sword?
+691 Big Sword?
+692 Heavy Sword?
+693 Knife?
+694 Thin Sword?
+695 Blade?
+696 Old Staff?
+697 Rod?
+698 Heavy Club?
+699 Bow?
+700 Big Bow?
+701 Spear?
+702 Instrument?
+703 Gloves?
+704 Bauble?
+705 Rusty Gun?
+706 Shield?
+707 Rusty Helm?
+708 Old Cap?
+709 Armor?
+710 Clothes?
+711 Robe?
+712 Boots?
+713 Gauntlet?
+714 Trinket?
+715 Bag?
+716 Metal?
+717 Status Down
+718 Monster Run
+719 Item Fine
+720 Card Fine
+721 AP Fine
+722 EqpItem Fine
+723 Volunteer
+724 Gil Fine
+725 HP MAX
+726 MP MAX
+727 Weapon Atk
+728 Weapon Def
+729 Magic Pow
+730 Magic Res
+731 Speed
+732 Gil
+733 No Award?
+734 No AP?
+735 No AP?Award?
+736 All Items?
+737 Empty Handed?
+738 ? Cards?
+739 ? Cards?
+740 ?? Cards??
+741 All Cards??
+742 No Abilities?
+743 Nothing?
+744 No Monsters?
+745 Color Mode
+746 Cursor Type
+747 Cursor Spd
+748 Message Spd
+749 Attack Name
+750 EXP?
+751 Judge Pts?
+752 NonEqpItems?
+753 L BUTTON
+754 Default
+755 LCD A
+756 LCD B
+757 TV
+758 Type A
+759 Type B
+760 Fast
+761 Normal
+762 Slow
+763 Slow
+764 Quick
+765 ON
+766 OFF
