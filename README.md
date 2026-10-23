@@ -1,198 +1,88 @@
 # DasBattleCalc
 
-Универсальный калькулятор / симулятор боёв для тактических игр на daslang + dasSDL3 + Dear ImGui (вид Blender 2.7 /
-Blendish). Первая игра — **Final Fantasy Tactics Advance** (GBA, USA): загрузка сейва BizHawk, юниты текущего боя и
-порядок ходов, рассчитанный так же, как в игре.
+A battle calculator for **Final Fantasy Tactics Advance** (GBA, USA). It reads a BizHawk save state from the
+middle of a battle and shows what the game is about to do: turn order, damage, hit and critical chances, abilities and
+reactions. The formulas were taken from the ROM and checked against the game itself. You can edit units and write the
+changes back into a new save, or run parameter experiments and plot the results.
 
-## Сборка и запуск
+Written in [daslang](https://github.com/GaijinEntertainment/daScript) with [dasSDL3](https://github.com/spiiin/dasSDL3)
+and Dear ImGui (Blender 2.7-style widgets). Runs on the desktop (Windows) and in the browser (standalone AOT, WebAssembly).
 
-Нужна готовая сборка dasSDL3 (`<dasSDL3>/build/ninja`, Release, Ninja, MSVC /MD, `DASSDL3_WITH_IMGUI=ON`); путь —
-переменная `DASSDL3_DIR` для `build.bat` (параметр `-DasSDL3` у `web/build.ps1`). Сейчас проект собирается на daScript
-master с ещё не влитым PR про hex в аннотациях (`@offset = 0xD0`).
+![Battle overview: roster, field, turn order, inspector](docs/images/overview.png)
+
+## What it does
+
+- **Battle from a save**: units, their stats and equipment as on the game's Status screen, the map with heights.
+- **Turn order**: the next N turns, computed with the game's CT tick model.
+- **Attack calculator**: the game's damage forecast and its spread, the shown hit chance and the real one (the game's
+  RNG makes them differ), criticals, the reach of the weapon on the map. It covers abilities of all jobs: damage,
+  healing, MP damage, drain, statuses and area effects. It also shows the target's reaction (Counter, Strikeback,
+  Reflex, …) and the counter-attack.
+- **Editor**: change stats, equipment, job, statuses, support / reaction and learned abilities, or drag units on the
+  field. Everything is recalculated immediately. **Export state with edits** writes a new BizHawk save that you can load
+  in the emulator.
+- **Explore**: a short query language for parameter studies. Results go into a sortable table, a chart (lines, bars,
+  points, log scales) and CSV export.
+
+![Attack calculator: damage breakdown, hit and critical chances](docs/images/attack.png)
+
+```
+vary atk.watk 50..300 step 10        // the attacker's base W.Atk
+vary tgt.wdef 50, 100, 150, 200      // one line per target W.Def
+avg = expected                       // average damage per attack
+where reach
+plot avg by atk.watk per tgt.wdef title "Average damage per Fight"
+```
+
+![Explore: a script, its table and chart](docs/images/explore.png)
+
+## Checked against the game
+
+The model is compared with the game's own numbers in BizHawk. The Lua probes in [research/](research/) read the
+forecast values straight from the game's functions. Tests:
+
+| | |
+|---|---|
+| Turn order | 22 turns recorded in game; CT of all 12 units from the start of a second battle |
+| Stats | the Status screens of 17 units, monsters and the Judge included |
+| Attacks | 88 Fight forecasts (damage and shown hit) over two battles: front / side / back, elements, supports |
+| Reach | the game's targetable tiles for sword, spear, bow and gun |
+| Abilities, magic | 18 forecasts and real uses (Battle Tech, Fire, Thunder, Cure, Protect, …) |
+| Reactions | Reflex, Strikeback, Counter, Bonecrusher on real hits |
+| Real hit / critical | thousands of rolls with random seeds; the RNG correlation explains the difference |
+
+The formulas, RAM layout and ROM tables are documented in [research/notes.md](research/notes.md).
+
+## Build and run
+
+Requirements:
+- a Release build of dasSDL3 with ImGui (`DASSDL3_WITH_IMGUI=ON`);
+- daScript master with one parser fix that is not merged yet: hex values in annotations, `@offset = 0xD0`;
+- VS 2022 and Ninja.
 
 ```bat
+set DASSDL3_DIR=C:/path/to/dasSDL3
 build.bat
-build\bin\battlecalc.exe
+build\bin\battlecalc.exe --state <save>.State --rom <FFTA (USA)>.zip
 ```
 
-Опции: `--state <файл .State>` и `--rom <FFTA (USA) .gba или .zip>` (последние пути запоминаются в `local.cfg`),
-`--ui-scale K` (или `--ui-scale=K`), `--shot out.png [--frames N]`, `--script "F click X Y; F rclick X Y; F drag X0 Y0 X1 Y1; F key SCANCODE; ..."` (скриптовый ввод через очередь SDL).
+The save is a BizHawk 2.x quick save made with the mGBA core, taken during a battle. The web version is built with
+`web\build.ps1` (Emscripten) into `build-web/site`. In the browser you pick the save and the ROM yourself, and the files
+stay in the browser. The web build needs daScript's dasPEG module without `options no_aot`.
 
-Сейв — быстрое сохранение BizHawk 2.x с ядром mGBA (`GBA/State/*.mGBA.QuickSave1.State`). В нём RAM на момент
-сохранения; батарейный `.SaveRAM` боя не содержит.
+Tests: `build\bin\battlecalc.exe tests\test_ffta_*.das --state <save> --rom <rom>`; see [docs/usage.ru.md](docs/usage.ru.md).
 
-Тесты моделей: порядок ходов (повтор 22 ходов, записанных в игре), характеристики (экраны Status всех юнитов),
-атака (17 прогнозов игры при правках RAM), дальность (правило клеток игры для меча, копья, лука, ружья),
-способности (12 прогнозов и применений: support, Battle Tech), магия (Fire, Thunder, Cure, Protect), реакции
-(Reflex, Strikeback, Counter, Bonecrusher по настоящим ударам), экспорт правок в сейв (запись, чтение обратно; `--out` —
-куда писать новый сейв):
+## More
 
-```bat
-build\bin\battlecalc.exe tests\test_ffta_turn_order.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_stats.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_attack.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_reach.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_abilities.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_magic.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_reactions.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_export.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip> --out <new.State>
-build\bin\battlecalc.exe tests\test_ffta_explore.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_battle2.das --state <ffta_test_battle2.State> --start <ffta_test_battle2_start.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_explore.das
-```
+- [docs/usage.ru.md](docs/usage.ru.md): the full description in Russian (every panel, the Explore language, options,
+  the web build, the code layout).
+- [research/notes.md](research/notes.md): how the game works (turn order, damage, abilities, reactions, RNG, the save
+  format).
 
-### Веб-версия (standalone AOT)
+## Notes
 
-```powershell
-web\build.ps1
-python -m http.server 8090 --bind 127.0.0.1 --directory build-web\site
-```
+This is an unofficial fan project. It is not affiliated with or endorsed by Square Enix. No ROM or save files are
+included; you need your own copy of the game.
 
-Открыть http://127.0.0.1:8090/ (опции — в адресе: `?ui-scale=1.6` = `--ui-scale 1.6`; по умолчанию масштаб 1.0, на десктопе — 1.3), внизу справа выбрать сейв `.State` и ROM — файлы обрабатываются в браузере, на
-сервер не уходят. Нужны Emscripten 5.0.3 (`C:\src\emsdk`) и Web-сборка dasSDL3 (`C:\src\dasSDL3\build\web`, из неё
-берётся только SDL3); пути — параметры `build.ps1`.
-
-Как в dasNES: генератор (wasm32, запускается в Node при сборке, `web/generator.cpp` + `web/standalone.das`)
-компилирует `scripts/main_web.das` со всеми модулями и выдаёт C++ (`build-web/aot/battlecalc.das.cpp`); страница
-линкуется только с ним, рантаймом daScript, ImGui, SDL3 и нашим нативным кодом — компилятора, интерпретатора и
-`.das` в браузере нет (`web/check_standalone.cmake` проверяет map-файл). daScript для wasm собирается в `build-web/`.
-
-| | wasm | data | wasm в gzip |
-|---|---:|---:|---:|
-| интерпретатор в браузере (демо 06 из dascript_sdl_gui) | 30.0 МБ | 5.6 МБ | 4.4 МБ |
-| DasBattleCalc, standalone AOT | 2.4 МБ | 1.0 МБ (шрифт, иконки) | 0.8 МБ |
-
-Чтобы модуль работал в standalone AOT, его функции должны быть в обычном C++-заголовке без daScript (`imgui_ext.h`,
-`gba_mem.h`, `gui_common.h`) и модуль должен отдавать его в `aotRequire`. Вспомогательные функции dasImgui вырезаются
-из `dasIMGUI.main.cpp` (`web/extract_imgui_helpers.cmake`), объявления, которых нет в его AOT-заголовке, — в
-`native/dasimgui_aot_extra.h`.
-
-## Интерфейс
-
-- **Roster** — пути к сейву и ROM, кнопка Load, участники боя (имя, уровень, скорость, CT). **Export state with
-  edits** — новый сейв BizHawk с правками (по умолчанию `<сейв>.edited.State` рядом; поверх загруженного не пишет):
-  HP, Max HP, MP, база W.Atk…Speed, CT, резерв, снаряжение, статусы, работа, изученные способности, Support / Reaction (если у расы есть
-  такая способность — она же помечается изученной), позиция и направление. Evade, Move, Jump берутся из работы —
-  их правки не переносятся (сообщение в логе). Открыть в BizHawk: File → Load State → Load Named State. В веб-версии
-  файл скачивается.
-- **Inspector** — поля выбранного юнита. Форма строится по полям структуры (`scripts/ui/inspector.das`, `daslib/apply`,
-  аннотации `@caption`, `@min/@max`, `@readonly`, `@hide`). Редактор: Support и Reaction (списки расы), работа
-  (список работ расы юнита — меняет Move,
-  Jump, базу Evade и силу без оружия; W.Atk…Speed записи остаются), HP, Max HP, MP, CT, резерв, «Assumed turn» (чем
-  юнит закончит свои ходы: Move+Act / Act / Move / Wait). **Stats** — характеристики как на экране Status: база
-  (редактируется) + снаряжение = итог. **Equipment** — 5 слотов; клик открывает список снаряжения с фильтром по имени и
-  по виду (оружие, щиты, голова, тело, обувь / наручи / кольца), в строке — вид и бонусы. **Status** — галочки
-  по битам `+0xE8..+0xED` с именами (Haste, Protect, Berserk…; таблица — `research/notes.md`, «Status bits»),
-  изменённый бит помечен «*». **Abilities** — изученные способности (`+0x40 + i`, бит 0x80) по профессиям расы:
-  раскрывающийся блок на работу (текущая раскрыта) с числом изученных и галочкой на способность, (R) / (S) / (C) —
-  reaction / support / комбо; изученные action-способности появляются в списке Action на вкладке Attack. Выбор
-  Support / Reaction помечает способность изученной. Всё пересчитывается сразу
-  (порядок ходов, атака, поле); ограничения игры на слоты и работы не проверяются. Изменённое поле получает кнопку
-  отката к значению из сейва; «Revert unit» / «Revert all» — откат юнита / всех. Загруженный сейв не меняется
-  (правки — в новый файл кнопкой Export). Формулы и таблицы
-  ROM — `research/notes.md`.
-- **Battle**, две вкладки:
-  - **Field** — карта боя сверху (оттенок и число — высота клетки, синие — вода), юниты кружками цвета стороны
-    со стрелкой направления (белое кольцо — выбранный, оранжевое — цель атаки); оранжевые рамки — клетки, которые
-    атакующий может ударить (Fight). Колесико — масштаб (точка под курсором остаётся на месте; карта больше панели —
-    полосы прокрутки), Fit — снова вписать в панель. Клик — выбрать юнита (он же
-    атакующий в Attack), правый клик — цель, перетаскивание — на свободную клетку, Q / E или кнопки — поворот.
-    Изменения влияют только на расчёты (сейв не меняется); подсказка на клетке — координаты и высота.
-  - **Screen** — кадр игры, сохранённый в сейве.
-  - **Chart** — график последнего эксперимента вкладки Explore: линии, столбики или точки, линейная или
-    логарифмическая шкала по каждой оси, легенда, подсказка с точкой под мышью.
-- **Calc**, три вкладки:
-  - **Turn order** — порядок ходов: таблица с прокруткой (сторона цветом, «+N» тиков от текущего момента, номер хода
-    юнита, чем юнит закончит ход; клик выбирает юнита), число ходов вперёд — поле «Turns ahead» (1..200).
-  - **Attack** — атакующий, действие (Fight или изученная способность), цель (списком или на поле) и сторона
-    (Auto — по позициям и направлению цели, или Front / Side / Back). Урон или лечение (как в прогнозе игры, разброс
-    реального удара, крит) с разбивкой A − D/2 и множителя, эффект способности, шанс попадания (показанный игрой и
-    реально бросаемый: +10 у не-врагов), шанс крита, средний урон, число ударов до KO, достаёт ли атакующий цель
-    (правило игры: высота, тип оружия). Support-способности атакующего и цели (Weapon Atk+, Magic Pow+, Turbo MP,
-    Doublehand, Concentrate, Weapon Def+) учитываются. Способности: Battle Tech Soldier проверены по одной,
-    остальные читаются из таблиц эффектов ROM — урон и лечение по формулам, ×2 / ×3, урон по MP, Drain,
-    оживление, статусы (вредный — шанс по Evade, полезный — без броска), стоимость MP, дальность, площадь (кто в
-    неё попадает и сколько получит); особые эффекты (Demi, Death, кражи…) помечены «not modelled». Реакция цели:
-    сработает ли (Counter, Strikeback, Reflex, Block Arrows, Bonecrusher, Return Magic…), уворот (шанс 0) и ответный
-    удар — урон и шанс. «Real» шанс — с учётом ГСЧ игры (два соседних числа броска связаны; таблица
-    `research/roll_table.py`). Модель — `scripts/games/ffta/ffta_attack.das`, формулы — `research/notes.md`
-    («Attack», «Fight reach», «Abilities», «Ability effects», «Reactions», «Real hits»).
-  - **Explore** — эксперименты: как меняется результат атаки при переборе параметров. Слева — скрипт (список
-    готовых примеров, Run или Ctrl+Enter; подсветка синтаксиса: операторы, параметры, метрики, новые столбцы, числа;
-    имя, которого нет, — красным; строка с ошибкой — красным фоном), справа — таблица точек (клик по заголовку —
-    сортировка; полосу между ними можно перетаскивать; **CSV** — таблица в текущем порядке: на десктопе файл
-    `<сейв>.explore.csv` рядом с сейвом, в вебе — скачивание), график — во вкладке Battle → Chart. Сцена — атакующий, цель, действие и сторона вкладки Attack.
-
-### Язык экспериментов (Explore)
-
-Оператор — одна строка (внутри `( )` строку можно переносить), `//` — комментарий. Разбор — грамматика dasPEG
-(`scripts/core/explore.das`), вычисление — наше.
-
-```
-vary atk.watk 50..300 step 10        // ось: параметр и его значения (точек — произведение осей, до 20000)
-vary tgt.wdef 50, 100, 150, 200      // вторая ось
-avg = expected                       // вычисляемый столбец
-ko = ceil(tgt.hp / max(avg, 0.01))   // параметр, прочитанный формулой, становится столбцом
-where reach && avg > 0               // оставить строки
-sort avg desc                        // или: sort avg
-plot avg, damage by atk.watk per tgt.wdef log y title "Урон"
-scene Marc vs Euver with Fire from back   // иначе — как на вкладке Attack
-```
-
-- **vary** `путь значения`. Значения: `от..до` или `от..до step шаг` (оба конца включены; `300..100` — вниз),
-  список `a, b, c`, генераторы игры: `jobs` (работы расы), `weapons` / `weapons "Sword"`, `supports`, `reactions`,
-  `actions` (изученные + Fight), `sides`.
-- **Параметры** `atk.*` / `tgt.*` (длинные `attacker.*` / `target.*` значат то же): `watk wdef mpow mres speed evade
-  move jump` (база, как в инспекторе; `watk_total` … — с экипировкой, только чтение), `hp max_hp mp ct level`, `job`,
-  `weapon`, `support`, `reaction`, `status.<имя>` (0 / 1: `status.protect`, `status.haste` …). Сцены: `action`
-  (способность), `side` (1 спереди, 2 сбоку, 3 сзади, 0 — по позициям).
-- **Столбцы каждой точки**: оси, `damage dmg_min dmg_max crit_damage hit hit_real crit expected reach mp_cost attack
-  defense base evade distance`.
-- **имя = выражение** — новый столбец; **where** условие; **sort** выражение `[asc|desc]`.
-- **plot** `y1, y2, …` и в любом порядке: `by x` (по умолчанию первая ось), `per серия` (линия / группа на каждое
-  значение), `line` / `bar` / `scatter` (по умолчанию line для чисел, bar для подписей), `log x` / `log y` /
-  `log xy`, `title "…"`.
-- **scene** в любом сочетании: `A vs B` (атакующий и цель по имени), `with Действие` (`with "First Aid"` — имя с
-  пробелом в кавычках), `from front|side|back|auto`.
-- **Выражения**: числа, `"строки"`, `true / false`, `+ - * / %`, `< <= > >= == !=`, `&& || !`, `a ? b : c`,
-  функции `abs min max clamp round floor ceil sqrt pow exp log log10 log2`. Значение — число или подпись с числом
-  (работа: имя и id; сравнение и сортировка — по имени).
-- Ошибки — с номером строки: синтаксис («near '…'»), неизвестный оператор, столбец (со списком столбцов), функция,
-  параметр.
-
-## Как устроено
-
-```
-native/            хост (C++): daScript + dasSDL3 + dasImgui + наши модули
-  runner.cpp         запуск scripts/main.das
-  gui_common.*       шрифт, примитивы, аргументы, скриптовый ввод, скриншоты
-  module_imgui_ext   стиль Blendish на ImGui, лист иконок
-  gba_mem.*          BizHawk .State (zip + zstd -> RAM mGBA), ROM, чтение памяти GBA, кадр из сейва; запись нового
-                     .State с изменённой RAM (кадр zstd из несжатых блоков — компрессор не нужен)
-  third_party/       stb_truetype, miniz (zip), zstddeclib (zstd 1.5.6)
-scripts/
-  main.das           десктопный вход
-  app/shell.das      меню, док-панели, статус; панели заполняет игра
-  core/game.das      интерфейс GameModule, лог
-  core/gba_struct    чтение структур из памяти GBA по аннотациям @offset (daslib/apply)
-  core/result_try    макросы try_ok / ensure: выход из функции с первой ошибкой ("" = успех)
-  core/explore       язык экспериментов: грамматика dasPEG, выражения, таблица, шаги, данные графика
-  ui/                bl_imgui (виджеты Blendish), bnd_const, inspector
-  games/ffta/        ffta_battle.das (RAM -> юниты, модель порядка ходов), ffta.das (панели), ffta_explore.das
-                     (параметры, значения осей и метрики экспериментов)
-  ui/explore_view    таблица (сортировка, только видимые строки) и график (линии, столбики, точки, лог-шкалы)
-research/          исследование FFTA: notes.md (результаты), Lua-скрипты BizHawk, дизассемблер Thumb, симулятор
-tests/             тесты на daslang
-assets/            шрифт DejaVu Sans, иконки (свой пиксель-арт, `icons/make_icons.py`)
-```
-
-Механика порядка ходов FFTA (адреса, формулы, проверка) — в [research/notes.md](research/notes.md).
-
-## Лицензии сторонних файлов
-
-- DejaVu Sans — свободная лицензия шрифтов DejaVu (`assets/fonts/LICENSE-DejaVuSans.ttf.txt`).
-- Иконки (`assets/icons/ffta_icons16.png`) — свои, нарисованы скриптом `assets/icons/make_icons.py` (16 × 16, в духе
-  меню FFTA); константы — `scripts/ui/icons.das`. Новую иконку — добавить рисунок в `ICONS` скрипта, запустить его и
-  перенести напечатанные строки в `icons.das`; `ffta_icons_preview.png` — увеличенный просмотр.
-- miniz — public domain / unlicense; zstd — BSD (`native/third_party/LICENSE-zstd.txt`); stb_truetype — public domain / MIT.
-- ROM и сейвы в репозиторий не входят.
+Third-party files: DejaVu Sans (DejaVu fonts license), miniz (public domain / Unlicense), zstd decoder (BSD),
+stb_truetype (public domain / MIT). The icons are drawn for this project (`assets/icons/make_icons.py`).
