@@ -119,7 +119,7 @@ python -m http.server 8090 --bind 127.0.0.1 --directory build-web\site
 native/            хост (C++): daScript + dasSDL3 + dasImgui + наши модули
   runner.cpp         запуск scripts/main.das
   gui_common.*       шрифт, примитивы, аргументы, скриптовый ввод, скриншоты
-  module_imgui_ext   стиль Blendish на ImGui, иконки Blender
+  module_imgui_ext   стиль Blendish на ImGui, лист иконок
   gba_mem.*          BizHawk .State (zip + zstd -> RAM mGBA), ROM, чтение памяти GBA, кадр из сейва; запись нового
                      .State с изменённой RAM (кадр zstd из несжатых блоков — компрессор не нужен)
   third_party/       stb_truetype, miniz (zip), zstddeclib (zstd 1.5.6)
@@ -133,7 +133,7 @@ scripts/
   games/ffta/        ffta_battle.das (RAM -> юниты, модель порядка ходов), ffta.das (панели)
 research/          исследование FFTA: notes.md (результаты), Lua-скрипты BizHawk, дизассемблер Thumb, симулятор
 tests/             тесты на daslang
-assets/            шрифт DejaVu Sans, иконки Blender
+assets/            шрифт DejaVu Sans, иконки (свой пиксель-арт, `icons/make_icons.py`)
 ```
 
 Механика порядка ходов FFTA (адреса, формулы, проверка) — в [research/notes.md](research/notes.md).
@@ -141,7 +141,8 @@ assets/            шрифт DejaVu Sans, иконки Blender
 ## Лицензии сторонних файлов
 
 - DejaVu Sans — свободная лицензия шрифтов DejaVu (`assets/fonts/LICENSE-DejaVuSans.ttf.txt`).
-- **Иконки Blender (`assets/icons/blender_icons16.png`) — GPL v2** (`assets/icons/LICENSE-blender_icons.svg.txt`).
-  Перед публикацией калькулятора их стоит заменить своими.
+- Иконки (`assets/icons/ffta_icons16.png`) — свои, нарисованы скриптом `assets/icons/make_icons.py` (16 × 16, в духе
+  меню FFTA); константы — `scripts/ui/icons.das`. Новую иконку — добавить рисунок в `ICONS` скрипта, запустить его и
+  перенести напечатанные строки в `icons.das`; `ffta_icons_preview.png` — увеличенный просмотр.
 - miniz — public domain / unlicense; zstd — BSD (`native/third_party/LICENSE-zstd.txt`); stb_truetype — public domain / MIT.
 - ROM и сейвы в репозиторий не входят.

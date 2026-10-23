@@ -20,6 +20,7 @@ require math
 require strings
 require bl_imgui
 require bnd_const
+require icons
 
 typedef FieldAnnotations = array<tuple<name : string; data : RttiValue>>
 
@@ -199,7 +200,7 @@ def revert_field(var value : auto(T)&; original : T; name : string) {
 // The revert button at the end of a row: an arrow back to the saved value.
 def bl_revert_button(id : string; x, y : float) : bool {
     SetCursorScreenPos(ImVec2(x, y))
-    return bl_tool_button(id, "", BND_ICON_LOOP_BACK, u(22.0))
+    return bl_tool_button(id, "", ICON_TURN_CCW, u(22.0))
 }
 
 // As inspect(), and an editable field that differs from the same field

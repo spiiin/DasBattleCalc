@@ -14,6 +14,7 @@ require imgui_ext
 require math
 require strings
 require ../ui/bnd_const.das
+require ../ui/icons.das
 require ../ui/bl_imgui.das
 require ../core/game.das
 
@@ -93,7 +94,7 @@ def private menu_bar() {
             let caption = game->title()
             let label_w = u(BND_PAD_LEFT + BND_PAD_RIGHT + 16.0) + text_width(caption)
             SameLine(GetWindowWidth() - label_w - u(8.0), -1.0)
-            bl_label(caption, BND_ICON_FILE)
+            bl_label(caption, ICON_GAME)
         }
         EndMainMenuBar()
     }
@@ -105,7 +106,7 @@ def private status_bar() {
         let p = GetWindowPos()
         at(p.x + u(6.0), p.y + u(1.0))
         var game = current_game()
-        bl_label(game != null ? game->status() : "no game", BND_ICON_INFO)
+        bl_label(game != null ? game->status() : "no game", ICON_INFO)
     }
     End()
 }
@@ -133,7 +134,7 @@ def shell_init(renderer : SDL_Renderer?; scale : float) {
     let dir = gui_project_dir()
     var font = *io.Fonts |> AddFontFromFileTTF("{dir}/assets/fonts/DejaVuSans.ttf", 15.0, null, null)
     io.FontDefault = font
-    imx_load_icons(renderer, "{dir}/assets/icons/blender_icons16.png")
+    imx_load_icons(renderer, "{dir}/assets/icons/ffta_icons16.png")
     ui_scale = scale
     bl_apply_style(ui_scale)
     frame_no = 0
@@ -155,13 +156,13 @@ def shell_frame(dt : float) : bool {
     frame_no++
     var game = current_game()
     var r = panel("Roster")
-    panel_header(r, "Roster", BND_ICON_OUTLINER_OB_ARMATURE)
+    panel_header(r, "Roster", ICON_ROSTER)
     if (game != null) {
         game->draw_roster(r.x, r.y + u(26.0), r.z, r.w - u(26.0))
     }
     End()
     r = panel("Inspector")
-    panel_header(r, "Inspector", BND_ICON_BONE_DATA)
+    panel_header(r, "Inspector", ICON_INSPECTOR)
     if (game != null) {
         // the fields scroll in a child window under the header
         at(r.x, r.y + u(26.0))
@@ -179,7 +180,7 @@ def shell_frame(dt : float) : bool {
     }
     End()
     r = panel("Calc")
-    panel_header(r, "Calculation", BND_ICON_SCRIPT)
+    panel_header(r, "Calculation", ICON_CALC)
     if (game != null) {
         game->draw_calc(r.x + u(8.0), r.y + u(28.0), r.z - u(16.0), r.w - u(32.0))
     }

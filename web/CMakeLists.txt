@@ -112,7 +112,7 @@ target_link_options(battlecalc_web PRIVATE -O2
     "-sEXPORTED_FUNCTIONS=['_main','_web_stop','_web_reload','_web_heap_bytes']"
     "-sEXPORTED_RUNTIME_METHODS=['callMain','FS','UTF8ToString']"
     "SHELL:--preload-file ${A}/fonts/DejaVuSans.ttf@/assets/fonts/DejaVuSans.ttf"
-    "SHELL:--preload-file ${A}/icons/blender_icons16.png@/assets/icons/blender_icons16.png")
+    "SHELL:--preload-file ${A}/icons/ffta_icons16.png@/assets/icons/ffta_icons16.png")
 set_target_properties(battlecalc_web PROPERTIES SUFFIX ".js" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/site")
 add_custom_command(TARGET battlecalc_web POST_BUILD
     COMMAND "${CMAKE_COMMAND}" "-DMAP_FILE=${CMAKE_BINARY_DIR}/battlecalc_web.map" -P "${CMAKE_SOURCE_DIR}/check_standalone.cmake"

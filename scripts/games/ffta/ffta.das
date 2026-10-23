@@ -15,6 +15,7 @@ require math
 require strings
 require daslib/strings_boost
 require ../../ui/bnd_const.das
+require ../../ui/icons.das
 require ../../ui/bl_imgui.das
 require ../../ui/inspector.das
 require ../../core/game.das
@@ -207,7 +208,7 @@ class FftaGame : GameModule {
         bl_string("rom_path", rom_path, w - lw - u(12.0))
         yy += u(25.0)
         SetCursorScreenPos(ImVec2(x + u(6.0), yy))
-        if (bl_tool_button("load", "Load", BND_ICON_FILE_REFRESH, w - u(12.0))) {
+        if (bl_tool_button("load", "Load", ICON_LOAD, w - u(12.0))) {
             self->load()
         }
         if (length(units) == 0) {
@@ -220,7 +221,7 @@ class FftaGame : GameModule {
         bl_string("export_path", export_path, w - lw - u(12.0))
         yy += u(25.0)
         SetCursorScreenPos(ImVec2(x + u(6.0), yy))
-        if (bl_tool_button("export", "Export state with edits", BND_ICON_EXPORT, w - u(12.0))) {
+        if (bl_tool_button("export", "Export state with edits", ICON_EXPORT, w - u(12.0))) {
             self->export_state()
         }
         return yy + u(30.0)
@@ -258,7 +259,7 @@ class FftaGame : GameModule {
             let un = units[i]
             let enemy = un.side == 1
             let color = i == selected ? 0xffffffffu : (enemy ? 0xffd0d0ffu : bt.regular.text)
-            icon_label_value(x + u(8.0), ry, w, row_h, enemy ? BND_ICON_GHOST : BND_ICON_ARMATURE_DATA, color,
+            icon_label_value(x + u(8.0), ry, w, row_h, enemy ? ICON_ENEMY : ICON_UNIT, color,
                 false, "{un.name}  Lv{un.level}  Spd {un.speed}  CT {un.ct}")
             if (clicked) {
                 selected = i
@@ -279,12 +280,12 @@ class FftaGame : GameModule {
         if (before != saved_key || changed_any) {
             let bw = floor((w - u(4.0)) * 0.5)
             SetCursorScreenPos(ImVec2(x, by))
-            if (before != saved_key && bl_tool_button("revert_unit", "Revert unit", BND_ICON_LOOP_BACK, bw)) {
+            if (before != saved_key && bl_tool_button("revert_unit", "Revert unit", ICON_TURN_CCW, bw)) {
                 units[selected] := saved[selected]
                 self->update_turns()
             }
             SetCursorScreenPos(ImVec2(x + bw + u(4.0), by))
-            if (changed_any && bl_tool_button("revert_all", "Revert all", BND_ICON_LOOP_BACK, bw)) {
+            if (changed_any && bl_tool_button("revert_all", "Revert all", ICON_TURN_CCW, bw)) {
                 units := saved
                 self->update_turns()
             }
@@ -620,11 +621,11 @@ class FftaGame : GameModule {
         // tabs: the field / the screen stored in the state
         let tw = u(120.0)
         SetCursorScreenPos(ImVec2(x + u(8.0), y + u(6.0)))
-        if (bl_radio_button("tab_field", "Field", BND_ICON_MESH_GRID, tw, BND_CORNER_RIGHT, scene_tab == 0)) {
+        if (bl_radio_button("tab_field", "Field", ICON_FIELD, tw, BND_CORNER_RIGHT, scene_tab == 0)) {
             scene_tab = 0
         }
         SetCursorScreenPos(ImVec2(x + u(8.0) + tw, y + u(6.0)))
-        if (bl_radio_button("tab_screen", "Screen", BND_ICON_IMAGE_DATA, tw, BND_CORNER_LEFT, scene_tab == 1)) {
+        if (bl_radio_button("tab_screen", "Screen", ICON_SCREEN, tw, BND_CORNER_LEFT, scene_tab == 1)) {
             scene_tab = 1
         }
         let ty = y + u(32.0)
@@ -639,7 +640,7 @@ class FftaGame : GameModule {
     def field_view(x, y, w, h : float) : void {
         if (length(units) == 0) {
             SetCursorScreenPos(ImVec2(x + u(12.0), y + u(6.0)))
-            bl_label(message, BND_ICON_INFO)
+            bl_label(message, ICON_INFO)
             return
         }
         let bar = u(28.0)
@@ -653,15 +654,15 @@ class FftaGame : GameModule {
         }
         let by = y + h - bar + u(4.0)
         SetCursorScreenPos(ImVec2(x + u(8.0), by))
-        if (bl_tool_button("turn_ccw", "", BND_ICON_LOOP_BACK, u(28.0), BND_CORNER_RIGHT) && selected >= 0) {
+        if (bl_tool_button("turn_ccw", "", ICON_TURN_CCW, u(28.0), BND_CORNER_RIGHT) && selected >= 0) {
             turn(units[selected], false)
         }
         SetCursorScreenPos(ImVec2(x + u(36.0), by))
-        if (bl_tool_button("turn_cw", "", BND_ICON_LOOP_FORWARDS, u(28.0), BND_CORNER_LEFT) && selected >= 0) {
+        if (bl_tool_button("turn_cw", "", ICON_TURN_CW, u(28.0), BND_CORNER_LEFT) && selected >= 0) {
             turn(units[selected], true)
         }
         SetCursorScreenPos(ImVec2(x + u(72.0), by))
-        if (bl_tool_button("field_fit", "Fit", BND_ICON_ZOOM_ALL, u(56.0))) {
+        if (bl_tool_button("field_fit", "Fit", ICON_FIT, u(56.0))) {
             field.cell = 0.0
         }
         SetCursorScreenPos(ImVec2(x + u(136.0), by))
@@ -671,7 +672,7 @@ class FftaGame : GameModule {
     def screen_view(x, y, w, h : float) : void {
         if (!gba_frame_update(shell_renderer())) {
             SetCursorScreenPos(ImVec2(x + u(12.0), y + u(12.0)))
-            bl_label(message, BND_ICON_INFO)
+            bl_label(message, ICON_INFO)
             return
         }
         let fw = gba_frame_width()
@@ -681,22 +682,22 @@ class FftaGame : GameModule {
         let dy = y + u(8.0)
         gba_frame_draw(dx, dy, fw * k, fh * k)
         SetCursorScreenPos(ImVec2(dx, dy + fh * k + u(4.0)))
-        bl_label("Screen stored in the state", BND_ICON_IMAGE_DATA)
+        bl_label("Screen stored in the state", ICON_SCREEN)
     }
 
     def override draw_calc(x, y, w, h : float) : void {
         SetCursorScreenPos(ImVec2(x, y))
         if (length(units) == 0) {
-            bl_label(message, BND_ICON_TIME)
+            bl_label(message, ICON_TURNS)
             return
         }
         // tabs: turn order / attack
         let tw = u(120.0)
-        if (bl_radio_button("tab_turns", "Turn order", BND_ICON_TIME, tw, BND_CORNER_RIGHT, calc_tab == 0)) {
+        if (bl_radio_button("tab_turns", "Turn order", ICON_TURNS, tw, BND_CORNER_RIGHT, calc_tab == 0)) {
             calc_tab = 0
         }
         SetCursorScreenPos(ImVec2(x + tw, y))
-        if (bl_radio_button("tab_attack", "Attack", BND_ICON_HAND, tw, BND_CORNER_LEFT, calc_tab == 1)) {
+        if (bl_radio_button("tab_attack", "Attack", ICON_ATTACK, tw, BND_CORNER_LEFT, calc_tab == 1)) {
             calc_tab = 1
         }
         let ty = y + u(28.0)
@@ -711,7 +712,7 @@ class FftaGame : GameModule {
         SetCursorScreenPos(ImVec2(x, y))
         // header: what the list assumes, and how far ahead it goes
         let nw = u(170.0)
-        bl_label("Turn order  (turn ends as 'Assumed turn' in Inspector)", BND_ICON_TIME, w - nw - u(8.0))
+        bl_label("Turn order  (turn ends as 'Assumed turn' in Inspector)", ICON_TURNS, w - nw - u(8.0))
         SetCursorScreenPos(ImVec2(x + w - nw, y))
         var ahead = float(turns_ahead)
         if (bl_number("turns_ahead", "Turns ahead", ahead, 0.1, 0, nw)) {
@@ -778,7 +779,7 @@ class FftaGame : GameModule {
         let info = tech_info(ability)
         if (attacker == target && !info.self_only) {
             SetCursorScreenPos(ImVec2(x, y + u(30.0)))
-            bl_label("Pick a target other than the attacker", BND_ICON_INFO)
+            bl_label("Pick a target other than the attacker", ICON_INFO)
             return
         }
         let choice = side_choice == 1 ? SideChoice.Front : (side_choice == 2 ? SideChoice.Side :

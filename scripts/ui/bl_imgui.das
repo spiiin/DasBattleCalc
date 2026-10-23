@@ -12,7 +12,8 @@ module bl_imgui shared public
 require imgui
 require dasimgui/imgui_boost
 require imgui_ext
-require bnd_const   // BND_ICON_* / BND_CORNER_* constants
+require bnd_const   // BND_CORNER_* constants
+require icons       // ICON_* of ffta_icons16.png
 require math
 require strings
 
@@ -423,7 +424,7 @@ def bl_section(id, caption : string; var open : bool&) : bool {
     if (InvisibleButton(id, ImVec2(w, h))) {
         open = !open
     }
-    icon_label_value(p.x, p.y, w, h, open ? BND_ICON_DISCLOSURE_TRI_DOWN : BND_ICON_DISCLOSURE_TRI_RIGHT,
+    icon_label_value(p.x, p.y, w, h, open ? ICON_OPEN : ICON_CLOSED,
         bt.regular.text, false, caption)
     return open
 }

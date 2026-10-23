@@ -14,6 +14,7 @@ require dasimgui/imgui_boost
 require math
 require strings
 require ../../ui/bnd_const.das
+require ../../ui/icons.das
 require ../../ui/bl_imgui.das
 require ffta_battle
 require ffta_attack
@@ -70,7 +71,7 @@ def draw_field(m : BattleMap; var units : array<BattleUnit>; selected, target, a
     var res = FieldInput()
     if (m.w == 0 || m.h == 0) {
         SetCursorScreenPos(ImVec2(x + u(12.0), y + u(12.0)))
-        bl_label("No battle map in this state", BND_ICON_INFO)
+        bl_label("No battle map in this state", ICON_INFO)
         return res
     }
     // the tile size is the user's (mouse wheel); until then it fits the view

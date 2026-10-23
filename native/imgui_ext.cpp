@@ -1,6 +1,6 @@
 // Small ImGui extras for a Blender-like look: vertical gradients on draw
 // list vertices (ImGui's internal ShadeVertsLinearColorGradientKeepAlpha),
-// a Blendish-style gradient box, the Blender icon sheet, style colors.
+// a Blendish-style gradient box, the icon sheet, style colors.
 #include "imgui_ext.h"
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -100,7 +100,7 @@ bool imx_load_icons(SDL_Renderer * r, const char * path) {
     return g_icons != nullptr;
 }
 
-// Icon ids are Blendish's BND_ICONID(x, y): 16 px cells on a 21 px grid.
+// Icon ids (scripts/ui/icons.das): ix | iy << 8, 16 px cells on a 21 px grid.
 static void icon_uv(int icon, ImVec2 & uv0, ImVec2 & uv1) {
     int ix = icon & 0xff, iy = (icon >> 8) & 0xff;
     float u = 5.0f + ix * 21.0f, v = 10.0f + iy * 21.0f;
