@@ -1,0 +1,78 @@
+# Web version (standalone AOT, web/CMakeLists.txt) -> GitHub Pages.
+# Dependencies are the same as web/build.ps1 uses locally: dasSDL3 with its
+# daScript, SDL3 built for wasm by dasSDL3/web, ImGui and md4c sources, and
+# the local patches in web/ci/.
+name: web
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  DASSDL3_REF: a13e01f   # spiiin/dasSDL3 main
+  DASCRIPT_REF: bd727155e   # daScript master with the annotation hex fix
+  EMSDK_VERSION: 5.0.3
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ env.EMSDK_VERSION }}
+          actions-cache-folder: emsdk-cache
+
+      - name: dasSDL3 and daScript
+        run: |
+          D=$RUNNER_TEMP/deps
+          git clone --filter=blob:none https://github.com/spiiin/dasSDL3.git $D/dasSDL3
+          git -C $D/dasSDL3 checkout $DASSDL3_REF
+          git clone --filter=blob:none https://github.com/GaijinEntertainment/daScript.git \
+            $D/dasSDL3/third_party/daScript
+          git -C $D/dasSDL3/third_party/daScript checkout $DASCRIPT_REF
+          git -C $D/dasSDL3 apply $GITHUB_WORKSPACE/web/ci/dassdl3.patch
+          git -C $D/dasSDL3/third_party/daScript apply $GITHUB_WORKSPACE/web/ci/daspeg.patch
+          cmake -DDAS=$D/dasSDL3/third_party/daScript -DMD4C_ROOT=$D/md4c \
+            -P web/ci/fetch_deps.cmake
+          echo "DEPS=$D" >> $GITHUB_ENV
+
+      - name: SDL3 for wasm
+        run: |
+          emcmake cmake -S $DEPS/dasSDL3/web -B $DEPS/sdl-web -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build $DEPS/sdl-web --target SDL3-static
+
+      - name: Build
+        run: |
+          emcmake cmake -S web -B build-web -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DDASSDL3_DIR=$DEPS/dasSDL3 -DDASSDL3_WEB=$DEPS/sdl-web \
+            -DNODE_EXECUTABLE=${EMSDK_NODE:-$(which node)} -DMD4C_DIR=$DEPS/md4c/src
+          cmake --build build-web --parallel 4
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build-web/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

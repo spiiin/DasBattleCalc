@@ -64,7 +64,10 @@ include_directories(
     ${DASSDL3_WEB}/_deps/sdl3-build/include-revision ${SDL_SRC}/include
     ${IMGUI}/imgui ${IMGUI}/src ${DAS}/modules/dasClipboard/src)
 add_compile_definitions(GUI_PROJECT_DIR="")
-set(SDL_LIBS ${DASSDL3_WEB}/_deps/sdl3-build/libSDL3.a ${DASSDL3_WEB}/_deps/sdl3-build/libSDL_uclibc.a)
+set(SDL_LIBS ${DASSDL3_WEB}/_deps/sdl3-build/libSDL3.a)
+if(EXISTS "${DASSDL3_WEB}/_deps/sdl3-build/libSDL_uclibc.a")   # only with SDL_SHARED; static has it inside
+    list(APPEND SDL_LIBS ${DASSDL3_WEB}/_deps/sdl3-build/libSDL_uclibc.a)
+endif()
 
 # native code without daScript: used by the generator and by the page
 add_library(native_impl STATIC

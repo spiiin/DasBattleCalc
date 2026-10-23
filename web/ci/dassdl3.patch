@@ -1,0 +1,70 @@
+diff --git a/dassdl3/sdl3_try.das b/dassdl3/sdl3_try.das
+index 5d2aa4e..140489f 100644
+--- a/dassdl3/sdl3_try.das
++++ b/dassdl3/sdl3_try.das
+@@ -20,10 +20,10 @@ def is_sdl_try_function(fn : Function?) : bool {
+ }
+ 
+ def is_sdl_result(rt : TypeDeclPtr) : bool {
+-    if (rt == null || rt.baseType != Type.tTuple || length(rt.argTypes) != 3 || length(rt.argNames) != 3) { return false }
+-    let error_type = rt.argTypes[2]
+-    return (rt.argNames[0] == "_is_ok" && rt.argNames[1] == "_value" && rt.argNames[2] == "_error"
+-        && rt.argTypes[0].baseType == Type.tBool && error_type.baseType == Type.tStructure
++    // daslib/result: $Result<T; E> is variant { err : E; ok : T }
++    if (rt == null || rt.baseType != Type.tVariant || length(rt.argTypes) != 2 || length(rt.argNames) != 2) { return false }
++    let error_type = rt.argTypes[0]
++    return (rt.argNames[0] == "err" && rt.argNames[1] == "ok" && error_type.baseType == Type.tStructure
+         && error_type.structType.name == "SdlError" && error_type.structType._module.name == "sdl3_result")
+ }
+ 
+@@ -70,8 +70,8 @@ class SdlTryVisitor : AstVisitor {
+                 let output = rt.argTypes[1]
+                 var prefix = qmacro_block() {
+                     var $i(tmp) <- $e(call.arguments[0])
+-                    if (!$i(tmp)._is_ok) {
+-                        return result::err($i(tmp)._error, type<$t(output)>)
++                    if ($i(tmp) is err) {
++                        return result::err($i(tmp) as err, type<$t(output)>)
+                     }
+                 }
+                 // Copy scalar/string/pointer results, consume move-only results.
+@@ -82,15 +82,15 @@ class SdlTryVisitor : AstVisitor {
+                     expanded |> emplace(copy)
+                 }
+                 if (stmt is ExprLet) {
+-                    (stmt as ExprLet).variables[0].init = qmacro($i(tmp)._value)
++                    (stmt as ExprLet).variables[0].init = qmacro($i(tmp) as ok)
+                     var copy = stmt
+                     expanded |> emplace(copy)
+                 } elif (stmt is ExprCopy) {
+-                    (stmt as ExprCopy).right = qmacro($i(tmp)._value)
++                    (stmt as ExprCopy).right = qmacro($i(tmp) as ok)
+                     var copy = stmt
+                     expanded |> emplace(copy)
+                 } elif (stmt is ExprMove) {
+-                    (stmt as ExprMove).right = qmacro($i(tmp)._value)
++                    (stmt as ExprMove).right = qmacro($i(tmp) as ok)
+                     var copy = stmt
+                     expanded |> emplace(copy)
+                 }
+diff --git a/src/module_sdl3.cpp b/src/module_sdl3.cpp
+index 19d3f1f..42ccf9e 100644
+--- a/src/module_sdl3.cpp
++++ b/src/module_sdl3.cpp
+@@ -1008,7 +1008,6 @@ public:
+         // Match the BGFX binder's promotion of small C integer arguments.
+         // Standalone/JIT resolves externs by mangled name, so keep the registry
+         // and module fingerprint consistent with the promoted public signature.
+-        cumulativeHash = 0;
+         for (auto & fn : functions.each()) {
+             const auto oldName = fn->getMangledName();
+             for (auto & arg : fn->arguments) {
+@@ -1020,8 +1019,6 @@ public:
+                 DAS_VERIFY(!functions.find(newName));
+                 DAS_VERIFY(functions.refresh_key(hash64z(oldName.c_str()), hash64z(newName.c_str())));
+             }
+-            if (fn->builtIn)
+-                cumulativeHash = wyhash(newName.c_str(), newName.size(), cumulativeHash);
+         }
+     }
+ };
