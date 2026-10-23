@@ -79,6 +79,11 @@ Tests: `build\bin\battlecalc.exe tests\test_ffta_*.das --state <save> --rom <rom
 - [research/notes.md](research/notes.md): how the game works (turn order, damage, abilities, reactions, RNG, the save
   format).
 
+## License
+
+The code is under the [MIT License](LICENSE). Final Fantasy Tactics Advance and its names belong to Square Enix;
+the game data tables in `research/` are notes for study, not covered by this license.
+
 ## Notes
 
 This is an unofficial fan project. It is not affiliated with or endorsed by Square Enix. No ROM or save files are
