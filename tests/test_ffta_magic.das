@@ -7,7 +7,7 @@ options indenting = 4
 // casts Black Magic (Fire, Thunder) on Montblanc and on Euver moved to
 // (7, 5); Marc as a White Mage (job 7, Cure / Life / Protect learned)
 // casts Cure on Montblanc and on himself, and Protect.
-//   battlecalc tests/test_ffta_magic.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
+//   battlecalc tests/test_ffta_magic.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
 require gui_common
 require strings
 require gba_mem

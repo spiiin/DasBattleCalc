@@ -2,7 +2,7 @@
 -- PROBE_EXEC = "name:0xADDR,..."; output research/exec_log.txt.
 local OUT = "C:/src/DasBattleCalc/research/"
 local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
-local STATE = os.getenv("PROBE_STATE") or "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
+local STATE = os.getenv("PROBE_STATE") or "C:/rom/BizHawk-2.11-win-x64/GBA/State/ffta_test_battle1.State"
 local FRAMES = tonumber(os.getenv("PROBE_FRAMES") or "600")
 local PLAN = os.getenv("PROBE_PLAN") or ""
 local SHOTS = os.getenv("PROBE_SHOTS") or ""

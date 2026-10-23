@@ -7,7 +7,9 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
 
 - `build.bat` (VS 2022 x64 + Ninja) -> `build\bin\battlecalc.exe [script.das] [опции]`; по умолчанию `scripts/main.das`.
 - Картинку проверяем `--shot file.png`, ввод — `--script "F click X Y; F shot file.png"` (см. `native/gui_common.cpp`).
-- Тест модели FFTA: `battlecalc tests\test_ffta_turn_order.das --state <QuickSave1.State> --rom <FFTA.zip>`;
+- Тест модели FFTA: `battlecalc tests\test_ffta_turn_order.das --state <ffta_test_battle1.State> --rom <FFTA.zip>`
+  (сейвы-копии — в `CLAUDE.local.md`; слоты QuickSave пользователь перезаписывает); второй бой —
+  `tests/test_ffta_battle2.das --state <ffta_test_battle2.State> --start <ffta_test_battle2_start.State>`;
   характеристики и снаряжение — `tests\test_ffta_stats.das`, атака — `tests/test_ffta_attack.das`, дальность — `tests/test_ffta_reach.das`, способности — `tests/test_ffta_abilities.das`, магия — `tests/test_ffta_magic.das`, реакции — `tests/test_ffta_reactions.das`, экспорт сейва — `tests/test_ffta_export.das`, Explore — `tests/test_ffta_explore.das` и `tests/test_explore.das` (язык, без сейва) (+ `--out <new.State>`; проверка
   в эмуляторе — `research/export_check.lua`, `PROBE_STATE`)
   (те же аргументы; прогнозы игры для сверки — `research/attack_probe.lua`). Экраны Status юнитов для сверки —

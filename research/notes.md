@@ -456,3 +456,26 @@ editor groups the checkboxes this way
 the export writes back (other bits of the byte kept). Which learned
 actions the game offers in battle (the job's set and the secondary set)
 is not modelled: the Attack tab lists all learned actions.
+
+## Second battle (2026-10-23)
+
+The model checked on a battle it was not built from: 12 participants
+(Goblins, a Red Cap, a Sprite, the clan: Soldier x2, White Monk, Black
+Mage, Archer, White Mage; the Judge). Saves: `ffta_test_battle2_start`
+(every CT 0) and `ffta_test_battle2` (Loki's turn); test
+`tests/test_ffta_battle2.das`.
+
+- Turn order: from the start the tick model reaches Loki's turn after 9
+  ticks with the CT of all 11 units equal to the game's.
+- Stats: the Status screens of all 12 units (status_copy.lua with
+  PROBE_ACTOR = Loki, PROBE_MACRO for a menu already open) - 96 values,
+  all equal.
+- Fight forecasts (attack_probe.lua, PROBE_PLAN): 8 attackers copied over
+  Loki's record (keeping Loki's flags, else the AI takes the turn) x 6
+  targets put into Marc's place by the record pointer of his wrapper, and
+  targets turned (+0x1F) for front / side / back: 66 forecasts, damage
+  and shown hit all equal.
+- The wrapper's +0x1E is not the team: here the Goblins have 0 (as the
+  clan) and Cristine and Nusratt of the clan have 1. Teams come from the
+  record flags +0x28 (0x8000 enemy, 0x2000 guest, 0x1000 judge): `team()`.
+

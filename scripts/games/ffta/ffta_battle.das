@@ -97,7 +97,7 @@ struct BattleUnit {
     @caption = "Speed" @readonly speed : int
     @caption = "CT" ct : int
     @caption = "Reserve" reserve : int
-    @caption = "Side" @readonly side : int
+    @caption = "Side byte" @readonly side : int   // wrapper +0x1E, meaning unknown (teams: team())
     @caption = "Tie order" @readonly order : int
     @caption = "Status" @readonly status_text : string
     @caption = "Position" @readonly position : string
@@ -572,6 +572,24 @@ def find_wrappers() : uint {
         a += 4u
     }
     return best_len >= 2 ? best : 0u
+}
+
+// Whose unit: from the record flags +0x28. Not the wrapper's +0x1E
+// (side): in the second battle the goblins have 0 there, like Marc, and
+// Cristine and Nusratt of the clan have 1.
+let TEAM_PLAYER = 0
+let TEAM_ENEMY = 1
+let TEAM_GUEST = 2
+let TEAM_JUDGE = 3
+
+def team(u : BattleUnit) : int {
+    if ((u.flags & 0x8000u) != 0u) {
+        return TEAM_ENEMY
+    }
+    if ((u.flags & 0x1000u) != 0u) {
+        return TEAM_JUDGE
+    }
+    return (u.flags & 0x2000u) != 0u ? TEAM_GUEST : TEAM_PLAYER
 }
 
 def read_battle(var units : array<BattleUnit>) : string {

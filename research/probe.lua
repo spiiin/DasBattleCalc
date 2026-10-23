@@ -1,12 +1,12 @@
 -- FFTA turn-order probe for BizHawk 2.11 (mGBA core).
--- Loads QuickSave1, then runs a scripted input plan and logs, every
+-- Loads the test save (PROBE_STATE), then runs a scripted input plan and logs, every
 -- frame where anything changes, the CT (+0xD0), Speed (+0xD2) and the
 -- word after it (+0xD4) of both unit arrays found in EWRAM.
 -- Output: research/probe_log.txt and research/shots/fNNNNN.png.
 
 local OUT = "C:/src/DasBattleCalc/research/"
 local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
-local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
+local STATE = os.getenv("PROBE_STATE") or "C:/rom/BizHawk-2.11-win-x64/GBA/State/ffta_test_battle1.State"
 local FRAMES = tonumber(os.getenv("PROBE_FRAMES") or "1200")
 local SHOT_EVERY = tonumber(os.getenv("PROBE_SHOT_EVERY") or "120")
 -- input plan: "frame:BUTTON,frame:BUTTON" (button held 2 frames)

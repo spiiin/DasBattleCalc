@@ -6,7 +6,7 @@
 local OUT = "C:/src/DasBattleCalc/research/"
 local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
 local STATE = os.getenv("PROBE_STATE") or
-  "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
+  "C:/rom/BizHawk-2.11-win-x64/GBA/State/ffta_test_battle1.State"
 local FRAMES = tonumber(os.getenv("PROBE_FRAMES") or "20000")
 local SHOT_EVERY = tonumber(os.getenv("PROBE_SHOT_EVERY") or "600")
 

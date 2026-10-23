@@ -5,7 +5,7 @@
 -- hit (the hit branch 0x080A28A4 ran), crit (0x080A2978 ran).
 local OUT = "C:/src/DasBattleCalc/research/"
 local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
-local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
+local STATE = os.getenv("PROBE_STATE") or "C:/rom/BizHawk-2.11-win-x64/GBA/State/ffta_test_battle1.State"
 local TRIALS = tonumber(os.getenv("PROBE_TRIALS") or "100")
 local SEED_AT = tonumber(os.getenv("PROBE_SEED_AT") or "500")
 local RUN = tonumber(os.getenv("PROBE_RUN") or "120")

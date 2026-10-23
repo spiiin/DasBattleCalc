@@ -3,7 +3,7 @@ options indenting = 4
 
 // Export of edited units (export_battle): edit Marc and Montblanc,
 // write a new state, load it back and compare what the reader sees.
-//   battlecalc tests/test_ffta_export.das --state <QuickSave1.State> --rom <FFTA (USA).zip> --out <new.State>
+//   battlecalc tests/test_ffta_export.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip> --out <new.State>
 require daslib/with_boost
 require gui_common
 require strings

@@ -28,15 +28,16 @@ build\bin\battlecalc.exe
 куда писать новый сейв):
 
 ```bat
-build\bin\battlecalc.exe tests\test_ffta_turn_order.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_stats.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_attack.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_reach.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_abilities.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_magic.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_reactions.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
-build\bin\battlecalc.exe tests\test_ffta_export.das --state <QuickSave1.State> --rom <FFTA (USA).zip> --out <new.State>
-build\bin\battlecalc.exe tests\test_ffta_explore.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
+build\bin\battlecalc.exe tests\test_ffta_turn_order.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
+build\bin\battlecalc.exe tests\test_ffta_stats.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
+build\bin\battlecalc.exe tests\test_ffta_attack.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
+build\bin\battlecalc.exe tests\test_ffta_reach.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
+build\bin\battlecalc.exe tests\test_ffta_abilities.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
+build\bin\battlecalc.exe tests\test_ffta_magic.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
+build\bin\battlecalc.exe tests\test_ffta_reactions.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
+build\bin\battlecalc.exe tests\test_ffta_export.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip> --out <new.State>
+build\bin\battlecalc.exe tests\test_ffta_explore.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
+build\bin\battlecalc.exe tests\test_ffta_battle2.das --state <ffta_test_battle2.State> --start <ffta_test_battle2_start.State> --rom <FFTA (USA).zip>
 build\bin\battlecalc.exe tests\test_explore.das
 ```
 

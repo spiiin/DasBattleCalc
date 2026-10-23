@@ -7,7 +7,7 @@ options indenting = 4
 // with Fight. In the game: Reflex - Marc's roll was 0 % (25 of 25 missed);
 // Strikeback - Marc always missed, Montblanc struck back for 4; Counter -
 // struck back for 4 with the roll 56 % (82 of 144 hit); Bonecrusher - 6.
-//   battlecalc tests/test_ffta_reactions.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
+//   battlecalc tests/test_ffta_reactions.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
 require gui_common
 require strings
 require gba_mem

@@ -19,9 +19,16 @@ require ../../ui/bl_imgui.das
 require ffta_battle
 require ffta_attack
 
-// player, enemy, guest (wrapper +0x1E, guessed from one battle)
+// by team (TEAM_*): player, enemy, guest, judge
 def side_color(side : int) : uint {
-    return side == 0 ? 0x5a8ee0ffu : (side == 1 ? 0xd85050ffu : (side == 2 ? 0x5ab060ffu : 0x9a9a9affu))
+    return side == TEAM_PLAYER ? 0x3f86ffffu : (side == TEAM_ENEMY ? 0xe8423cffu : (side == TEAM_GUEST ? 0x3fbf5fffu :
+        0xe6b422ffu))
+}
+
+// a name in a list, in the team's color (light: on the grey panels)
+def team_text_color(side : int) : uint {
+    return side == TEAM_PLAYER ? 0xd8e6ffffu : (side == TEAM_ENEMY ? 0xffc4c0ffu : (side == TEAM_GUEST ? 0xc8f0d0ffu :
+        0xfff0b0ffu))
 }
 
 // what the user did on the field this frame
@@ -208,7 +215,7 @@ def draw_field(m : BattleMap; var units : array<BattleUnit>; selected, target, a
 // a disc in the side color, the facing arrow, two letters of the name;
 // white ring: selected, orange ring: attack target
 def draw_unit(var dl : ImDrawList?; un : BattleUnit; cx, cy, r : float; sel, tgt : bool) {
-    let col = un.hp > 0 ? side_color(un.side) : 0x707070ffu
+    let col = un.hp > 0 ? side_color(team(un)) : 0x707070ffu
     let dx = float(DIR_X[un.facing & 3])
     let dy = float(DIR_Y[un.facing & 3])
     // arrow: a triangle out of the disc in the facing direction

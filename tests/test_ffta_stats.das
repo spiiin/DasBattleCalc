@@ -4,7 +4,7 @@ options indenting = 4
 // Stats and equipment of every unit of the first test save against the
 // Status screens of the game (BizHawk, research/status_copy.lua: each
 // record copied over Marc's, then Status opened).
-//   battlecalc tests/test_ffta_stats.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
+//   battlecalc tests/test_ffta_stats.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
 require gui_common
 require strings
 require daslib/strings_boost

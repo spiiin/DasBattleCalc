@@ -7,7 +7,7 @@
 -- PROBE_CASES = "name=pick:K;addr:size:val;...|..."
 local OUT = "C:/src/DasBattleCalc/research/"
 local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
-local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
+local STATE = os.getenv("PROBE_STATE") or "C:/rom/BizHawk-2.11-win-x64/GBA/State/ffta_test_battle1.State"
 local FRAMES = tonumber(os.getenv("PROBE_FRAMES") or "1100")
 local UNITS = { 0x02000080, 0x020031D4, 0x020030CC }
 local log = io.open(OUT .. "ability_probe_log.txt", "w")

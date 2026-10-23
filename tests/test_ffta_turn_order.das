@@ -4,7 +4,7 @@ options indenting = 4
 // Replays the turn order recorded in the game (BizHawk, research/long.lua)
 // from the first test save: the model must pick the same unit every turn
 // when each turn ends the way it ended in the game.
-//   battlecalc tests/test_ffta_turn_order.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
+//   battlecalc tests/test_ffta_turn_order.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
 require gui_common
 require strings
 require gba_mem

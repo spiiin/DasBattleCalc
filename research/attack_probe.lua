@@ -5,9 +5,15 @@
 -- ("copy0xSRC>0xDST" copies a 0x108-byte unit record).
 local OUT = "C:/src/DasBattleCalc/research/"
 local speed = dofile(OUT .. "speed.lua")   -- fast, restores the speed on exit
-local STATE = "C:/rom/BizHawk-2.11-win-x64/GBA/State/Final Fantasy Tactics Advance (USA, Australia).mGBA.QuickSave1.State"
+local STATE = os.getenv("PROBE_STATE") or "C:/rom/BizHawk-2.11-win-x64/GBA/State/ffta_test_battle1.State"
 local PLAN = { [90] = "A", [130] = "Down", [150] = "A", [200] = "A", [300] = "Left", [360] = "A" }
-local log = io.open(OUT .. "attack_probe_log.txt", "w")
+-- PROBE_PLAN "frame:Button,...": other presses (second battle, Loki's
+-- menu already open: 20:Down,40:A,80:A,140:Right,180:A)
+if os.getenv("PROBE_PLAN") then
+  PLAN = {}
+  for f, b in string.gmatch(os.getenv("PROBE_PLAN"), "(%d+):(%a+)") do PLAN[tonumber(f)] = b end
+end
+local log = io.open(OUT .. (os.getenv("PROBE_LOG") or "attack_probe_log.txt"), "w")
 local dmg, hit = "-", "-"
 event.on_bus_exec(function() dmg = tostring(emu.getregister("R0")) end, 0x0813023C)
 event.on_bus_exec(function() hit = tostring(emu.getregister("R0")) end, 0x0812C8C6)

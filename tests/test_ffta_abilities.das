@@ -6,7 +6,7 @@ options indenting = 4
 // research/attack_probe.lua with record +0x3B patched (support), and
 // research/ability_probe.lua with the techs learned (+0x40 + index),
 // Euver moved next to Marc to (7, 5) for the enemy-only techs.
-//   battlecalc tests/test_ffta_abilities.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
+//   battlecalc tests/test_ffta_abilities.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
 require gui_common
 require strings
 require gba_mem

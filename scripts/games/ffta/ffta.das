@@ -244,7 +244,7 @@ class FftaGame : GameModule {
         target = -1
         var best = 1000
         for (i in range(length(units))) {
-            if (attacker >= 0 && i != attacker && units[i].side != units[attacker].side) {
+            if (attacker >= 0 && i != attacker && team(units[i]) != team(units[attacker])) {
                 let d = abs(units[i].x - units[attacker].x) + abs(units[i].y - units[attacker].y)
                 if (d < best) {
                     best = d
@@ -329,9 +329,12 @@ class FftaGame : GameModule {
                     abgr(0xffffff18u), 0.0, ImDrawFlags.None)
             }
             let un = units[i]
-            let enemy = un.side == 1
-            let color = i == selected ? 0xffffffffu : (enemy ? 0xffd0d0ffu : bt.regular.text)
-            icon_label_value(x + u(8.0), ry, w, row_h, enemy ? ICON_ENEMY : ICON_UNIT, color,
+            let tm = team(un)
+            // the team: a bar in its color, the name tinted
+            *dl |> AddRectFilled(ImVec2(x + u(3.0), ry + u(3.0)), ImVec2(x + u(7.0), ry + row_h - u(3.0)),
+                abgr(side_color(tm)), u(2.0), ImDrawFlags.None)
+            let color = i == selected ? 0xffffffffu : team_text_color(tm)
+            icon_label_value(x + u(10.0), ry, w - u(8.0), row_h, tm == TEAM_ENEMY ? ICON_ENEMY : ICON_UNIT, color,
                 false, "{un.name}  Lv{un.level}  Spd {un.speed}  CT {un.ct}")
             if (clicked) {
                 selected = i
@@ -1192,7 +1195,7 @@ class FftaGame : GameModule {
                     ImDrawFlags.None)
             }
             *dl |> AddRectFilled(ImVec2(origin.x + u(2.0), ry + u(3.0)), ImVec2(origin.x + u(6.0), ry + row_h - u(3.0)),
-                abgr(side_color(un.side)), u(2.0), ImDrawFlags.None)
+                abgr(side_color(team(un))), u(2.0), ImDrawFlags.None)
             let fg = t.unit == selected ? 0xffffffffu : bt.regular.text
             let dim = offset_color(fg, t.unit == selected ? -40 : 50)
             let ty = ry + floor((row_h - GetFontSize()) * 0.5)

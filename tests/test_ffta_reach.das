@@ -5,7 +5,7 @@ options indenting = 4
 // tile rule: research/range_probe.lua patched Marc's weapon and tile
 // heights in the first test save, opened Fight and logged the result of
 // 0x0809FEF0 for every tile (research/range_probe_log.txt, reach.py).
-//   battlecalc tests/test_ffta_reach.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
+//   battlecalc tests/test_ffta_reach.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
 require gui_common
 require strings
 require gba_mem

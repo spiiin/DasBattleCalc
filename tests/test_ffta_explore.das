@@ -5,7 +5,7 @@ options stack = 1000000     // the dasPEG parser of the Explore language recurse
 // Explore over the FFTA model (ffta_explore.das): every point of an
 // experiment must be the attack the calculator computes for the same
 // units (fight / act after the same edit).
-//   battlecalc tests/test_ffta_explore.das --state <QuickSave1.State> --rom <FFTA (USA).zip>
+//   battlecalc tests/test_ffta_explore.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
 require gui_common
 require math
 require strings
