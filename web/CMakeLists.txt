@@ -16,10 +16,18 @@ set(CMAKE_C_STANDARD 11)
 
 set(DASSDL3_DIR "C:/src/dasSDL3-localdas" CACHE PATH "dasSDL3 checkout: its daScript is built here")
 set(DASSDL3_WEB "C:/src/dasSDL3/build/web" CACHE PATH "a dasSDL3 Web build tree: only its SDL3 wasm is used")
-file(STRINGS "${DASSDL3_WEB}/CMakeCache.txt" sdl_line REGEX "^SDL3_SOURCE_DIR:STATIC=")
-string(REGEX REPLACE "^[^=]*=" "" SDL_SRC "${sdl_line}")
+# or SDL3 built on its own (CI): SDL3_SOURCE + SDL3_BUILD
+set(SDL3_SOURCE "" CACHE PATH "SDL3 sources (instead of DASSDL3_WEB)")
+set(SDL3_BUILD "" CACHE PATH "SDL3 static wasm build tree (instead of DASSDL3_WEB)")
+if(SDL3_SOURCE)
+    set(SDL_SRC "${SDL3_SOURCE}")
+else()
+    file(STRINGS "${DASSDL3_WEB}/CMakeCache.txt" sdl_line REGEX "^SDL3_SOURCE_DIR:STATIC=")
+    string(REGEX REPLACE "^[^=]*=" "" SDL_SRC "${sdl_line}")
+    set(SDL3_BUILD "${DASSDL3_WEB}/_deps/sdl3-build")
+endif()
 if(NOT EXISTS "${SDL_SRC}/include/SDL3/SDL.h")
-    message(FATAL_ERROR "Can not find SDL3 sources of ${DASSDL3_WEB}")
+    message(FATAL_ERROR "Can not find SDL3 sources: ${SDL_SRC}")
 endif()
 set(NODE_EXECUTABLE "" CACHE FILEPATH "node.exe of emsdk")
 set(DAS "${DASSDL3_DIR}/third_party/daScript")
@@ -61,12 +69,12 @@ include_directories(
     ${N} ${N}/third_party ${CMAKE_SOURCE_DIR}
     ${DASSDL3_DIR}/src ${DASSDL3_DIR}/src/libraries ${DASSDL3_DIR}/web
     ${DAS}/include ${DAS}/3rdparty/fmt/include ${CMAKE_BINARY_DIR}/dascript/include ${DAS}/3rdparty/uriparser/include
-    ${DASSDL3_WEB}/_deps/sdl3-build/include-revision ${SDL_SRC}/include
+    ${SDL3_BUILD}/include-revision ${SDL_SRC}/include
     ${IMGUI}/imgui ${IMGUI}/src ${DAS}/modules/dasClipboard/src)
 add_compile_definitions(GUI_PROJECT_DIR="")
-set(SDL_LIBS ${DASSDL3_WEB}/_deps/sdl3-build/libSDL3.a)
-if(EXISTS "${DASSDL3_WEB}/_deps/sdl3-build/libSDL_uclibc.a")   # only with SDL_SHARED; static has it inside
-    list(APPEND SDL_LIBS ${DASSDL3_WEB}/_deps/sdl3-build/libSDL_uclibc.a)
+set(SDL_LIBS ${SDL3_BUILD}/libSDL3.a)
+if(EXISTS "${SDL3_BUILD}/libSDL_uclibc.a")   # only with SDL_SHARED; static has it inside
+    list(APPEND SDL_LIBS ${SDL3_BUILD}/libSDL_uclibc.a)
 endif()
 
 # native code without daScript: used by the generator and by the page
