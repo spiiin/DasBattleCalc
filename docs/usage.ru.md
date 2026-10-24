@@ -39,6 +39,7 @@ build\bin\battlecalc.exe tests\test_ffta_export.das --state <ffta_test_battle1.S
 build\bin\battlecalc.exe tests\test_ffta_explore.das --state <ffta_test_battle1.State> --rom <FFTA (USA).zip>
 build\bin\battlecalc.exe tests\test_ffta_battle2.das --state <ffta_test_battle2.State> --start <ffta_test_battle2_start.State> --rom <FFTA (USA).zip>
 build\bin\battlecalc.exe tests\test_explore.das
+build\bin\battlecalc.exe tests\test_ffta2_explore.das --state <сейв FFTA2: Luso рядом с Sasarr> --rom <FFTA2 (USA).zip>
 ```
 
 ### Веб-версия (standalone AOT)
@@ -165,6 +166,26 @@ scene Marc vs Euver with Fire from back   // иначе — как на вкла
 - Ошибки — с номером строки: синтаксис («near '…'»), неизвестный оператор, столбец (со списком столбцов), функция,
   параметр.
 
+#### Explore в FFTA2
+
+Тот же язык, свои параметры (`scripts/games/ffta2/ffta2_explore.das`); вкладки Calculation → Explore и Battle →
+Chart, сцена — с вкладки Attack (атакующий, цель, действие, сторона, привилегия клана).
+
+- **Параметры** `atk.*` / `tgt.*`: `attack defense magick resistance` (база, как в колонке base экрана Unit Info:
+  значение записи / 4; `attack_raw` … — само значение записи), `speed`, `evasion move jump` (только чтение),
+  `attack_total` … (с экипировкой, только чтение), `hp max_hp mp max_mp ct level`, `job`, `weapon`, `support`,
+  `status.<имя>` (0 / 1; имя — как в игре, буквами и цифрами, `↑` / `↓` — `up` / `down`: `status.protect`,
+  `status.shell`, `status.defenseup`, `status.speeddown`, `status.oil` …). Сцена: `action` (способность),
+  `side` (1 спереди, 2 сбоку, 3 сзади, 0 — по позициям), `privilege` (привилегия клана).
+- **Генераторы**: `jobs`, `weapons`, `supports` (851..881 и none), `actions` (Attack и способности с уроном или
+  лечением — список вкладки Attack), `sides`.
+- **Столбцы каждой точки**: `damage healing dmg_min dmg_max hit hit_real crit expected reach distance mp_cost attack
+  defense power base scaled after_side affinity` (`healing` 1 — число в `damage` лечит; `attack defense power` —
+  множители формулы / 10; `base scaled after_side` — её промежуточные значения, см. разбивку на вкладке Attack).
+- Точка считается пошаговой формулой (`action2`), а способности, которые она не покрывает, — скриптами игры (VM).
+  Способность «на себя» (диапазон 8) применяется к атакующему.
+- `scene A vs B with Fire from back` — как в FFTA.
+
 ## Как устроено
 
 ```
@@ -186,6 +207,8 @@ scripts/
   games/ffta/        ffta_battle.das (RAM -> юниты, модель порядка ходов), ffta.das (панели), ffta_explore.das
                      (параметры, значения осей и метрики экспериментов), ffta_gfx.das (спрайты и иконки из ROM;
                      распаковка и текстуры — native/gba_gfx.cpp)
+  games/ffta2/       FFTA2: ffta2_battle / _attack / _vm / _forecast / _turns (модель), ffta2.das (панели),
+                     ffta2_explore.das (Explore)
   ui/explore_view    таблица (сортировка, только видимые строки) и график (линии, столбики, точки, лог-шкалы)
 research/          исследование FFTA: notes.md (результаты), Lua-скрипты BizHawk, дизассемблер Thumb, симулятор
 tests/             тесты на daslang
