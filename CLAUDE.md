@@ -16,7 +16,8 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   `research/status_copy.lua` (запись юнита копируется в запись Marc, затем открывается Status).
 - FFTA2 (NDS): `battlecalc --game ffta2 --state <ffta2_test_battle1.State> --rom <FFTA2.zip>`; тесты
   `tests/test_nds_mem.das` (чтение RAM melonDS и файлов ROM), `tests/test_ffta2_battle.das` (юниты и экраны Unit Info),
-  `tests/test_ffta2_attack.das` (175 прогнозов Attack игры, формула переведена из скриптов VM; 200 настоящих ударов, предсказанных по сидам генераторов). Пробы FFTA2: `research/ffta2/plan_probe.lua` (план ввода,
+  `tests/test_ffta2_attack.das` (175 прогнозов Attack игры, формула переведена из скриптов VM; 200 настоящих ударов, предсказанных по сидам генераторов),
+  `tests/test_ffta2_abilities.das` (236 способностей по прогнозам игры; данные — `research/ffta2/abil1.txt`). Пробы FFTA2: `research/ffta2/plan_probe.lua` (план ввода,
   скриншоты, дампы, лог записей / исполнения), `vary_probe.lua` (прогноз при правках RAM), `exec_probe.lua` (настоящие удары с заданными сидами), `arm.py` (дизассемблер ARM), `vmdis.py` / `vmdec.py` (скрипты VM), `natives.py` (нативные вызовы).
   Общие части игр: `scripts/ui/battle_field.das` (изометрическое поле: `FieldMap`, `FieldUnit`, ввод — `FieldInput`),
   `scripts/ui/roster.das`, `scripts/ui/inspector.das`, `scripts/core/teams.das`, `scripts/core/config.das` (local.cfg:

@@ -12,6 +12,7 @@ options indenting = 4
 //   b            Luso's bare-hand power; af Sasarr's Fire affinity
 //   sa / st      a status of Luso / Sasarr (record +0x28 bits, status1..3.txt)
 //   sup / tsup   Luso's / Sasarr's support ability; tj Sasarr's job
+//   ab           the ability (default Attack; magic1.txt: Fire, Cure, ...)
 //   battlecalc tests/test_ffta2_attack.das --state <ffta2_test_battle1.State> --rom <FFTA2 (USA)>.zip
 require gba_mem
 require gui_common
@@ -21,6 +22,25 @@ require ../scripts/games/ffta2/ffta2_battle.das
 require ../scripts/games/ffta2/ffta2_attack.das
 
 let CASES = fixed_array<string>(
+    "ab=63 | 99 21",
+    "ab=63 st=25 | 99 19",
+    "ab=63 sa=38 | 99 22",
+    "ab=63 sa=39 | 99 18",
+    "ab=63 st=42 | 99 19",
+    "ab=63 st=43 | 99 21",
+    "ab=63 sup=855 | 99 40",
+    "ab=63 sup=853 | 99 22",
+    "ab=63 tsup=854 | 99 19",
+    "ab=63 w=128 | 99 22",
+    "ab=63 t=293 | 90 65518",
+    "ab=63 t=359 | 99 9",
+    "ab=63 st=57 | 80 21",
+    "ab=55 | 100 21",
+    "ab=55 st=25 | 100 19",
+    "ab=56 | 100 36",
+    "ab=66 t=352 | 99 0",
+    "ab=92 f=2 | 99 58",
+    "ab=88 | 99 17",
     "sa=10 | 99 20",
     "sa=36 | 99 20",
     "sa=37 | 99 15",
@@ -264,8 +284,10 @@ def find_unit(units : array<Unit2>; name : string) : int {
     return -1
 }
 
-def apply_edit(var att, tgt : Unit2; var game_facing : int&; key : string; v : int) {
-    if (key == "a") {
+def apply_edit(var att, tgt : Unit2; var game_facing : int&; var ability : int&; key : string; v : int) {
+    if (key == "ab") {
+        ability = v
+    } elif (key == "a") {
         att.raw[0] = v
     } elif (key == "d") {
         tgt.raw[1] = v
@@ -317,15 +339,16 @@ def main() : int {
         att.x = 9
         att.y = 8
         var game_facing = 1
+        var ability = ATTACK_ABILITY
         for (e in split(parts[0], " ")) {
             let kv <- split(e, "=")
-            apply_edit(att, tgt, game_facing, kv[0], to_int(kv[1]))
+            apply_edit(att, tgt, game_facing, ability, kv[0], to_int(kv[1]))
         }
         tgt.facing = FACING_FROM_GAME[game_facing]
         recompute_unit(att)
         recompute_unit(tgt)
         let want <- split(parts[1], " ")
-        let f <- fight2(att, tgt, side_of2(att, tgt))
+        let f <- action2(att, tgt, read_ability2(ability), side_of2(att, tgt))
         total++
         if (f.hit != to_int(want[0]) || (f.damage & 0xFFFF) != to_int(want[1])) {
             failed++

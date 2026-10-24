@@ -48,6 +48,11 @@ end
 for a in string.gmatch(os.getenv("PROBE_EXEC") or "", "%x+") do
   event.on_bus_exec(function(addr) log_regs("exec", addr, 0) end, tonumber(a, 16))
 end
+-- PROBE_ABILITY: the forecast (0x02072FFC) computed for this ability id
+local probe_ability = tonumber(os.getenv("PROBE_ABILITY") or "0")
+if probe_ability ~= 0 then
+  event.on_bus_exec(function() emu.setregister("ARM9 r1", probe_ability) end, 0x02072FFC)
+end
 local save_frame, save_path = string.match(SAVE, "(%d+):(.+)")
 save_frame = tonumber(save_frame)
 local function dump(file)

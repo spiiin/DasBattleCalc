@@ -7,7 +7,7 @@ options persistent_heap
 options gc
 
 // Desktop entry: SDL window + renderer, the ImGui backends and our loop.
-// Options: --game ffta | ffta2, --ui-scale K, --shot file.png [--frames N], --script "...".
+// Options: --game ffta | ffta2 (--action <ability name>), --ui-scale K, --shot file.png [--frames N], --script "...".
 require dassdl3/sdl3_imgui
 require dassdl3/sdl3_scope
 require gui_common

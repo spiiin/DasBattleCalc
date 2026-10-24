@@ -35,6 +35,8 @@ let private JOB_FILE = 1                // sysdata: jobs, 72 bytes
 let private JOB_SIZE = 72
 let private EQUIP_FILE = 16             // sysdata: equipment, 40 bytes by item id
 let private EQUIP_SIZE = 40
+let private ABILITY_FILE = 4            // sysdata: abilities, 0x34 bytes
+let private ABILITY_SIZE = 52
 let private NAMES = 0                   // JD_message tables
 let private JOB_NAMES = 1
 let private ITEM_NAMES = 11
@@ -85,6 +87,7 @@ struct Unit2 {
     @hide bare_power : int          // job +48: Fight power without a weapon
     @hide job_hit : int             // job +41: the base of a hit on this unit (100)
     @hide job_50 : int              // job +50: 2 - never hit from the back
+    @hide flying : bool             // job +66 bit 3 (native 2875)
     @caption = "Support" @readonly support_name : string
     @hide support : int             // record +0x50: ability id (851 Attack+ .. 881 Elusion), 0 none
     @hide reaction : int            // record +0x4E
@@ -183,6 +186,53 @@ def read_item2(id : int) : Item2 {
     return it
 }
 
+// An ability (sysdata 4; research/ffta2/notes.md, "Abilities"). Up to
+// four effects: the type (a function of script 332 deciding whether it
+// applies to the target), the functions applying it (script 897), of
+// its hit (784), of its amount (598); Attack and the damage spells:
+// 0F 01 01 01.
+struct Ability2 {
+    id : int
+    name : string
+    element : int                   // +2
+    mp : int                        // +3: MP cost
+    power : int                     // +6
+    flags : uint                    // +0x20: bit 3 magick, 18 x2 vs counters, 28 by side
+    fx : int4[4]                    // +0x10: effects (type = condition, apply, hit, amount functions)
+}
+
+def ability_count() : int {
+    return nds_buf_size(nds_pak_file(SYSDATA_IDX, SYSDATA_PAK, ABILITY_FILE)) / ABILITY_SIZE
+}
+
+def read_ability2(id : int) : Ability2 {
+    var a = Ability2(id = id)
+    if (id <= 0 || id >= ability_count()) {
+        return a
+    }
+    let buf = nds_pak_file(SYSDATA_IDX, SYSDATA_PAK, ABILITY_FILE)
+    let base = id * ABILITY_SIZE
+    a.name = ffta2_message(ABILITY_NAMES, id)
+    a.element = int(nds_buf_read8(buf, base + 2))
+    a.mp = int(nds_buf_read8(buf, base + 3))
+    a.power = int(nds_buf_read16(buf, base + 6))
+    a.flags = nds_buf_read32(buf, base + 0x20)
+    for (k in range(4)) {
+        let o = base + 0x10 + 4 * k
+        a.fx[k] = int4(int(nds_buf_read8(buf, o)), int(nds_buf_read8(buf, o + 1)), int(nds_buf_read8(buf, o + 2)),
+            int(nds_buf_read8(buf, o + 3)))
+    }
+    return a
+}
+
+def is_magick2(a : Ability2) : bool {
+    return (a.flags & 8u) != 0u
+}
+
+def by_side2(a : Ability2) : bool {
+    return (a.flags & 0x10000000u) != 0u
+}
+
 // ------------------------------------------------------------ units
 
 let private RAM_LO = 0x02000000u
@@ -209,6 +259,7 @@ def set_job2(var u : Unit2; job : int) {
     u.bare_power = job_byte(job, 48)
     u.job_hit = job_byte(job, 41)
     u.job_50 = job_byte(job, 50)
+    u.flying = (job_byte(job, 66) & 8) != 0
 }
 
 // base, items and total of each stat (after an edit of the equipment)

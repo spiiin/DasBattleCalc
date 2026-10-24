@@ -10,6 +10,12 @@ local STATE = os.getenv("PROBE_STATE") or "C:/rom/BizHawk-2.11-win-x64/NDS/State
 local CASES = os.getenv("PROBE_CASES") or (OUT .. "cases.txt")
 local FORECAST = tonumber(os.getenv("PROBE_FORECAST") or "2292FC6", 16)   -- u16 damage, u16 hit
 local SETTLE = tonumber(os.getenv("PROBE_SETTLE") or "40")
+-- a case may set "ab=<id>": the forecast (0x02072FFC, r1 = the ability)
+-- is computed for that ability instead of the menu's Attack
+local ability = 0
+event.on_bus_exec(function()
+  if ability ~= 0 then emu.setregister("ARM9 r1", ability) end
+end, 0x02072FFC)
 
 local function rd(a, n)
   a = a - 0x02000000
@@ -41,6 +47,7 @@ for line in io.lines(CASES) do
   local name, rest = string.match(line, "^(%S+)%s*(.*)$")
   if name and not string.match(name, "^#") then
     local saved = {}
+    ability = tonumber(string.match(rest, "ab=(%d+)") or "0")
     for a, n, v in string.gmatch(rest, "(%x+):(%d):(%w+)") do
       local addr, size = tonumber(a, 16), tonumber(n)
       saved[#saved + 1] = { addr, size, rd(addr, size) }

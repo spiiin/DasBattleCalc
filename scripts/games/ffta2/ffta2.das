@@ -43,6 +43,10 @@ def private right2(x, baseline : float; s : string; color : uint) {
     text_at_baseline(x - text_width(s), baseline, s, color)
 }
 
+def private magick_text(ab : Ability2) : string {
+    return ab.id == ATTACK_ABILITY ? "" : (is_magick2(ab) ? ", magick" : ", physical")
+}
+
 class Ffta2Game : GameModule {
     units : array<Unit2>
     saved : array<Unit2>              // as read from the state: Revert
@@ -54,6 +58,11 @@ class Ffta2Game : GameModule {
     calc_tab : int = 0                // 0 units, 1 attack
     side_choice : int = 0             // 0 auto, 1 + Side2
     privilege : int = 0               // the clan privilege (game variable 369), 0 none
+    actions : array<int>              // the abilities the model computes, Attack first
+    action_names : array<string>
+    action : int = 0                  // index in actions
+    action_filter : string
+    rom_serial : uint                 // actions are rebuilt for another ROM
     stats_open : bool = true
     equip_open : bool = true
     state_path : string
@@ -321,6 +330,10 @@ class Ffta2Game : GameModule {
 
     // the units with their Unit Info stats, the one with the highest CT first
     def override draw_calc(x, y, w, h : float) : void {
+        if (rom_serial != gba_rom_serial()) {
+            rom_serial = gba_rom_serial()
+            actions |> clear()
+        }
         SetCursorScreenPos(ImVec2(x, y))
         if (length(units) == 0) {
             bl_label(message, ICON_TURNS)
@@ -373,49 +386,80 @@ class Ffta2Game : GameModule {
         let tgt = units[target]
         let auto_side = side_of2(att, tgt)
         let side = side_choice == 1 ? Side2.Front : (side_choice == 2 ? Side2.Side : (side_choice == 3 ? Side2.Back : auto_side))
-        let f <- fight2(att, tgt, side, privilege)
+        if (length(actions) == 0) {
+            self->make_actions()
+        }
+        let ab = read_ability2(actions[clamp(action, 0, length(actions) - 1)])
+        let f <- action2(att, tgt, ab, side, privilege)
         let fg = bt.regular.text | 0xffu
         let dim = offset_color(fg, 60)
+        // the action: a name filter, then the matching actions
         SetCursorScreenPos(ImVec2(x, y))
-        bl_label("{att.name} -> {tgt.name}: Attack with {f.weapon}", ICON_ATTACK)
-        SetCursorScreenPos(ImVec2(x + w - u(250.0), y))
-        bl_label("Side:", -1, u(50.0))
-        SetCursorScreenPos(ImVec2(x + w - u(200.0), y))
+        bl_label("{att.name} -> {tgt.name}:", ICON_ATTACK)
+        let lx = x + text_width("{att.name} -> {tgt.name}:") + u(30.0)
+        SetCursorScreenPos(ImVec2(lx, y))
+        bl_string("action2_filter", action_filter, u(110.0))
+        var names : array<string>
+        var ids : array<int>
+        var cur = 0
+        let flt = to_lower(action_filter)
+        for (k in range(length(actions))) {
+            let name = action_names[k]
+            if (k == action || flt == "" || find(to_lower(name), flt) >= 0) {
+                if (k == action) {
+                    cur = length(names)
+                }
+                names |> push(name)
+                ids |> push(k)
+            }
+        }
+        SetCursorScreenPos(ImVec2(lx + u(114.0), y))
+        if (bl_choice("action2_choice", names, cur, u(200.0))) {
+            action = ids[cur]
+        }
+        // second row: the side and the clan privilege
+        let ry2 = y + u(26.0)
+        SetCursorScreenPos(ImVec2(x + u(22.0), ry2))
+        bl_label("Side:")
+        SetCursorScreenPos(ImVec2(x + u(70.0), ry2))
         var sides <- ["Auto ({SIDE2_NAMES[int(auto_side)]})", "Front", "Side", "Back"]
-        bl_choice("side2_choice", sides, side_choice, u(200.0))
-        SetCursorScreenPos(ImVec2(x + w - u(250.0), y + u(26.0)))
-        bl_label("Privilege:", -1, u(80.0))
-        SetCursorScreenPos(ImVec2(x + w - u(170.0), y + u(26.0)))
+        bl_choice("side2_choice", sides, side_choice, u(156.0))
+        SetCursorScreenPos(ImVec2(x + u(234.0), ry2))
+        bl_label("Privilege:")
+        SetCursorScreenPos(ImVec2(x + u(310.0), ry2))
         var pv = float(privilege)
-        if (bl_number("privilege2", "", pv, 1.0, 0, u(170.0))) {
+        if (bl_number("privilege2", "", pv, 1.0, 0, u(120.0))) {
             privilege = clamp(int(round(pv)), 0, 99)
         }
-        var ry = y + u(30.0)
+        var ry = y + u(54.0)
         let col = x + u(150.0)
-        let big = "Forecast: {f.damage} damage, {f.hit}% hit"
+        let what = f.healing ? "healing" : "damage"
+        let big = f.unsupported ? "Not translated: {join(f.mods, ", ")}" : "Forecast: {f.damage} {what}, {f.hit}% hit   ({ab.name}{magick_text(ab)})"
         text_at_baseline(x + u(8.0), ry + u(15.0), big, fg)
         ry += u(21.0)
-        let real = "Real: hit {fmt(":.1f", f.hit_prob * 100.0)}%, critical {fmt(":.2f", f.crit_prob * 100.0)}% (x2), damage {f.dmg_min}..{f.dmg_max}, ~{fmt(":.1f", f.expected)} per attack"
+        let crit = f.crit_prob > 0.0 ? ", critical {fmt(":.2f", f.crit_prob * 100.0)}% (x2)" : ""
+        let real = "Real: hit {fmt(":.1f", f.hit_prob * 100.0)}%{crit}, {what} {f.dmg_min}..{f.dmg_max}, ~{fmt(":.1f", f.expected)} per use"
         text_at_baseline(x + u(8.0), ry + u(15.0), real, fg)
         ry += u(21.0)
         if (battle_rng != 0u && tgt.rng_seed != 0u) {
             let r = roll_attack(f, battle_rng, tgt.rng_seed)
-            let next = r.hit ? "{r.damage} damage{r.crit ? " (critical)" : ""}" : "miss"
+            let next = r.hit ? "{r.damage} {what}{r.crit ? " (critical)" : ""}" : "miss"
             text_at_baseline(x + u(8.0), ry + u(15.0),
-                "Next roll from the save's generators: {next} (if {att.name} attacks before anything else rolls)", dim)
+                "Next roll from the save's generators: {next} (if {att.name} acts before anything else rolls)", dim)
             ry += u(21.0)
         }
         ry += u(7.0)
         var rows : array<tuple<string; string>>
         let ws = weapon_slot2(att)
-        let power = ws >= 0 ? "{f.weapon} {att.equip[ws].bonus[0]}" : "bare hands {att.bare_power} (job)"
-        rows |> push(("Attack x10", "{f.atk10} (raw {att.raw[0]})"))
-        rows |> push(("Weapon x10", "{f.power10} ({power} + Attack of other items)"))
-        rows |> push(("Defense x10", "{f.def10} (raw {tgt.raw[1]}), armour x10 {f.armor10}"))
+        let power = f.weapon == ab.name ? "{ab.name} power {ab.power}" : (ws >= 0 ? "{f.weapon} {att.equip[ws].bonus[0]}" : "bare hands {att.bare_power} (job)")
+        let mg = is_magick2(ab)
+        rows |> push((mg ? "Magick x10" : "Attack x10", "{f.atk10} (raw {att.raw[mg ? 2 : 0]})"))
+        rows |> push(("Power x10", "{f.power10} ({power} + {mg ? "Magick" : "Attack"} of {mg ? "the" : "other"} items)"))
+        rows |> push((mg ? "Resistance x10" : "Defense x10", "{f.def10} (raw {tgt.raw[mg ? 3 : 1]}), its equipment x10 {f.armor10}"))
         rows |> push(("Base", "{f.base} = {f.atk10} x 25/100 + {f.power10} - ({f.def10} x 25/100 + {f.armor10}) / 2"))
         rows |> push(("Scaled", "{f.scaled} = base x (100 + privilege {f.privilege}) / 100 / 10 / 2"))
         let side_k = f.side == Side2.Back ? "x2" : (f.side == Side2.Side ? "x1.5" : "x1")
-        rows |> push(("Side", "{SIDE2_NAMES[int(f.side)]} {side_k} -> {f.after_side}"))
+        rows |> push(("Side", f.by_side ? "{SIDE2_NAMES[int(f.side)]} {side_k} -> {f.after_side}" : "not by side: x1.5 -> {f.after_side}"))
         let aff = f.affinity >= 0 && f.affinity < 5 ? AFFINITY_NAMES[f.affinity] : "{f.affinity}"
         rows |> push(("Element", "{ELEMENT2_NAMES[f.element]}: target {aff} -> {f.damage} (1..999)"))
         if (length(f.mods) > 0) {
@@ -428,6 +472,28 @@ class Ffta2Game : GameModule {
             text_at_baseline(x + u(8.0), ry + u(15.0), r._0, dim)
             text_at_baseline(col, ry + u(15.0), r._1, fg)
             ry += u(21.0)
+        }
+    }
+
+    // Attack and every ability whose damage or healing the model computes
+    def make_actions() : void {
+        actions |> clear()
+        action_names |> clear()
+        actions |> push(ATTACK_ABILITY)
+        action_names |> push("Attack")
+        for (aid in range(1, ability_count())) {
+            let ab = read_ability2(aid)
+            if (aid != ATTACK_ABILITY && translated_ability(ab)) {
+                actions |> push(aid)
+                action_names |> push(ab.name)
+            }
+        }
+        // --action <name>: the action to start with (screenshots, checks)
+        let want = gui_arg("--action", "")
+        for (k in range(length(action_names))) {
+            if (want != "" && action_names[k] == want) {
+                action = k
+            }
         }
     }
 

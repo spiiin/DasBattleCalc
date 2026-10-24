@@ -291,3 +291,39 @@ anything: the game's randomness is all in seeded generators.
 - 100 attacks with battle seeds (`exec_seeds1.txt`: 45 x 17, 14..20,
   crits 28..40) and 100 at 80 % with target seeds (`exec_hit80.txt`) are
   predicted exactly (`roll_attack`; `tests/test_ffta2_attack.das`).
+
+## Abilities (2026-10-24)
+
+`vary_probe.lua` cases with `ab=<id>` set r1 of the forecast call
+(0x02072FFC) - the game forecasts any ability from the Attack cursor.
+`abil1.txt`: 245 abilities, `magic1.txt`: Fire / Cure with modifiers.
+
+An ability (sysdata 4, 0x34 bytes) has up to four effects at +0x10, four
+bytes each: type, apply, hit, amount. 0x02070ACC runs each effect: the
+type is a function of the condition script (pc.bin hash 332, list 'b';
+mode 2), then the hit (784, function = hit byte), the amount (598,
+function = amount byte), the application (897, function = apply byte:
+1 damage, 17 healing, ...). Attack and the damage spells: 0F 01 01 01;
+Cure 21 11 09 01 (+ 25 01 01 13: damage to flying targets); Sidewinder
+23 01 01 01 (humanoids) + 27 01 01 02 (monsters: x2).
+
+- Conditions (script 332): F15 any target (not KO / 0 HP; not Invisible
+  without Reveal 866), F24 the other team (record +0x0A bit 0), F33 not
+  flying, F35 humanoid jobs (< 62, 141..146, > 156), F37 flying, F39
+  monsters (62..139). Flying: job +66 bit 3 (native 2875: the job getter
+  maps k 0x8B there - not k - 0x4C beyond +0x3E).
+- Amounts (598): F1 = sub_67E0 (physical: Attack vs Defense; magick, flag
+  bit 3: Magick vs Resistance, the ability's power + the equipment's
+  Magick, target Shell x1.3, Magick / Resistance up / down, Turbo MP
+  x1.5 + x1.5; not by side: x1.5 always); healing (apply 17): F1 without
+  the target's equipment; F2 / F3 / F4 = F1 x2 / x3 / 2. 244 Natural
+  Selection is special (a race chosen by the game).
+- Hits (784): F1 job +41 - Evasion (magick too: Evasion up lowers Fire
+  to 80 %), F2 the same + 20, F3 the same / 2, F9 100 (Elusion aside).
+- The real use (sub_92A0): the spread for all, the critical only for
+  Attack (no roll otherwise).
+
+236 of 245 forecasts agree (`tests/test_ffta2_abilities.das`); 9 use
+conditions or amounts not translated. The first battle's clan members
+have no learned abilities (record +0x60.. zero): the Attack tab offers
+every ability the model computes.
