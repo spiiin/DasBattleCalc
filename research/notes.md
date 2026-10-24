@@ -478,4 +478,99 @@ Mage, Archer, White Mage; the Judge). Saves: `ffta_test_battle2_start`
 - The wrapper's +0x1E is not the team: here the Goblins have 0 (as the
   clan) and Cristine and Nusratt of the clan have 1. Teams come from the
   record flags +0x28 (0x8000 enemy, 0x2000 guest, 0x1000 judge): `team()`.
+  It is the palette row of the unit's map sprite (see "Graphics").
+
+# Graphics (2026-10-24): portraits, item icons, map sprites
+
+Found with `gfx_probe.lua` (logs the decompressors and VRAM copies,
+dumps VRAM / palette / OAM / EWRAM), `gfx_writes.lua`, `gfx_producer.lua`,
+`gfx_portrait_ids.lua` and the disassembly; decoded and checked by
+`gfx_decode.py`, `gfx_sheets.py` (portraits, icons) and `gfx_sprites.py`
+(map sprites). Their outputs go to `research/gfx/` (not in the
+repository: they are pictures from the ROM). Pointers below are ROM
+addresses; "table T" = the game's offset table (`0x080071A8`): byte 0 ==
+2 - entry i at T + 4 + u16[T + 4 + 2i], else at T + 4 + u32[T + 4 + 4i];
+u16 at T + 2 = number of entries.
+
+## Compression
+
+- **LZSS** (`0x0800543C(dst, src)`): 4-byte big-endian output length,
+  then opcodes by the high bits of each byte (Data Crystal, "Final
+  Fantasy Tactics Advance: Compression Formats"): `1LLLLDDD DDDDDDDD`
+  copy L+3 from D+1 back, `01NNNNNN` N+1 literals, `001NNNNN` N+2 zeros,
+  `0001LLLL LLDDDDDD DDDDDDDD` copy, `0x01 N` N+3 x 0xFF, `0x02 N` N+3
+  zeros, `0x00 N DDDD` copy N+5.
+- **"A7" archive** (`0x08005318(archive, dst, first, count)`): `"A7"`,
+  BE16 entry count, BE32 offset of a shared dictionary, BE32 offsets of
+  the entries (from the archive start). Dictionary: kind, bits, and for
+  kind 0 a BE16 output length (kind 3: each entry starts with its own
+  BE16 length). An entry (`0x080051C4`): byte c with bit 7 - (c & 0x7F) + 1
+  literal bytes follow; else ((c << 1) >> (8 - bits)) + 3 bytes are copied
+  from the dictionary at ((c << 8) | next byte) & (0xFFFF >> (bits + 1)).
+- GBA BIOS LZ77 (`0x0801F100` dispatches 0x10 / 0x11 / 0x01) was not met
+  on these screens.
+
+## Portraits (Status screen, battle HUD)
+
+- Which portrait (`0x080CB868(dst, unit)`): a story character (record
+  `+0x04` > 1) - byte `+0x0B` of its 14-byte entry at `0x085273D8 +
+  14 * +0x04`; any other unit - job field `+0x0D` through the parent
+  chain (`0x080C8570`: job `+0x05` is the parent job, 0xFF = the record's
+  `+0x07`, 0 = this job). 103 portraits.
+- Tiles: LZSS at table `0x083E105C`[portrait], 8bpp (64-byte tiles), the
+  pixel values are OBJ colours 96..143.
+- Palette (`0x080CB7C0(unit, ally)`): character entry `+0x0C` (ally) /
+  `+0x0D` (enemy, record flags & 0x8000), else job `+0x0E` / `+0x0F`
+  through the chain; it is entry n of the A7 archive `0x083D5A1C` (165
+  entries, 48 colours = OBJ 96..143). `0x02002FC2 & 3` = 1 or 2 picks
+  the archives `0x083D965C` / `0x083DD360` instead (a screen mode, not
+  seen in battle).
+- Layout: table `0x08417F88`[portrait] = u16 piece count, then 6 bytes
+  per piece: y (signed), shape << 6 | 8bpp << 5, x low 8 bits, size << 6 |
+  x bit 8, u16 first tile (32-byte units). The pieces fill up to 64 x 88
+  pixels up-left of the origin (x -64..0, y -88..0); the screens show
+  the portrait mirrored and the Status screen only its lower 56 rows.
+- Checked: Marc's portrait from the ROM against the OBJ layer of the HUD
+  (2455 pixels) and of Status (2224) - all equal; the numbers the game
+  picks for the 5 units of the first battle (`gfx_portrait_ids.lua`) =
+  the model's (Marc 56 / 112, Lunais 15 / 30, ...).
+
+## Item icons (Status / equipment lists)
+
+- Icon of item i = entry i of the A7 archive `0x083C83FC` (522 entries,
+  128 bytes = 16 x 16, 4bpp tiles in the order top-left, top-right,
+  bottom-left, bottom-right); entry 0 = the empty slot.
+- Palette: k = byte `0x083C7FE4 + 4 + 2i` >> 4 (`0x080CB99C`), 0..2; the
+  palette is `0x0841A100 + 32k` (the screen loads them as BG palettes
+  13..15). Colour 0 transparent.
+- Checked: Marc's 3 icons + the empty slot decode byte for byte to the
+  VRAM of the Status screen; all 522 icons look right (`gfx/icons.png`).
+
+## Map sprites (units on the battle field)
+
+- Sprite set: story character - byte `+0x04` of its character entry;
+  other units - job `+0x07` through the parent chain (as the portrait).
+  243 sets: table `0x08390E44`[set] -> 84 animations of 12 bytes (u32
+  pointer to the animation, 2 x u32 0).
+- Animation: u32 frame count, then 20 bytes per frame: u32 tile offset
+  from `0x0869B89C` (4bpp tiles, not compressed), u32 layout offset from
+  `0x08852E7C`, then 0x108 / 0x110 (timing, not decoded), 0x80000, 0 or 1.
+  The standing animation is 0 when facing (wrapper `+0x1F`) is 0 or 3, 1
+  when 1 or 2; 2 and 3 are mirrored (seen on screen for facings 1..3;
+  facing 0 only by the animation number).
+- Layout: the same format as the portrait layout (u16 count, 6-byte
+  pieces, 4bpp here), origin at the feet; the frame's tile count is the
+  sum of its pieces. Layout 0: 16 x 40 (pieces 8x16 x 4 and 8x8 x 2,
+  10 tiles), `0x61E`: 32 x 40 (16x8 x 2, 16x16 x 4, 20 tiles).
+- Palette: row r = wrapper `+0x1E` (in the save), the palette is
+  `0x08419D60 + 32r` (with `0x02002FC2 & 3` = 1 / 2: `0x0841B340` /
+  `0x0841A860`); rows 0..2 and 12 seen. A special case writes row 13
+  (`0x08097B7E`, when wrapper object `+0x30` & 0x4000).
+- The game streams the current frame (`0x08021200`: tiles at
+  `0x0869B89C` + object `+0x20`) into the unit's 16 / 32 OBJ tiles through
+  a DMA queue (`0x08000AF0`); the sprite object is wrapper `+0x44`.
+- Checked: every unit on screen in both test battles - the frame of its
+  object drawn from the ROM against the OBJ layer: 0 different pixels
+  for 9 of 12, 9..109 where another unit's sprite overlaps; all sets
+  (`gfx/sprites.png`) look right (units, monsters, chests, crystals).
 
