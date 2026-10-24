@@ -270,6 +270,24 @@ def effect_applies(t : int; ab : Ability2; att, tgt : Unit2) : int {
     return -1
 }
 
+// How far an action reaches (ability +0x0B / +0x0C, the weapon's +5):
+// tiles by |dx| + |dy|; the height is not checked yet. min / max.
+def reach_range(att : Unit2; ab : Ability2) : int2 {
+    if (ab.range_kind == 7) {
+        let ws = weapon_slot2(att)
+        return int2(1, ws >= 0 ? max(att.equip[ws].reach, 1) : 1)
+    } elif (ab.range_kind == 8) {
+        return int2(0, 0)
+    }
+    return int2(0, ab.reach)
+}
+
+def in_reach(att : Unit2; ab : Ability2; x, y : int) : bool {
+    let r = reach_range(att, ab)
+    let d = abs(x - att.x) + abs(y - att.y)
+    return d >= r.x && d <= r.y
+}
+
 // an effect of it damages or heals (apply function 1 / 17)
 def damages_or_heals(ab : Ability2) : bool {
     if (ab.name == "" || ab.name == "-") {

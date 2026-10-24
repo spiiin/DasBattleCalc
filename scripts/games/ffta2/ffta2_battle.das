@@ -64,6 +64,7 @@ struct Item2 {
     kind : int                      // equipment +0 u16: 1..25 weapons, 26 shields, ...
     element : int                   // +4: ELEMENT2_NAMES
     code : int                      // +0x12: special property; 1..40 by element, 5 each: 1 absorb, 2 immune, 3 half, 4 weak
+    reach : int                     // +5: weapon range (swords 1, spears 2, bows 5..7, guns 7..8)
     two_hand : bool                 // +0x24 bit 2 (Doublehand counts such weapons)
     bonus : int[8]                  // by STAT2_LABELS
 }
@@ -190,6 +191,7 @@ def read_item2(id : int) : Item2 {
     it.kind = int(nds_buf_read16(buf, base))
     it.element = int(nds_buf_read8(buf, base + 4))
     it.code = int(nds_buf_read8(buf, base + 0x12))
+    it.reach = int(nds_buf_read8(buf, base + 5))
     it.two_hand = (nds_buf_read8(buf, base + 0x24) & 4u) != 0u
     for (s in range(STAT2_COUNT)) {
         it.bonus[s] = int(int8(nds_buf_read8(buf, base + 19 + s)))
@@ -209,6 +211,9 @@ struct Ability2 {
     mp : int                        // +3: MP cost
     power : int                     // +6
     flags : uint                    // +0x20: bit 3 magick, 18 x2 vs counters, 28 by side
+    range_kind : int                // +0x0B: 7 the weapon's range, 8 the user only
+    reach : int                     // +0x0C: tiles (else)
+    area : int                      // +0x0E: the area's radius
     fx : int4[4]                    // +0x10: effects (type = condition, apply, hit, amount functions)
 }
 
@@ -228,6 +233,9 @@ def read_ability2(id : int) : Ability2 {
     a.mp = int(nds_buf_read8(buf, base + 3))
     a.power = int(nds_buf_read16(buf, base + 6))
     a.flags = nds_buf_read32(buf, base + 0x20)
+    a.range_kind = int(nds_buf_read8(buf, base + 0x0B))
+    a.reach = int(nds_buf_read8(buf, base + 0x0C))
+    a.area = int(nds_buf_read8(buf, base + 0x0E))
     for (k in range(4)) {
         let o = base + 0x10 + 4 * k
         a.fx[k] = int4(int(nds_buf_read8(buf, o)), int(nds_buf_read8(buf, o + 1)), int(nds_buf_read8(buf, o + 2)),
@@ -342,6 +350,59 @@ def private plausible_unit(rec, obj : uint) : bool {
     let team_byte = gba_read8(rec + 0x0Au)
     return (level >= 1u && level <= 99u && max_hp >= 1u && max_hp <= 999u && gba_read16(obj + 0x08u) <= max_hp &&
         (team_byte & 0xE0u) == 0x80u && gba_read8(obj + 0x0Cu) < 64u && gba_read8(obj + 0x0Du) < 64u)
+}
+
+// The battle map ("PANL", research/ffta2/notes.md, "Map"): u32 magic,
+// u32 size = 12 + w x h x 12, u8 w, u8 h at +8, then 12-byte tiles row by
+// row from +0x0C: +0 the height (as the game shows it), +4 flags (bit 31:
+// no tile). Found by its pointer [[0x0212EEA8] + 0xF4], else by a scan.
+struct Map2 {
+    w : int
+    h : int
+    height : array<int>             // -1: no tile
+    flags : array<uint>
+}
+
+def private panl_at(p : uint) : bool {
+    if (p < RAM_LO || p + 16u > RAM_HI || gba_read32(p) != 0x4C4E4150u) {
+        return false
+    }
+    let w = gba_read8(p + 8u)
+    let h = gba_read8(p + 9u)
+    return w > 0u && h > 0u && gba_read32(p + 4u) == 12u + w * h * 12u
+}
+
+def read_map2(var m : Map2) : bool {
+    m = Map2()
+    var p = 0u
+    let ptr = gba_read32(0x0212EEA8u)
+    if (ptr >= RAM_LO && ptr < RAM_HI && panl_at(gba_read32(ptr + 0xF4u))) {
+        p = gba_read32(ptr + 0xF4u)
+    } else {
+        var a = RAM_LO
+        while (a < RAM_HI && p == 0u) {
+            if (panl_at(a)) {
+                p = a
+            }
+            a += 4u
+        }
+    }
+    if (p == 0u) {
+        return false
+    }
+    m.w = int(gba_read8(p + 8u))
+    m.h = int(gba_read8(p + 9u))
+    for (i in range(m.w * m.h)) {
+        let t = p + 0x0Cu + uint(i) * 12u
+        let fl = gba_read32(t + 4u)
+        m.flags |> push(fl)
+        m.height |> push((fl & 0x80000000u) != 0u ? -1 : int(gba_read8(t)))
+    }
+    return true
+}
+
+def map_height(m : Map2; x, y : int) : int {
+    return x >= 0 && y >= 0 && x < m.w && y < m.h ? m.height[y * m.w + x] : -1
 }
 
 // The game's generators (0x0206F264 the battle's, 0x0205E950 a unit's):

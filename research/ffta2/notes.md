@@ -122,7 +122,6 @@ Moogle, Seeq, Gria; record +0x07 = 1..7, monsters 20). Test:
 right: the boss stays in place.
 
 Open:
-- map heights (MapData PANL, or the battle grid in RAM): the field is flat.
 
 ## Fight (2026-10-24)
 
@@ -379,3 +378,22 @@ unit ends its turns as its Assumed turn); `tests/test_ffta2_turns.das`:
 the 17 recorded turns (order, CT, ticks). Editing a status bit alone
 (Haste / Slow in the record) does not change ticks in the game: the
 durations count; the model takes the bits.
+
+## Map and reach (2026-10-24)
+
+The battle map is a "PANL" block (the name of its file in the data):
+u32 magic, u32 size = 12 + w x h x 12, u8 w, u8 h at +8, then 12-byte
+tiles row by row from +0x0C: +0 the height, +4 flags (bit 31: no tile;
+0x40 / 0x100 / 0x80: terrain kinds read by 0x020902EC), +8.. ?. The
+battle's map: [[0x0212EEA8] + 0xF4] (0x0208B124(map, x, y) returns the
+tile). `height_probe.lua` frees the cursor (B), walks it over all tiles
+and logs the cursor (u16 x, y at 0x0212F01A) and the height the game
+shows ("h 3.0": [0x02129A74] + 0xC938, x 16): `heights1.txt`, all 144
+tiles = byte +0. (A first screenshot read 3.5 on a 4 tile: the label was
+still moving.)
+
+Reach (the records; the targeting highlight is not in PANL and was not
+found yet): ability +0x0B = 7 - the weapon's range (equipment +5: swords
+1, spears 2, bows 5..7, guns 7..8, cards 8), 8 - the user only; else
++0x0C tiles (Fire 4, Holy 3, Air Render 3); +0x0E the area's radius.
+Distance |dx| + |dy|; heights not checked yet.

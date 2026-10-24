@@ -15,7 +15,7 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   (те же аргументы; прогнозы игры для сверки — `research/attack_probe.lua`). Экраны Status юнитов для сверки —
   `research/status_copy.lua` (запись юнита копируется в запись Marc, затем открывается Status).
 - FFTA2 (NDS): `battlecalc --game ffta2 --state <ffta2_test_battle1.State> --rom <FFTA2.zip>`; тесты
-  `tests/test_nds_mem.das` (чтение RAM melonDS и файлов ROM), `tests/test_ffta2_battle.das` (юниты и экраны Unit Info),
+  `tests/test_nds_mem.das` (чтение RAM melonDS и файлов ROM), `tests/test_ffta2_battle.das` (юниты, экраны Unit Info, карта высот — `research/ffta2/heights1.txt`),
   `tests/test_ffta2_attack.das` (175 прогнозов Attack игры, формула переведена из скриптов VM; 200 настоящих ударов, предсказанных по сидам генераторов),
   `tests/test_ffta2_abilities.das` (236 способностей по прогнозам игры; данные — `research/ffta2/abil1.txt`),
   `tests/test_ffta2_turns.das` (17 ходов из игры: порядок, CT, тики),

@@ -29,6 +29,7 @@ struct FieldMap {
     y0 : int
     height : array<int>
     water : array<bool>
+    shown_shift : int               // the game's height = height + shown_shift (0 must mean "no tile")
 }
 
 // facing 0 +y, 1 -x, 2 -y, 3 +x (FFTA's numbering; a game maps its own)
@@ -268,7 +269,7 @@ def draw_battle_field(m : FieldMap; units : array<FieldUnit>; selected, target :
                 diamond_outline(dl, c, v, u(1.5), 0xffa030ffu, u(1.5))
             }
             if (cell >= u(22.0) && hi > lo) {
-                let hs = "{hgt}"
+                let hs = "{hgt + m.shown_shift}"
                 text_at_baseline(c.x - text_width(hs) * 0.5, c.y + u(5.0), hs, 0x00000070u)
             }
             let here = field_unit_at(units, tx + m.x0, ty + m.y0)
@@ -360,7 +361,7 @@ def draw_battle_field(m : FieldMap; units : array<FieldUnit>; selected, target :
     }
     if (hovered && st.drag < 0 && field_height(m, mx, my) > 0) {
         let who = under >= 0 ? "  {units[under].name}" : ""
-        bl_tooltip("{mx}, {my}  height {field_height(m, mx, my)}{who}")
+        bl_tooltip("{mx}, {my}  height {field_height(m, mx, my) + m.shown_shift}{who}")
     }
     EndChild()
     return res

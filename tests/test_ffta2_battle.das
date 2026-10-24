@@ -8,6 +8,7 @@ options indenting = 4
 require gba_mem
 require gui_common
 require daslib/strings_boost
+require daslib/fio
 require ../scripts/games/ffta2/ffta2_battle.das
 
 var failed = 0
@@ -70,6 +71,22 @@ def main() : int {
         units[klesta].job == "Crushatrice")
     check_stats(units, "Luso", fixed_array<int>(44, 51, 15, 27, 57, 5, 4, 2))
     check_stats(units, "Moricad", fixed_array<int>(34, 35, 28, 58, 56, 0, 3, 2))
+    // the map: the height the game shows under the cursor on every tile
+    // (research/ffta2/height_probe.lua, heights1.txt)
+    var m : Map2
+    check("the battle map", read_map2(m) && m.w == 12 && m.h == 12)
+    var tiles = 0
+    var wrong = 0
+    for (line in split(fread("research/ffta2/heights1.txt"), "\n")) {
+        let p <- split(line, " ")
+        if (length(p) == 3) {
+            tiles++
+            if (map_height(m, to_int(p[0]), to_int(p[1])) * 16 != to_int(p[2])) {
+                wrong++
+            }
+        }
+    }
+    check("map heights: {tiles} tiles, {wrong} differ", tiles == 144 && wrong == 0)
     for (un in units) {
         print("{un.name} ({un.race} {un.job}) Lv{un.level} HP {un.hp}/{un.max_hp} MP {un.mp}/{un.max_mp} {un.position} CT {un.ct} team {fmt(":02X", un.team_byte)} stats {un.stat_total}\n")
     }

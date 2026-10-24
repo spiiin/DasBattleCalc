@@ -56,6 +56,7 @@ class Ffta2Game : GameModule {
     target : int = -1
     field = FieldState()
     field_map : FieldMap
+    map2 : Map2
     scene_tab : int = 0               // 0 field, 1 the game screen
     calc_tab : int = 0                // 0 turn order, 1 attack, 2 units
     side_choice : int = 0             // 0 auto, 1 + Side2
@@ -150,8 +151,18 @@ class Ffta2Game : GameModule {
         }
     }
 
-    // the map's heights are not read yet: a flat field around the units
+    // the battle map (heights shown as the game shows them); a flat field
+    // around the units when the state has none
     def make_map() : void {
+        if (read_map2(map2)) {
+            field_map = FieldMap(w = map2.w, h = map2.h, shown_shift = -1)
+            field_map.height |> resize(map2.w * map2.h)
+            field_map.water |> resize(map2.w * map2.h)
+            for (i in range(map2.w * map2.h)) {
+                field_map.height[i] = map2.height[i] + 1
+            }
+            return
+        }
         var w = 1
         var h = 1
         for (un in units) {
@@ -287,7 +298,21 @@ class Ffta2Game : GameModule {
             fu |> push(FieldUnit(name = un.name, x = un.x, y = un.y, facing = un.facing, team = un.team, alive = un.hp > 0))
         }
         let bar = u(28.0)
+        // the tiles the selected unit reaches with the Attack tab's action
         var reach : array<bool>
+        if (length(actions) == 0) {
+            self->make_actions()
+        }
+        if (selected >= 0 && selected < length(units) && length(actions) > 0 && field_map.w > 0) {
+            let ab = read_ability2(actions[clamp(action, 0, length(actions) - 1)])
+            reach |> resize(field_map.w * field_map.h)
+            for (ty in range(field_map.h)) {
+                for (tx in range(field_map.w)) {
+                    reach[ty * field_map.w + tx] = (field_map.height[ty * field_map.w + tx] > 0 &&
+                        in_reach(units[selected], ab, tx + field_map.x0, ty + field_map.y0))
+                }
+            }
+        }
         let input = draw_battle_field(field_map, fu, selected, target, reach, field, x + u(8.0), y, w - u(16.0), h - bar)
         if (input.select >= 0) {
             selected = input.select
@@ -496,7 +521,10 @@ class Ffta2Game : GameModule {
         }
         let hit_mods = length(f.hit_mods) > 0 ? ", {join(f.hit_mods, ", ")}" : ""
         rows |> push(("Hit", "{tgt.job_hit} (job) - Evasion {f.evasion}{hit_mods} = {f.hit}% (1..99)"))
-        rows |> push(("Distance", "{abs(att.x - tgt.x) + abs(att.y - tgt.y)} tiles (reach is not checked yet)"))
+        let rr = reach_range(att, ab)
+        let dist = abs(att.x - tgt.x) + abs(att.y - tgt.y)
+        let reach_text = in_reach(att, ab, tgt.x, tgt.y) ? "in reach" : "OUT OF REACH"
+        rows |> push(("Reach", "{dist} tiles: {reach_text} ({rr.x}..{rr.y}; heights not checked yet)"))
         for (r in rows) {
             text_at_baseline(x + u(8.0), ry + u(15.0), r._0, dim)
             text_at_baseline(col, ry + u(15.0), r._1, fg)
