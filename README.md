@@ -1,5 +1,8 @@
 # DasBattleCalc
 
+**Try it in the browser: https://spiiin.github.io/DasBattleCalc/** (you load your own save and ROM; the files stay in
+the browser).
+
 A battle calculator for **Final Fantasy Tactics Advance** (GBA, USA). It reads a BizHawk save state from the
 middle of a battle and shows what the game is about to do: turn order, damage, hit and critical chances, abilities and
 reactions. The formulas were taken from the ROM and checked against the game itself. You can edit units and write the
