@@ -11,6 +11,7 @@
 --   PROBE_WATCH  ARM9 addresses (hex, comma separated): every write is
 --                logged with PC, LR and R0..R12 to plan_log.txt
 --   PROBE_EXEC   ARM9 code addresses: every execution is logged the same way
+--   PROBE_READ   ARM9 addresses: every read (from frame PROBE_FROM) is logged
 local OUT = "C:/src/DasBattleCalc/research/ffta2/"
 local speed = dofile("C:/src/DasBattleCalc/research/speed.lua")
 local STATE = os.getenv("PROBE_STATE") or "C:/rom/BizHawk-2.11-win-x64/NDS/State/ffta2_test_battle1.State"
@@ -41,6 +42,9 @@ end
 for a in string.gmatch(os.getenv("PROBE_WATCH") or "", "%x+") do
   event.on_bus_write(function(addr, v) log_regs("write", addr, v) end, tonumber(a, 16))
 end
+for a in string.gmatch(os.getenv("PROBE_READ") or "", "%x+") do
+  event.on_bus_read(function(addr) if frame >= tonumber(os.getenv("PROBE_FROM") or "0") then log_regs("read", addr, 0) end end, tonumber(a, 16))
+end
 for a in string.gmatch(os.getenv("PROBE_EXEC") or "", "%x+") do
   event.on_bus_exec(function(addr) log_regs("exec", addr, 0) end, tonumber(a, 16))
 end
@@ -57,6 +61,13 @@ local function dump(file)
   f:close()
 end
 savestate.load(STATE)
+-- PROBE_EDITS "addr:size:value ..." (hex addr): written after the load
+for a, n, v in string.gmatch(os.getenv("PROBE_EDITS") or "", "(%x+):(%d):(%w+)") do
+  local addr, size, val = tonumber(a, 16) - 0x02000000, tonumber(n), tonumber(v)
+  if size == 1 then memory.write_u8(addr, val, "Main RAM")
+  elseif size == 2 then memory.write_u16_le(addr, val, "Main RAM")
+  else memory.write_u32_le(addr, val, "Main RAM") end
+end
 speed.fast(800)
 for f = 0, FRAMES do
   frame = f

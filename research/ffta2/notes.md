@@ -266,3 +266,28 @@ Checked: 175 forecasts (`status1.txt`..`status3.txt` added: statuses,
 supports, Flame Shield / Blaze Robe absorb, Dragon Mail half, Geomancy,
 Vigilance, Elusion, Crushatrice). Berserk on the acting unit breaks the
 probe's menu (cases after it are wrong).
+
+## The real attack (2026-10-24)
+
+`exec_probe.lua` executes the Attack many times from the target-cursor
+state with chosen generator seeds and reads the target's record HP
+(+0x34; the object's HP updates later). Waiting frames does not move
+anything: the game's randomness is all in seeded generators.
+
+- Generators: LCG seed = seed x 0x5D588B65 + 0x269EC3, the value is the
+  seed's high half (16 bits). The battle's (0x0206F264, the scripts'
+  native 4) at [[0x02129A74] + 0xC944]; one per unit (0x0205E950):
+  structures of 0xF8 bytes, +0x0C the unit's record, +0x10 seed, +0x14 /
+  +0x18 the constants. Fallback 0x0201EB88: the SDK's 64-bit MATH_Rand
+  (0x02126004).
+- The hit: 0x0206F204(unit, hit%) on the TARGET's generator - >= 100 hits
+  and <= 0 misses without a roll, else v % 10000 <= hit x 100. Real hit
+  chance = (6 k + min(k, 5536)) / 65536, k = 100 hit + 1: 99 -> 99.1 %,
+  80 -> 81.7 %.
+- The damage (sub_92A0, on the battle's generator, rolled even on a
+  miss): critical if (v % 10000) / 100 < crit (5 % -> 5.34 %): x2; then
+  + (rand(3) - 1) x rand(|d| / 5 + 1), rand(n) = (v % (100 n)) / 100;
+  |d| / 5 == 0: + rand(3) - 1; clamp 1..999.
+- 100 attacks with battle seeds (`exec_seeds1.txt`: 45 x 17, 14..20,
+  crits 28..40) and 100 at 80 % with target seeds (`exec_hit80.txt`) are
+  predicted exactly (`roll_attack`; `tests/test_ffta2_attack.das`).

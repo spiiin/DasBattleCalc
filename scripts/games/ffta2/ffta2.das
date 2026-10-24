@@ -392,9 +392,20 @@ class Ffta2Game : GameModule {
         }
         var ry = y + u(30.0)
         let col = x + u(150.0)
-        let big = "{f.damage} damage   {f.hit}% hit   ~{fmt(":.1f", float(f.damage) * float(f.hit) / 100.0)} expected"
+        let big = "Forecast: {f.damage} damage, {f.hit}% hit"
         text_at_baseline(x + u(8.0), ry + u(15.0), big, fg)
-        ry += u(28.0)
+        ry += u(21.0)
+        let real = "Real: hit {fmt(":.1f", f.hit_prob * 100.0)}%, critical {fmt(":.2f", f.crit_prob * 100.0)}% (x2), damage {f.dmg_min}..{f.dmg_max}, ~{fmt(":.1f", f.expected)} per attack"
+        text_at_baseline(x + u(8.0), ry + u(15.0), real, fg)
+        ry += u(21.0)
+        if (battle_rng != 0u && tgt.rng_seed != 0u) {
+            let r = roll_attack(f, battle_rng, tgt.rng_seed)
+            let next = r.hit ? "{r.damage} damage{r.crit ? " (critical)" : ""}" : "miss"
+            text_at_baseline(x + u(8.0), ry + u(15.0),
+                "Next roll from the save's generators: {next} (if {att.name} attacks before anything else rolls)", dim)
+            ry += u(21.0)
+        }
+        ry += u(7.0)
         var rows : array<tuple<string; string>>
         let ws = weapon_slot2(att)
         let power = ws >= 0 ? "{f.weapon} {att.equip[ws].bonus[0]}" : "bare hands {att.bare_power} (job)"

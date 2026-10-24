@@ -42,6 +42,92 @@ struct Fight2 {
     evasion : int                   // target's equipment Evasion
     hit : int                       // the forecast, %
     hit_mods : array<string>
+    // the real attack (research/ffta2/notes.md, "The real attack")
+    hit_prob : float                // the roll: target's generator, v % 10000 <= hit x 100
+    crit : int                      // critical chance as the script has it, %
+    crit_prob : float               // the roll: v % 10000 < crit x 100
+    spread : array<float2>          // damage values (x) and their probability (y), given a hit
+    dmg_min : int
+    dmg_max : int
+    expected : float                // average damage per attack (misses count 0)
+}
+
+// The game's rolls take a 16-bit value v of an LCG (seed x 0x5D588B65 +
+// 0x269EC3, the seed's high half), uniform over 0..65535. 65536 = q x m +
+// rem: residues of v % m below rem come q + 1 times, the others q times.
+
+// the probability of v % 10000 <= t (t < 0: 0)
+def private mod10000_le(t : int) : float {
+    if (t < 0) {
+        return 0.0
+    }
+    let k = min(t, 9999) + 1
+    return float(k * 6 + min(k, 5536)) / 65536.0
+}
+
+// sub_A980(n): (v % (n x 100)) / 100 - the probability of each 0..n-1
+def private rand_dist(n : int) : array<float> {
+    let m = n * 100
+    let q = 65536 / m
+    let rem = 65536 % m
+    var res : array<float>
+    for (b in range(n)) {
+        res |> push(float(100 * q + clamp(rem - 100 * b, 0, 100)) / 65536.0)
+    }
+    return <- res
+}
+
+// sub_92A0 for a hit of `base` damage: the critical doubles it, then
+// + (rand(3) - 1) x rand(|d| / 5 + 1) (|d| / 5 == 0: + rand(3) - 1),
+// clamped as the forecast
+def private add_spread(var out : array<float2>; base : int; p : float) {
+    let sgn <- rand_dist(3)
+    let v1 = abs(base / 5)
+    let mag <- rand_dist(v1 + 1)
+    for (si in range(3)) {
+        for (m in range(length(mag))) {
+            let step = v1 > 0 ? (si - 1) * m : si - 1
+            if (v1 == 0 && m > 0) {
+                continue
+            }
+            var d = base + step
+            d = base < 0 ? clamp(d, -999, -1) : clamp(d, 1, 999)
+            let q = p * sgn[si] * (v1 > 0 ? mag[m] : 1.0)
+            var found = false
+            for (e in out) {
+                if (int(e.x) == d) {
+                    e.y += q
+                    found = true
+                }
+            }
+            if (!found) {
+                out |> push(float2(float(d), q))
+            }
+        }
+    }
+}
+
+// the critical chance of Attack (sub_92A0): 5 %, the privilege (16..20,
+// or 23..29 for the attacker's race), the attacker's Critical up status
+// and Death Strike support +3 each
+def crit_chance(privilege : int; att : Unit2) : int {
+    var c = 5
+    if (privilege == 19 || privilege == 20) {
+        c = 8
+    } elif (privilege == 17 || privilege == 18) {
+        c = 7
+    } elif (privilege == 16) {
+        c = 6
+    } elif (privilege >= 23 && privilege <= 29 && clan_member(att) && att.race_id == privilege - 22) {
+        c = 6
+    }
+    if (has_status2(att, 18)) {
+        c += 3
+    }
+    if (att.support == 868) {
+        c += 3
+    }
+    return c
 }
 
 def is_weapon2(it : Item2) : bool {
@@ -317,6 +403,23 @@ def fight2(att, tgt : Unit2; side : Side2; privilege : int = 0) : Fight2 {
         f.hit_mods |> push("target Elusion: out of reach")
     }
     f.hit = h
+    f.hit_prob = h >= 100 ? 1.0 : (h <= 0 ? 0.0 : mod10000_le(h * 100))
+    f.crit = crit_chance(privilege, att)
+    f.crit_prob = mod10000_le(f.crit * 100 - 1)
+    if (f.damage == 0) {
+        f.spread |> push(float2(0.0, 1.0))
+    } else {
+        add_spread(f.spread, f.damage, 1.0 - f.crit_prob)
+        add_spread(f.spread, clamp(f.damage * 2, -1998, 1998), f.crit_prob)
+    }
+    sort(f.spread) $(a, b) => a.x < b.x
+    f.dmg_min = int(f.spread[0].x)
+    f.dmg_max = int(f.spread[length(f.spread) - 1].x)
+    var mean = 0.0
+    for (e in f.spread) {
+        mean += e.x * e.y
+    }
+    f.expected = mean * f.hit_prob
     return <- f
 }
 
@@ -346,4 +449,39 @@ def private elusion_reaches(att, tgt : Unit2) : bool {
         return true
     }
     return true
+}
+
+struct AttackRoll {
+    hit : bool
+    crit : bool
+    damage : int                    // 0 on a miss
+}
+
+// The next Attack exactly, from the generators: the hit on the target's
+// (0x0206F204: >= 100 hits and < 1 misses without a roll), the critical
+// and the spread on the battle's (sub_92A0; rolled even on a miss).
+// Valid while nothing else rolls before it.
+def roll_attack(f : Fight2; battle_seed, target_seed : uint) : AttackRoll {
+    var r = AttackRoll()
+    var ts = target_seed
+    r.hit = f.hit >= 100 || (f.hit > 0 && rng_next(ts) % 10000 <= f.hit * 100)
+    if (f.damage == 0) {
+        return r
+    }
+    var bs = battle_seed
+    var d = f.damage
+    if ((rng_next(bs) % 10000) / 100 < f.crit) {
+        r.crit = true
+        d = d * 2
+    }
+    let v1 = abs(d / 5)
+    let sgn = (rng_next(bs) % 300) / 100 - 1
+    if (v1 > 0) {
+        d += sgn * ((rng_next(bs) % (100 * (v1 + 1))) / 100)
+    } else {
+        d += sgn
+    }
+    d = f.damage < 0 ? clamp(d, -999, -1) : clamp(d, 1, 999)
+    r.damage = r.hit ? d : 0
+    return r
 }

@@ -89,6 +89,7 @@ struct Unit2 {
     @hide support : int             // record +0x50: ability id (851 Attack+ .. 881 Elusion), 0 none
     @hide reaction : int            // record +0x4E
     @hide status : uint8[9]         // record +0x28: status n = bit n & 7 of byte n >> 3 (JD_message 12)
+    @caption = "RNG seed" @readonly rng_seed : uint   // its generator (rolls hits on it), 0: not found
     @hide items : int[5]            // record +0x44, item ids (0 empty)
     @hide equip : Item2[5]
     @hide stat_base : int[8]        // raw / 4, Speed, job Move / Jump
@@ -278,6 +279,19 @@ def private plausible_unit(rec, obj : uint) : bool {
         (team_byte & 0xE0u) == 0x80u && gba_read8(obj + 0x0Cu) < 64u && gba_read8(obj + 0x0Du) < 64u)
 }
 
+// The game's generators (0x0206F264 the battle's, 0x0205E950 a unit's):
+// seed = seed x RNG_MUL + RNG_INC, the value is the seed's high half.
+let RNG_MUL = 0x5D588B65u
+let RNG_INC = 0x269EC3u
+
+// the battle generator's seed of the loaded state (damage rolls), 0 when not found
+var battle_rng : uint
+
+def rng_next(var seed : uint&) : int {
+    seed = seed * RNG_MUL + RNG_INC
+    return int(seed >> 16u)
+}
+
 // The battle objects: in main RAM a word p at address a such that the
 // record at p points back at a (+0x00: the object's +0x04, its record
 // pointer) - the global list pointer (0x02083344) lies in a page the state
@@ -287,7 +301,18 @@ def read_battle2(var units : array<Unit2>) : string {
     ensure(gba_has_state(), "no state loaded")
     ensure(gba_state_is_nds(), "not an NDS (melonDS) state")
     var a = RAM_LO + 0x4u
+    battle_rng = 0u
+    var seeds : table<uint; uint>
     while (a < RAM_HI) {
+        // a generator: +0x14 multiplier, +0x18 increment, +0x10 seed, +0x0C its unit's record (0: the battle's)
+        if (gba_read32(a + 0x14u) == RNG_MUL && gba_read32(a + 0x18u) == RNG_INC) {
+            let owner = gba_read32(a + 0x0Cu)
+            if (owner == 0u && a >= 0x02200000u) {
+                battle_rng = gba_read32(a + 0x10u)
+            } elif (in_ram(owner)) {
+                seeds |> insert(owner, gba_read32(a + 0x10u))
+            }
+        }
         let rec = gba_read32(a)
         if (in_ram(rec) && gba_read32(rec) == a) {
             let obj = a - 4u
@@ -298,5 +323,8 @@ def read_battle2(var units : array<Unit2>) : string {
         a += 4u
     }
     ensure(length(units) > 0, "no battle in this state")
+    for (u in units) {
+        u.rng_seed = seeds?[u.record] ?? 0u
+    }
     return ""
 }
