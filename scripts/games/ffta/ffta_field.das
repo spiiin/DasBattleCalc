@@ -344,8 +344,10 @@ def draw_unit(var dl : ImDrawList?; un : BattleUnit; feet : float2; cell : float
     let sprite = unit_sprite(un)
     if (sprite >= 0) {
         let s = cell / 16.0                          // game pixels -> screen
+        // the frame's shadow is drawn ~8 game pixels above its origin: put
+        // the origin 8 below the tile center so the shadow lies on the tile
         let x0 = feet.x - gba_gfx_origin_x(sprite) * s
-        let y0 = feet.y - gba_gfx_origin_y(sprite) * s
+        let y0 = feet.y + 8.0 * s - gba_gfx_origin_y(sprite) * s
         let sw = gba_gfx_width(sprite) * s
         let sh = gba_gfx_height(sprite) * s
         gba_gfx_draw(sprite, x0, y0, sw, sh, un.hp > 0 ? 1.0 : 0.45)
