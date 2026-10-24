@@ -19,11 +19,11 @@ require strings
 require app/shell
 require core/game
 require games/ffta/ffta
+require games/ffta2/ffta2
 
 var window : SDL_Window?
 var renderer : SDL_Renderer?
 var context : ImGuiContext?
-var game : FftaGame?
 var last : uint64
 
 def report(result : SdlStatus) : int {
@@ -44,8 +44,8 @@ def initialize() : SdlStatus {
     context = CreateContext(null)
     SetCurrentContext(context)
     sdl_status(ImGui_SDL3_Init(window, renderer), "ImGui_SDL3_Init") |> sdl_try
-    game = new FftaGame()
-    register_game(game)
+    register_game(new FftaGame())
+    register_game(new Ffta2Game())
     shell_init(renderer, to_float(gui_arg("--ui-scale", "1.0")))
     last = SDL_GetTicks()
     return sdl_ok()
@@ -84,9 +84,7 @@ def app_event(event : SDL_Event) : int {
 
 [export]
 def app_reload() : int {
-    if (game != null) {
-        game->load()
-    }
+    shell_reload()
     return 0
 }
 

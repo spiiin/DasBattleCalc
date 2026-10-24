@@ -27,6 +27,9 @@ and Dear ImGui (Blender 2.7-style widgets). Runs on the desktop (Windows) and in
 - **Game graphics** (on by default, View menu): the units' map sprites and the item icons, decoded from your ROM.
 - **Explore**: a short query language for parameter studies. Results go into a sortable table, a chart (lines, bars,
   points, log scales) and CSV export.
+- **Final Fantasy Tactics A2** (NDS, USA; Game menu), early stage: the units of a battle from a BizHawk melonDS save
+  (names, jobs, races, HP / MP, CT, position, team), their stats as on the Unit Info screen, equipment, and a flat field
+  (map heights and the battle formulas are not done yet). See [research/ffta2/notes.md](research/ffta2/notes.md).
 
 ![Attack calculator: damage breakdown, hit and critical chances](docs/images/attack.png)
 
@@ -70,7 +73,8 @@ build.bat
 build\bin\battlecalc.exe --state <save>.State --rom <FFTA (USA)>.zip
 ```
 
-The save is a BizHawk 2.x quick save made with the mGBA core, taken during a battle. The web version is built with
+The save is a BizHawk 2.x quick save made with the mGBA core, taken during a battle (FFTA2: the melonDS core,
+`--game ffta2`). The web version is built with
 `web\build.ps1` (Emscripten) into `build-web/site`. In the browser you pick the save and the ROM yourself, and the files
 stay in the browser. The web build needs daScript's dasPEG module without `options no_aot`.
 

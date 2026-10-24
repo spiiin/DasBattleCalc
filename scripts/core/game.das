@@ -18,6 +18,19 @@ class GameModule {
     // bottom panel: the calculation for the current selection
     def abstract draw_calc(x, y, w, h : float) : void
     def abstract status() : string
+    // the game became the current one (and before its first frame): the
+    // games share one loaded ROM and state, so it loads its own again
+    def activate() : void {
+        pass
+    }
+    // the web page put new files at --state / --rom: a game whose ROM code
+    // this is takes them (reload: load them again)
+    def accepts_rom(code : string) : bool {
+        return false
+    }
+    def reload() : void {
+        pass
+    }
     // the game's own items at the end of the View menu, and their action
     def view_items() : array<string> {
         return <- array<string>()

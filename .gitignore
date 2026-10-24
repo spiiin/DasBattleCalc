@@ -15,3 +15,9 @@ research/shots/
 __pycache__/
 CLAUDE.local.md
 research/gfx/
+research/ffta2/*.bin
+research/ffta2/*.nds
+research/ffta2/*.png
+research/ffta2/*.bmp
+research/ffta2/*.txt
+research/ffta2/gfx/

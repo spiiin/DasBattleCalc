@@ -14,6 +14,7 @@ require daslib/linq
 require daslib/linq_boost
 require ../../core/gba_struct.das
 require ../../core/result_try.das
+require ../../core/teams.das public
 
 let UNIT_STRIDE = 0x108u          // unit record size
 let WRAPPER_STRIDE = 0x90u        // battle participant ("wrapper") size
@@ -580,12 +581,7 @@ def find_wrappers() : uint {
 
 // Whose unit: from the record flags +0x28. Not the wrapper's +0x1E
 // (side): in the second battle the goblins have 0 there, like Marc, and
-// Cristine and Nusratt of the clan have 1.
-let TEAM_PLAYER = 0
-let TEAM_ENEMY = 1
-let TEAM_GUEST = 2
-let TEAM_JUDGE = 3
-
+// Cristine and Nusratt of the clan have 1. TEAM_*: core/teams.das.
 def team(u : BattleUnit) : int {
     if ((u.flags & 0x8000u) != 0u) {
         return TEAM_ENEMY

@@ -14,6 +14,12 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   в эмуляторе — `research/export_check.lua`, `PROBE_STATE`)
   (те же аргументы; прогнозы игры для сверки — `research/attack_probe.lua`). Экраны Status юнитов для сверки —
   `research/status_copy.lua` (запись юнита копируется в запись Marc, затем открывается Status).
+- FFTA2 (NDS): `battlecalc --game ffta2 --state <ffta2_test_battle1.State> --rom <FFTA2.zip>`; тесты
+  `tests/test_nds_mem.das` (чтение RAM melonDS и файлов ROM) и `tests/test_ffta2_battle.das` (юниты и экраны Unit Info).
+  Общие части игр: `scripts/ui/battle_field.das` (изометрическое поле: `FieldMap`, `FieldUnit`, ввод — `FieldInput`),
+  `scripts/ui/roster.das`, `scripts/ui/inspector.das`, `scripts/core/teams.das`, `scripts/core/config.das` (local.cfg:
+  у FFTA ключи `state` / `rom`, у FFTA2 `ffta2_state` / `ffta2_rom`). Игры делят один загруженный ROM и сейв:
+  `GameModule.activate()` перезагружает свои файлы при переключении, веб — `shell_reload()` по коду ROM.
 - Пути этой машины (ROM, BizHawk, тестовый сейв) — в `CLAUDE.local.md` (не в репозитории).
 - daScript — локальная ветка (master + `fix-annotation-hex`), через worktree dasSDL3 `C:\src\dasSDL3-localdas`
   (параметр `DASSDL3_DIR` у `build.bat` и `web/build.ps1`); как он устроен — в `CLAUDE.local.md`.

@@ -19,6 +19,8 @@ require ../../ui/icons.das
 require ../../ui/bl_imgui.das
 require ../../ui/inspector.das
 require ../../core/game.das
+require ../../core/config.das
+require ../../ui/roster.das
 require ../../core/result_try.das
 require ../../core/explore.das
 require ../../ui/explore_view.das
@@ -142,10 +144,6 @@ def turn_end_text(how : TurnEnd) : string {
 }
 
 // last used paths, next to the project (not in the repository)
-def private config_path() : string {
-    return "{gui_project_dir()}/local.cfg"
-}
-
 class FftaGame : GameModule {
     units : array<BattleUnit>
     saved : array<BattleUnit>         // as read from the state: Revert
@@ -187,19 +185,15 @@ class FftaGame : GameModule {
 
     cfg_state : string                // the files local.cfg remembers
     cfg_rom : string
+    from_args : bool                  // the files came from --state / --rom
+    loaded_state : string             // the files of the units shown
+    loaded_rom : string
 
     def FftaGame {
-        for (line in split(fread(config_path()), "\n")) {
-            if (starts_with(line, "state=")) {
-                cfg_state = slice(line, 6)
-            } elif (starts_with(line, "rom=")) {
-                cfg_rom = slice(line, 4)
-            } elif (starts_with(line, "rom_sprites=")) {
-                rom_sprites = slice(line, 12) == "1"
-            } elif (starts_with(line, "rom_icons=")) {
-                rom_icons = slice(line, 10) == "1"
-            }
-        }
+        cfg_state = config_get("state")
+        cfg_rom = config_get("rom")
+        rom_sprites = config_get("rom_sprites", "1") == "1"
+        rom_icons = config_get("rom_icons", "1") == "1"
         state_path = cfg_state
         rom_path = cfg_rom
         // --rom-gfx 0 / 1: both pictures from the ROM off / on (screenshots)
@@ -208,12 +202,36 @@ class FftaGame : GameModule {
             rom_sprites = gfx == 1
             rom_icons = gfx == 1
         }
-        // files named on the command line (tests, screenshots) are not remembered
-        let from_args = gui_arg("--state", "") != "" || gui_arg("--rom", "") != ""
+        // files named on the command line (tests, screenshots) are not
+        // remembered; they belong to the game it starts with
+        if (gui_arg("--game", "ffta") == "ffta") {
+            from_args = gui_arg("--state", "") != "" || gui_arg("--rom", "") != ""
+            state_path = gui_arg("--state", state_path)
+            rom_path = gui_arg("--rom", rom_path)
+        }
+    }
+
+    // the first time: the battle; later the ROM and state again if another
+    // game replaced them (the units keep their edits)
+    def override accepts_rom(code : string) : bool {
+        return code == "AFXE"
+    }
+
+    // the web page's files (always at the same paths): load them again
+    def override reload() : void {
         state_path = gui_arg("--state", state_path)
         rom_path = gui_arg("--rom", rom_path)
-        if (stat(state_path).is_valid && stat(rom_path).is_valid) {
-            self->load(!from_args)
+        self->load(false)
+    }
+
+    def override activate() : void {
+        if (length(units) == 0) {
+            if (stat(state_path).is_valid && stat(rom_path).is_valid) {
+                self->load(!from_args)
+            }
+        } elif (gba_rom_code() != "AFXE") {
+            gba_load_rom(loaded_rom)
+            gba_load_state(loaded_state)
         }
     }
 
@@ -234,6 +252,8 @@ class FftaGame : GameModule {
             log_line(message)
             return
         }
+        loaded_state = state_path
+        loaded_rom = rom_path
         read_map(battle_map)
         field.cell = 0.0          // a new map: fit it again
         saved := units
@@ -262,7 +282,10 @@ class FftaGame : GameModule {
     }
 
     def save_config() : void {
-        fwrite(config_path(), "state={cfg_state}\nrom={cfg_rom}\nrom_sprites={rom_sprites ? 1 : 0}\nrom_icons={rom_icons ? 1 : 0}\n")
+        config_set("state", cfg_state)
+        config_set("rom", cfg_rom)
+        config_set("rom_sprites", rom_sprites ? "1" : "0")
+        config_set("rom_icons", rom_icons ? "1" : "0")
     }
 
     // the unit taking its turn attacks the nearest unit of another side
@@ -294,36 +317,14 @@ class FftaGame : GameModule {
     }
 
     def source_fields(x, y, w : float) : float {
-        let lw = u(54.0)
-        var yy = y
-        SetCursorScreenPos(ImVec2(x + u(6.0), yy))
-        bl_label("State:", -1, lw)
-        SetCursorScreenPos(ImVec2(x + u(6.0) + lw, yy))
-        bl_string("state_path", state_path, w - lw - u(12.0))
-        yy += u(23.0)
-        SetCursorScreenPos(ImVec2(x + u(6.0), yy))
-        bl_label("ROM:", -1, lw)
-        SetCursorScreenPos(ImVec2(x + u(6.0) + lw, yy))
-        bl_string("rom_path", rom_path, w - lw - u(12.0))
-        yy += u(25.0)
-        SetCursorScreenPos(ImVec2(x + u(6.0), yy))
-        if (bl_tool_button("load", "Load", ICON_LOAD, w - u(12.0))) {
+        var pressed = 0
+        let bottom = source_fields(state_path, rom_path, export_path, length(units) > 0, x, y, w, pressed)
+        if (pressed == ROSTER_LOAD) {
             self->load()
-        }
-        if (length(units) == 0) {
-            return yy + u(30.0)
-        }
-        yy += u(30.0)
-        SetCursorScreenPos(ImVec2(x + u(6.0), yy))
-        bl_label("Export:", -1, lw)
-        SetCursorScreenPos(ImVec2(x + u(6.0) + lw, yy))
-        bl_string("export_path", export_path, w - lw - u(12.0))
-        yy += u(25.0)
-        SetCursorScreenPos(ImVec2(x + u(6.0), yy))
-        if (bl_tool_button("export", "Export state with edits", ICON_EXPORT, w - u(12.0))) {
+        } elif (pressed == ROSTER_EXPORT) {
             self->export_state()
         }
-        return yy + u(30.0)
+        return bottom
     }
 
     // the loaded state with the edited units, as a new file; "" or the
@@ -343,30 +344,12 @@ class FftaGame : GameModule {
 
     def override draw_roster(x, y, w, h : float) : void {
         var ry = self->source_fields(x, y, w)
-        let row_h = u(20.0)
-        var dl = GetWindowDrawList()
         for (i in range(length(units))) {
-            SetCursorScreenPos(ImVec2(x + u(2.0), ry))
-            let clicked = InvisibleButton("##unit{i}", ImVec2(w - u(4.0), row_h))
-            if (i == selected) {
-                *dl |> AddRectFilled(ImVec2(x + u(2.0), ry), ImVec2(x + w - u(2.0), ry + row_h),
-                    abgr(bt.menu_item.inner_sel), u(3.0), ImDrawFlags.None)
-            } elif (IsItemHovered()) {
-                *dl |> AddRectFilled(ImVec2(x + u(2.0), ry), ImVec2(x + w - u(2.0), ry + row_h),
-                    abgr(0xffffff18u), 0.0, ImDrawFlags.None)
-            }
             let un = units[i]
-            let tm = team(un)
-            // the team: a bar in its color, the name tinted
-            *dl |> AddRectFilled(ImVec2(x + u(3.0), ry + u(3.0)), ImVec2(x + u(7.0), ry + row_h - u(3.0)),
-                abgr(side_color(tm)), u(2.0), ImDrawFlags.None)
-            let color = i == selected ? 0xffffffffu : team_text_color(tm)
-            icon_label_value(x + u(10.0), ry, w - u(8.0), row_h, tm == TEAM_ENEMY ? ICON_ENEMY : ICON_UNIT, color,
-                false, "{un.name}  Lv{un.level}  Spd {un.speed}  CT {un.ct}")
-            if (clicked) {
+            if (roster_row(i, i == selected, team(un), "{un.name}  Lv{un.level}  Spd {un.speed}  CT {un.ct}", x, ry, w)) {
                 selected = i
             }
-            ry += row_h
+            ry += u(ROSTER_ROW_H)
         }
     }
 
@@ -760,21 +743,10 @@ class FftaGame : GameModule {
         if (input.target >= 0) {
             target = input.target
         }
-        let by = y + h - bar + u(4.0)
-        SetCursorScreenPos(ImVec2(x + u(8.0), by))
-        if (bl_tool_button("turn_ccw", "", ICON_TURN_CCW, u(28.0), BND_CORNER_RIGHT) && selected >= 0) {
-            turn(units[selected], false)
+        let tr = field_bar(field, x + u(8.0), y + h - bar + u(4.0))
+        if (tr != 0 && selected >= 0) {
+            turn(units[selected], tr > 0)
         }
-        SetCursorScreenPos(ImVec2(x + u(36.0), by))
-        if (bl_tool_button("turn_cw", "", ICON_TURN_CW, u(28.0), BND_CORNER_LEFT) && selected >= 0) {
-            turn(units[selected], true)
-        }
-        SetCursorScreenPos(ImVec2(x + u(72.0), by))
-        if (bl_tool_button("field_fit", "Fit", ICON_FIT, u(56.0))) {
-            field.cell = 0.0
-        }
-        SetCursorScreenPos(ImVec2(x + u(136.0), by))
-        bl_label("Click: select   Right click: target   Drag: move   Q / E: turn   Wheel: zoom")
     }
 
     // the scene of the Attack tab, changed by scene(attacker = "Marc",

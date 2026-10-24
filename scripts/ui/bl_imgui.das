@@ -537,7 +537,8 @@ def bl_section(id, caption : string; var open : bool&) : bool {
 def bl_menu_item(caption : string; icon : int = -1) : bool {
     let p = GetCursorScreenPos()
     let h = u(21.0)
-    let w = max(GetContentRegionAvail().x, u(160.0))
+    // as wide as the caption: an auto-sized popup grows to the widest item
+    let w = max(GetContentRegionAvail().x, max(u(160.0), text_width(caption) + u(icon >= 0 ? 34.0 : 16.0)))
     let clicked = InvisibleButton("##mi_{caption}", ImVec2(w, h))
     let hovered = IsItemHovered()
     let t = bt.menu_item

@@ -17,6 +17,7 @@ require ../ui/bnd_const.das
 require ../ui/icons.das
 require ../ui/bl_imgui.das
 require ../core/game.das
+require gba_mem
 
 var ui_scale = 1.3
 var private current = 0
@@ -83,6 +84,7 @@ def private menu_bar() {
         if (g >= 0 && g != current) {
             current = g
             log_line("game: {titles[g]}")
+            game_at(g)->activate()
         }
         var game_view : array<string>
         var view_list <- ["UI Scale +", "UI Scale -", "UI Scale 100%"]
@@ -150,6 +152,31 @@ def shell_init(renderer : SDL_Renderer?; scale : float) {
     bl_apply_style(ui_scale)
     frame_no = 0
     want_quit = false
+    // --game <id>: the game to start with (default: the first registered)
+    let start = gui_arg("--game", "")
+    for (i in range(game_count())) {
+        if (game_at(i)->id() == start) {
+            current = i
+        }
+    }
+    if (game_count() > 0) {
+        game_at(current)->activate()
+    }
+}
+
+// New files at --state / --rom (the web page): the game of that ROM
+// becomes the current one and loads them.
+def shell_reload() {
+    let code = gba_load_rom(gui_arg("--rom", "")) == "" ? gba_rom_code() : ""
+    for (i in range(game_count())) {
+        if (game_at(i)->accepts_rom(code)) {
+            current = i
+        }
+    }
+    var game = current_game()
+    if (game != null) {
+        game->reload()
+    }
 }
 
 // One ImGui frame (between NewFrame and Render); false after File > Quit.

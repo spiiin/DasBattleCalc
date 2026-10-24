@@ -1,4 +1,5 @@
-// GBA memory images for scripts: the RAM of a BizHawk savestate and a ROM.
+// GBA memory images for scripts: the RAM of a BizHawk savestate and a ROM
+// (an NDS state / ROM too: nds_mem.cpp).
 // BizHawk .State = zip with Core.bin.zst; for the mGBA core Core.bin is a
 // 4-byte size + mGBA's GBASerializedState (magic 0x010000xx), where IWRAM
 // is at +0x19000 (32 KB) and EWRAM at +0x21000 (256 KB).
@@ -18,6 +19,7 @@
 
 static std::vector<uint8_t> g_ewram, g_iwram, g_rom, g_frame;
 static uint32_t g_rom_serial = 0;
+static bool g_state_nds = false;                  // the state is melonDS (NDS)
 // for gba_save_state: the loaded file, its core image and the RAM to write
 static std::vector<uint8_t> g_zip, g_core, g_edit_ewram, g_edit_iwram;
 static size_t g_core_base = 0;
@@ -107,11 +109,25 @@ const char * gba_load_state(const char * path) {
     } else if (!unzstd(zst, core)) {
         return (g_error = "zstd: can not decompress Core.bin").c_str();
     }
+    // melonDS (NDS) runs in BizHawk's waterbox: the core is the host's state
+    static const char wbx[] = "ActivatedWaterboxHost";
+    if (core.size() > sizeof(wbx) && memcmp(core.data(), wbx, sizeof(wbx) - 1) == 0) {
+        std::vector<uint8_t> ram;
+        if (!nds_state_ram(core, ram, g_error)) return g_error.c_str();
+        g_ewram.swap(ram);
+        g_iwram.clear();
+        g_core.clear();
+        g_state_nds = true;
+        if (!unzip_entry(zip, "Framebuffer.bmp", g_frame)) g_frame.clear();
+        g_state_serial++;
+        return "";
+    }
     // the mGBA state starts at 0 or after BizHawk's 4-byte size
     size_t base = SIZE_MAX;
     for (size_t o : { size_t(0), size_t(4) })
         if (core.size() >= o + 0x61000 && (rd32(core, o) & 0xffffff00u) == 0x01000000u) base = o;
     if (base == SIZE_MAX) return (g_error = "not an mGBA (GBA) state").c_str();
+    g_state_nds = false;
     g_iwram.assign(core.begin() + base + 0x19000, core.begin() + base + 0x21000);
     g_ewram.assign(core.begin() + base + 0x21000, core.begin() + base + 0x61000);
     g_zip.swap(zip);
@@ -137,20 +153,23 @@ const char * gba_load_rom(const char * path) {
     return "";
 }
 uint32_t gba_rom_serial() { return g_rom_serial; }
+const std::vector<uint8_t> & gba_rom_bytes() { return g_rom; }
+bool gba_state_is_nds() { return g_state_nds; }
 
 bool gba_has_state() { return !g_ewram.empty(); }
 bool gba_has_rom() { return !g_rom.empty(); }
 
-// Game code at 0x080000AC (4 chars), e.g. "AFXE".
+// Game code at 0x080000AC (4 chars), e.g. "AFXE"; an NDS ROM: at 0x0C ("A6FE").
 const char * gba_rom_code() {
     static char code[5] = {};
     if (g_rom.size() < 0xB0) return "";
-    memcpy(code, &g_rom[0xAC], 4);
+    memcpy(code, &g_rom[nds_is_rom(g_rom) ? 0x0C : 0xAC], 4);
     return code;
 }
 
 static const uint8_t * at(uint32_t addr, uint32_t n) {
     uint32_t region = addr >> 24, off = addr & 0xffffff;
+    if (g_state_nds && region == 2) off &= 0x3fffff;  // 4 MB main RAM, mirrored
     const std::vector<uint8_t> * v = region == 2 ? &g_ewram : region == 3 ? &g_iwram : region == 8 ? &g_rom : nullptr;
     if (!v || size_t(off) + n > v->size()) return nullptr;
     return v->data() + off;
@@ -224,6 +243,7 @@ static std::vector<uint8_t> zstd_store(const std::vector<uint8_t> & data) {
 // original zip is copied, Core.bin(.zst) gets the new core image.
 const char * gba_save_state(const char * path) {
     g_error.clear();
+    if (g_state_nds) return (g_error = "writing NDS states is not supported").c_str();
     if (g_core.empty() || g_edit_ewram.size() != 0x40000 || g_edit_iwram.size() != 0x8000)
         return (g_error = "no state loaded or no edit begun").c_str();
     std::vector<uint8_t> core = g_core;

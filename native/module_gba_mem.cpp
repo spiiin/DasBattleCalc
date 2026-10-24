@@ -38,6 +38,13 @@ public:
         GUI_BIND(gba_gfx_origin_x);
         GUI_BIND(gba_gfx_origin_y);
         GUI_BIND(gba_gfx_draw);
+        GUI_BIND(gba_state_is_nds);
+        GUI_BIND(nds_file);
+        GUI_BIND(nds_pak_file);
+        GUI_BIND(nds_buf_size);
+        GUI_BIND(nds_buf_read8);
+        GUI_BIND(nds_buf_read16);
+        GUI_BIND(nds_buf_read32);
         return true;
     }
     ModuleAotType aotRequire(TextWriter & tw) const override {

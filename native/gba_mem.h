@@ -2,6 +2,13 @@
 // GBA memory images (savestate RAM, ROM) read by the game scripts.
 #include <cstddef>
 #include <cstdint>
+#include <string>
+#include <vector>
+
+// between gba_mem.cpp and nds_mem.cpp (not bound to scripts)
+const std::vector<uint8_t> & gba_rom_bytes();
+bool nds_state_ram(const std::vector<uint8_t> & core, std::vector<uint8_t> & ram, std::string & error);
+bool nds_is_rom(const std::vector<uint8_t> & rom);
 
 // "" on success, else the error text
 const char * gba_load_state(const char * path);
@@ -15,6 +22,16 @@ uint32_t gba_read16(uint32_t addr);
 uint32_t gba_read32(uint32_t addr);
 // BMP screenshot stored in the state (BizHawk Framebuffer.bmp), or null
 const uint8_t * gba_state_frame(size_t & size);
+// The loaded state is an NDS one (melonDS): 0x02000000.. is the 4 MB main
+// RAM (pages the state does not hold read as 0). NDS ROM files
+// (nds_mem.cpp, FFTA2's archive): a handle >= 0 or -1, read by offset.
+bool gba_state_is_nds();
+int nds_file(const char * name);
+int nds_pak_file(const char * idx_name, const char * pak_name, int index);
+int nds_buf_size(int handle);
+uint32_t nds_buf_read8(int handle, int off);
+uint32_t nds_buf_read16(int handle, int off);
+uint32_t nds_buf_read32(int handle, int off);
 // changes on every successful gba_load_state / gba_load_rom
 uint32_t gba_state_serial();
 uint32_t gba_rom_serial();
