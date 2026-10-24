@@ -18,6 +18,13 @@ class GameModule {
     // bottom panel: the calculation for the current selection
     def abstract draw_calc(x, y, w, h : float) : void
     def abstract status() : string
+    // the game's own items at the end of the View menu, and their action
+    def view_items() : array<string> {
+        return <- array<string>()
+    }
+    def view_pick(i : int) : void {
+        pass
+    }
 }
 
 var private games : array<GameModule?>

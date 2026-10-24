@@ -24,6 +24,7 @@ and Dear ImGui (Blender 2.7-style widgets). Runs on the desktop (Windows) and in
 - **Editor**: change stats, equipment, job, statuses, support / reaction and learned abilities, or drag units on the
   field. Everything is recalculated immediately. **Export state with edits** writes a new BizHawk save that you can load
   in the emulator.
+- **Game graphics** (View menu, off by default): the units' map sprites and the item icons, decoded from your ROM.
 - **Explore**: a short query language for parameter studies. Results go into a sortable table, a chart (lines, bars,
   points, log scales) and CSV export.
 

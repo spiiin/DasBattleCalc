@@ -85,6 +85,7 @@ struct BattleUnit {
     @hide job_id : int              // record +0x05, JOB_TABLE index
     @hide job2 : int                // record +0x07
     @hide race : int                // record +0x06
+    @hide character : int           // record +0x04: a story character when > 1
     @hide move_plus : int           // record +0x3D == 1: Move + 1
     @readonly record : uint
     @hide wrapper : uint            // its participant entry (WRAPPER_STRIDE)
@@ -97,7 +98,7 @@ struct BattleUnit {
     @caption = "Speed" @readonly speed : int
     @caption = "CT" ct : int
     @caption = "Reserve" reserve : int
-    @caption = "Side byte" @readonly side : int   // wrapper +0x1E, meaning unknown (teams: team())
+    @caption = "Sprite palette" @readonly side : int   // wrapper +0x1E: palette row of the map sprite (teams: team())
     @caption = "Tie order" @readonly order : int
     @caption = "Status" @readonly status_text : string
     @caption = "Position" @readonly position : string
@@ -255,6 +256,7 @@ def item_kind_name(kind : int) : string {
 struct JobRecord {
     @offset = 0x00 name : uint16          // text id
     @offset = 0x05 parent : uint8         // 255: the unit's +0x07; other: that job
+    @offset = 0x07 sprite : uint8         // map sprite set (ffta_gfx.das)
     @offset = 0x28 move : uint8
     @offset = 0x29 jump : uint8
     @offset = 0x2A evade : uint8
@@ -466,6 +468,7 @@ def status_text(u : BattleUnit) : string {
 // The unit record in RAM, 0x108 bytes (research/notes.md)
 struct UnitRecord {
     @offset = 0x00 name : uint            // pointer to the name text
+    @offset = 0x04 character : uint8      // story character (> 1), CHARACTER_TABLE index
     @offset = 0x05 job : uint8            // JOB_TABLE index
     @offset = 0x06 race : uint8           // RACE_ABILITIES index
     @offset = 0x07 job2 : uint8           // used by jobs with parent 255
@@ -497,6 +500,7 @@ def read_unit(rec : uint) : BattleUnit {
     u.job_id = int(r.job)
     u.job2 = int(r.job2)
     u.race = int(r.race)
+    u.character = int(r.character)
     u.move_plus = r.move_plus == 1u8 ? 1 : 0
     let job = read_job(uint(r.job), uint(r.job2))
     u.job = ffta_text_id(int(job.name))

@@ -30,6 +30,14 @@ public:
         GUI_BIND(gba_frame_width);
         GUI_BIND(gba_frame_height);
         GUI_BIND(gba_frame_draw);
+        GUI_BIND(gba_rom_serial);
+        GUI_BIND(gba_gfx_icon);
+        GUI_BIND(gba_gfx_sprite);
+        GUI_BIND(gba_gfx_width);
+        GUI_BIND(gba_gfx_height);
+        GUI_BIND(gba_gfx_origin_x);
+        GUI_BIND(gba_gfx_origin_y);
+        GUI_BIND(gba_gfx_draw);
         return true;
     }
     ModuleAotType aotRequire(TextWriter & tw) const override {

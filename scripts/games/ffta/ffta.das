@@ -27,6 +27,7 @@ require ffta_battle
 require ffta_attack
 require ffta_field
 require ffta_explore
+require ffta_gfx
 
 let MAX_TURNS = 200
 
@@ -184,13 +185,28 @@ class FftaGame : GameModule {
     export_path : string              // Export: the state with the edits
     message : string = "Load a BizHawk state (mGBA core) and the FFTA (USA) ROM"
 
+    cfg_state : string                // the files local.cfg remembers
+    cfg_rom : string
+
     def FftaGame {
         for (line in split(fread(config_path()), "\n")) {
             if (starts_with(line, "state=")) {
-                state_path = slice(line, 6)
+                cfg_state = slice(line, 6)
             } elif (starts_with(line, "rom=")) {
-                rom_path = slice(line, 4)
+                cfg_rom = slice(line, 4)
+            } elif (starts_with(line, "rom_sprites=")) {
+                rom_sprites = slice(line, 12) == "1"
+            } elif (starts_with(line, "rom_icons=")) {
+                rom_icons = slice(line, 10) == "1"
             }
+        }
+        state_path = cfg_state
+        rom_path = cfg_rom
+        // --rom-gfx 0 / 1: both pictures from the ROM off / on (screenshots)
+        let gfx = gui_arg_int("--rom-gfx", -1)
+        if (gfx >= 0) {
+            rom_sprites = gfx == 1
+            rom_icons = gfx == 1
         }
         // files named on the command line (tests, screenshots) are not remembered
         let from_args = gui_arg("--state", "") != "" || gui_arg("--rom", "") != ""
@@ -239,8 +255,14 @@ class FftaGame : GameModule {
         export_path = dot >= 0 ? "{slice(state_path, 0, dot)}.edited{slice(state_path, dot)}" : "{state_path}.edited"
         log_line("loaded {state_path}: {message}")
         if (remember) {
-            fwrite(config_path(), "state={state_path}\nrom={rom_path}\n")
+            cfg_state = state_path
+            cfg_rom = rom_path
+            self->save_config()
         }
+    }
+
+    def save_config() : void {
+        fwrite(config_path(), "state={cfg_state}\nrom={cfg_rom}\nrom_sprites={rom_sprites ? 1 : 0}\nrom_icons={rom_icons ? 1 : 0}\n")
     }
 
     // the unit taking its turn attacks the nearest unit of another side
@@ -528,7 +550,7 @@ class FftaGame : GameModule {
             let it = unit.equip[slot]
             SetCursorScreenPos(ImVec2(x, ry))
             let caption = it.id != 0 ? it.name : "(empty)"
-            if (bl_tool_button("equip_slot{slot}", caption, -1, w - bw - kw - u(4.0))) {
+            if (bl_tool_button("equip_slot{slot}", caption, it.id != 0 ? item_icon(it.id) : -1, w - bw - kw - u(4.0))) {
                 OpenPopup("##item_pick")
                 pick_slot = slot
                 item_filter = ImGuiInputTextBuffer("", 64)
@@ -672,7 +694,7 @@ class FftaGame : GameModule {
             PushStyleColor(ImGuiCol.ChildBg, abgr(bt.menu.inner | 0xffu))
             BeginChild("item_list", ImVec2(pw, GetContentRegionAvail().y), ImGuiChildFlags.None, ImGuiWindowFlags.None)
             bl_popup_rows() {
-                if (bl_menu_item("(empty)")) {
+                if (bl_menu_item("(empty)", item_icon(0))) {
                     unit.equip[pick_slot] = Item()
                     CloseCurrentPopup()
                 }
@@ -683,7 +705,7 @@ class FftaGame : GameModule {
                     if (filter != "" && find(to_lower(it.name), filter) < 0) {
                         continue
                     }
-                    if (bl_menu_item("{it.name}   {item_kind_name(it.kind)}   {bonus_text(it)}")) {
+                    if (bl_menu_item("{it.name}   {item_kind_name(it.kind)}   {bonus_text(it)}", item_icon(it.id))) {
                         unit.equip[pick_slot] = it
                         CloseCurrentPopup()
                     }
@@ -1225,5 +1247,19 @@ class FftaGame : GameModule {
 
     def override status() : string {
         return "FFTA: {message}"
+    }
+
+    // pictures from the ROM (ffta_gfx.das), remembered in local.cfg
+    def override view_items() : array<string> {
+        return <- ["ROM sprites: {rom_sprites ? "on" : "off"}", "ROM icons: {rom_icons ? "on" : "off"}"]
+    }
+
+    def override view_pick(i : int) : void {
+        if (i == 0) {
+            rom_sprites = !rom_sprites
+        } elif (i == 1) {
+            rom_icons = !rom_icons
+        }
+        self->save_config()
     }
 }

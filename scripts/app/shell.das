@@ -84,8 +84,19 @@ def private menu_bar() {
             current = g
             log_line("game: {titles[g]}")
         }
-        let v = menu("View", ["UI Scale +", "UI Scale -", "UI Scale 100%"])
-        if (v >= 0) {
+        var game_view : array<string>
+        var view_list <- ["UI Scale +", "UI Scale -", "UI Scale 100%"]
+        var game_now = current_game()
+        if (game_now != null) {
+            game_view <- game_now->view_items()
+            for (s in game_view) {
+                view_list |> push(s)
+            }
+        }
+        let v = menu("View", view_list)
+        if (v >= 3) {
+            game_now->view_pick(v - 3)
+        } elif (v >= 0) {
             ui_scale = v == 0 ? min(ui_scale + 0.1, 3.0) : (v == 1 ? max(ui_scale - 0.1, 0.6) : 1.0)
             bl_apply_style(ui_scale)
         }

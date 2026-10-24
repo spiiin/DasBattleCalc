@@ -2,6 +2,7 @@
 // list vertices (ImGui's internal ShadeVertsLinearColorGradientKeepAlpha),
 // a Blendish-style gradient box, the icon sheet, style colors.
 #include "imgui_ext.h"
+#include "gba_mem.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 
@@ -108,6 +109,10 @@ static void icon_uv(int icon, ImVec2 & uv0, ImVec2 & uv1) {
     uv1 = ImVec2((u + 16) / g_icons_w, (v + 16) / g_icons_h);
 }
 void imx_icon_at(float x, float y, int icon, float size, float alpha) {
+    if (icon >= GBA_GFX_ICON_BASE) {   // a picture from the ROM (gba_gfx.cpp)
+        gba_gfx_draw(icon - GBA_GFX_ICON_BASE, x, y, size, size, alpha);
+        return;
+    }
     if (!g_icons || icon < 0) return;
     ImVec2 uv0, uv1; icon_uv(icon, uv0, uv1);
     ImGui::GetWindowDrawList()->AddImage(ImTextureRef((ImTextureID)(intptr_t)g_icons), ImVec2(x, y),

@@ -18,6 +18,8 @@ require ../../ui/icons.das
 require ../../ui/bl_imgui.das
 require ffta_battle
 require ffta_attack
+require ffta_gfx
+require gba_mem
 
 // by team (TEAM_*): player, enemy, guest, judge
 def side_color(side : int) : uint {
@@ -153,9 +155,11 @@ def draw_field(m : BattleMap; var units : array<BattleUnit>; selected, target, a
             }
         }
     }
-    // units
+    // units, top rows first: a sprite overlaps the row above it
     let r = cell * 0.4
-    for (i in range(length(units))) {
+    var order <- [for (i in range(length(units))); i]
+    sort(order) $(a, b) => units[a].y < units[b].y || (units[a].y == units[b].y && units[a].x < units[b].x)
+    for (i in order) {
         if (i == st.drag) {
             continue
         }
@@ -213,11 +217,17 @@ def draw_field(m : BattleMap; var units : array<BattleUnit>; selected, target, a
 }
 
 // a disc in the side color, the facing arrow, two letters of the name;
-// white ring: selected, orange ring: attack target
+// white ring: selected, orange ring: attack target. With the sprites from
+// the ROM: the sprite standing on a shadow in the side color.
 def draw_unit(var dl : ImDrawList?; un : BattleUnit; cx, cy, r : float; sel, tgt : bool) {
     let col = un.hp > 0 ? side_color(team(un)) : 0x707070ffu
     let dx = float(DIR_X[un.facing & 3])
     let dy = float(DIR_Y[un.facing & 3])
+    let sprite = unit_sprite(un)
+    if (sprite >= 0) {
+        draw_unit_sprite(dl, un, sprite, col, cx, cy, r, sel, tgt)
+        return
+    }
     // arrow: a triangle out of the disc in the facing direction
     let tip = ImVec2(cx + dx * r * 1.45, cy + dy * r * 1.45)
     let b1 = ImVec2(cx + dx * r * 0.7 - dy * r * 0.55, cy + dy * r * 0.7 + dx * r * 0.55)
@@ -232,4 +242,29 @@ def draw_unit(var dl : ImDrawList?; un : BattleUnit; cx, cy, r : float; sel, tgt
     }
     let short = length(un.name) > 2 ? slice(un.name, 0, 2) : un.name
     text_at_baseline(cx - text_width(short) * 0.5, cy + u(5.0), short, 0xffffffffu)
+}
+
+def private draw_unit_sprite(var dl : ImDrawList?; un : BattleUnit; sprite : int; col : uint; cx, cy, r : float; sel, tgt : bool) {
+    let dx = float(DIR_X[un.facing & 3])
+    let dy = float(DIR_Y[un.facing & 3])
+    // the feet a little below the tile center; a human (16 px wide) is
+    // about a tile wide
+    let fy = cy + r * 0.45
+    let shadow = ImVec2(r * 0.95, r * 0.45)
+    *dl |> AddEllipseFilled(ImVec2(cx, fy), shadow, abgr((col & 0xffffff00u) | 0xb0u), 0.0, 24)
+    let tip = ImVec2(cx + dx * r * 1.35, fy + dy * r * 0.75)
+    let b1 = ImVec2(cx + dx * r * 0.9 - dy * r * 0.35, fy + dy * r * 0.42 + dx * r * 0.2)
+    let b2 = ImVec2(cx + dx * r * 0.9 + dy * r * 0.35, fy + dy * r * 0.42 - dx * r * 0.2)
+    *dl |> AddTriangleFilled(tip, b1, b2, abgr(0xf0f0f0ffu))
+    if (tgt) {
+        *dl |> AddEllipse(ImVec2(cx, fy), ImVec2(shadow.x + u(3.0), shadow.y + u(3.0)), abgr(0xffa030ffu), 0.0, 24, u(2.5))
+    }
+    if (sel) {
+        *dl |> AddEllipse(ImVec2(cx, fy), shadow, abgr(0xffffffffu), 0.0, 24, u(2.0))
+    }
+    let s = r * 2.5 / 16.0
+    let w = gba_gfx_width(sprite) * s
+    let h = gba_gfx_height(sprite) * s
+    gba_gfx_draw(sprite, cx - gba_gfx_origin_x(sprite) * s, fy - gba_gfx_origin_y(sprite) * s, w, h,
+        un.hp > 0 ? 1.0 : 0.45)
 }

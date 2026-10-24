@@ -15,8 +15,9 @@ uint32_t gba_read16(uint32_t addr);
 uint32_t gba_read32(uint32_t addr);
 // BMP screenshot stored in the state (BizHawk Framebuffer.bmp), or null
 const uint8_t * gba_state_frame(size_t & size);
-// changes on every successful gba_load_state
+// changes on every successful gba_load_state / gba_load_rom
 uint32_t gba_state_serial();
+uint32_t gba_rom_serial();
 // Writing a state: copy the loaded RAM, change it, save as a new file
 // ("" on success). Reads (gba_read*) still see the loaded RAM.
 void gba_edit_begin();
@@ -31,3 +32,20 @@ bool gba_frame_update(SDL_Renderer * r);
 float gba_frame_width();
 float gba_frame_height();
 void gba_frame_draw(float x, float y, float w, float h);
+
+// gba_gfx.cpp: graphics decoded from the ROM into SDL textures (cached
+// until another ROM is loaded). Formats: research/notes.md, "Graphics".
+// A handle >= 0 or -1; imx_icon_at draws icon ids >= GBA_GFX_ICON_BASE.
+const int GBA_GFX_ICON_BASE = 0x10000;
+// 16 x 16 icon: entry `index` of an "A7" archive, 2 x 2 4bpp tiles, a
+// 16-colour palette (BGR555) at `palette`
+int gba_gfx_icon(SDL_Renderer * r, uint32_t archive, int index, uint32_t palette);
+// a sprite frame: 4bpp tiles at `tiles`, pieces of the layout at `layout`
+// (u16 count, 6 bytes per piece as in OAM), 16-colour palette; flip -
+// mirrored. The origin (the layout's 0, 0) is gba_gfx_origin_x / _y.
+int gba_gfx_sprite(SDL_Renderer * r, uint32_t tiles, uint32_t layout, uint32_t palette, bool flip);
+float gba_gfx_width(int handle);
+float gba_gfx_height(int handle);
+float gba_gfx_origin_x(int handle);
+float gba_gfx_origin_y(int handle);
+void gba_gfx_draw(int handle, float x, float y, float w, float h, float alpha);

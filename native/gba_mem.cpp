@@ -17,6 +17,7 @@
 #include "zstd.h"
 
 static std::vector<uint8_t> g_ewram, g_iwram, g_rom, g_frame;
+static uint32_t g_rom_serial = 0;
 // for gba_save_state: the loaded file, its core image and the RAM to write
 static std::vector<uint8_t> g_zip, g_core, g_edit_ewram, g_edit_iwram;
 static size_t g_core_base = 0;
@@ -132,8 +133,10 @@ const char * gba_load_rom(const char * path) {
         g_rom.swap(file);
     }
     if (g_rom.size() < 0xC0) return (g_error = "too small for a GBA ROM").c_str();
+    g_rom_serial++;
     return "";
 }
+uint32_t gba_rom_serial() { return g_rom_serial; }
 
 bool gba_has_state() { return !g_ewram.empty(); }
 bool gba_has_rom() { return !g_rom.empty(); }

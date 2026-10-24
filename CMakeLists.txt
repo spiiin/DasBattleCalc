@@ -26,6 +26,7 @@ add_executable(battlecalc
     native/gba_mem.cpp
     native/module_gba_mem.cpp
     native/gba_frame.cpp
+    native/gba_gfx.cpp
     native/imgui_ext.cpp
     native/third_party/zstddeclib.c)
 set_source_files_properties(native/third_party/zstddeclib.c PROPERTIES COMPILE_OPTIONS /W0)
