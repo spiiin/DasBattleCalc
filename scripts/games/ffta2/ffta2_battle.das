@@ -50,6 +50,14 @@ let private RACE_TEXT = 91
 let STAT2_COUNT = 8
 let STAT2_LABELS = fixed_array<string>("Attack", "Defense", "Magick", "Resistance", "Speed", "Evasion", "Move", "Jump")
 
+// how a turn ends (its CT cost: 50, +30 moved, +20 acted)
+enum TurnEnd2 {
+    MoveAndAct
+    ActOnly
+    MoveOnly
+    Wait
+}
+
 struct Item2 {
     id : int
     name : string
@@ -75,6 +83,8 @@ struct Unit2 {
     @caption = "MP" @min = 0 mp : int
     @caption = "Max MP" @min = 0 max_mp : int
     @caption = "CT" ct : int
+    @caption = "Turn speed" speed : int    // object +0x14: what a tick adds to CT
+    @caption = "Assumed turn" assumed : TurnEnd2
     @caption = "Team byte" @readonly team_byte : int     // record +0x0A: 0x88 clan, 0x99 / 0x9B enemies, 0x9C guest
     @caption = "Position" @readonly position : string
     @hide team : int                // TEAM_*
@@ -318,6 +328,8 @@ def read_unit2(rec, obj : uint) : Unit2 {
         u.status[k] = uint8(gba_read8(rec + 0x28u + uint(k)))
     }
     u.ct = int(gba_read16(obj + 0x16u))
+    u.speed = int(gba_read16(obj + 0x14u))
+    u.assumed = TurnEnd2.MoveAndAct
     recompute_unit(u)
     return u
 }

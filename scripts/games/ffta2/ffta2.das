@@ -28,6 +28,7 @@ require ../../app/shell.das
 require ffta2_battle
 require ffta2_attack
 require ffta2_forecast
+require ffta2_turns
 
 let private STAT2_SHORT = fixed_array<string>("Atk", "Def", "Mag", "Res", "Spd", "Eva", "Move", "Jump")
 
@@ -56,7 +57,7 @@ class Ffta2Game : GameModule {
     field = FieldState()
     field_map : FieldMap
     scene_tab : int = 0               // 0 field, 1 the game screen
-    calc_tab : int = 0                // 0 units, 1 attack
+    calc_tab : int = 0                // 0 turn order, 1 attack, 2 units
     side_choice : int = 0             // 0 auto, 1 + Side2
     privilege : int = 0               // the clan privilege (game variable 369), 0 none
     actions : array<int>              // the abilities the model computes, Attack first
@@ -341,18 +342,24 @@ class Ffta2Game : GameModule {
             return
         }
         let tw = u(120.0)
-        if (bl_radio_button("tab2_units", "Units", ICON_TURNS, tw, BND_CORNER_RIGHT, calc_tab == 0)) {
+        if (bl_radio_button("tab2_turns", "Turn order", ICON_TURNS, tw, BND_CORNER_RIGHT, calc_tab == 0)) {
             calc_tab = 0
         }
         SetCursorScreenPos(ImVec2(x + tw, y))
-        if (bl_radio_button("tab2_attack", "Attack", ICON_ATTACK, tw, BND_CORNER_LEFT, calc_tab == 1)) {
+        if (bl_radio_button("tab2_attack", "Attack", ICON_ATTACK, tw, BND_CORNER_ALL, calc_tab == 1)) {
             calc_tab = 1
+        }
+        SetCursorScreenPos(ImVec2(x + tw * 2.0, y))
+        if (bl_radio_button("tab2_units", "Units", ICON_UNIT, tw, BND_CORNER_LEFT, calc_tab == 2)) {
+            calc_tab = 2
         }
         let ty = y + u(28.0)
         if (calc_tab == 1) {
             self->attack_view(x, ty, w, y + h - ty)
-        } else {
+        } elif (calc_tab == 2) {
             self->unit_table(x, ty, w, y + h - ty)
+        } else {
+            self->turn_view(x, ty, w, y + h - ty)
         }
     }
 
@@ -518,6 +525,56 @@ class Ffta2Game : GameModule {
                 action = k
             }
         }
+    }
+
+    // the next turns (ffta2_turns.das): each unit ends its turns as its
+    // Assumed turn (Inspector)
+    def turn_view(x, y, w, h : float) : void {
+        let turns <- predict_turns2(units, 24, privilege)
+        let fg = bt.regular.text | 0xffu
+        let dim = offset_color(fg, 60)
+        SetCursorScreenPos(ImVec2(x, y))
+        bl_label("Turn order  (CT 100+ acts; a tick adds Speed; a turn: 50, +30 moved, +20 acted)", ICON_TURNS)
+        let row_h = u(21.0)
+        let cols = fixed_array<float>(12.0, 44.0, 150.0, 260.0, 330.0, 390.0)
+        let heads = fixed_array<string>("#", "Unit", "Job", "In ticks", "Turn", "CT", "Ends with")
+        var ry = y + u(26.0)
+        for (k in range(6)) {
+            text_at_baseline(x + u(cols[k]), ry + u(14.0), heads[k], dim)
+        }
+        text_at_baseline(x + u(450.0), ry + u(14.0), heads[6], dim)
+        ry += row_h
+        SetCursorScreenPos(ImVec2(x, ry))
+        BeginChild("ffta2_turns", ImVec2(w, y + h - ry), ImGuiChildFlags.None, ImGuiWindowFlags.None)
+        var dl = GetWindowDrawList()
+        var yy = GetCursorScreenPos().y
+        let names = fixed_array<string>("Move + Act", "Act", "Move", "Wait")
+        for (k in range(length(turns))) {
+            let t = turns[k]
+            let un = units[t.unit]
+            SetCursorScreenPos(ImVec2(x, yy))
+            if (InvisibleButton("##turn2_{k}", ImVec2(w - u(4.0), row_h))) {
+                selected = t.unit
+            }
+            if (t.unit == selected) {
+                *dl |> AddRectFilled(ImVec2(x, yy), ImVec2(x + w - u(4.0), yy + row_h), abgr(bt.menu_item.inner_sel), 0.0,
+                    ImDrawFlags.None)
+            }
+            *dl |> AddRectFilled(ImVec2(x + u(2.0), yy + u(3.0)), ImVec2(x + u(6.0), yy + row_h - u(3.0)),
+                abgr(side_color(un.team)), u(2.0), ImDrawFlags.None)
+            let b = yy + u(15.0)
+            text_at_baseline(x + u(cols[0]), b, "{k + 1}", dim)
+            text_at_baseline(x + u(cols[1]), b, un.name, team_text_color(un.team))
+            text_at_baseline(x + u(cols[2]), b, un.job, fg)
+            text_at_baseline(x + u(cols[3]), b, t.tick == 0 ? "now" : "+{t.tick}", fg)
+            text_at_baseline(x + u(cols[4]), b, "{t.nth}", fg)
+            text_at_baseline(x + u(cols[5]), b, "{t.ct}", fg)
+            text_at_baseline(x + u(450.0), b, names[int(un.assumed)], dim)
+            yy += row_h
+        }
+        SetCursorScreenPos(ImVec2(x, yy))
+        Dummy(ImVec2(1.0, u(4.0)))
+        EndChild()
     }
 
     def unit_table(x, y, w, h : float) : void {

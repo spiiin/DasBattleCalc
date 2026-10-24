@@ -352,3 +352,30 @@ All 245 abilities of `abil1.txt` and the 195 edited cases of
 `tests/test_ffta2_attack.das` agree (`tests/test_ffta2_vm.das`). The
 Attack tab shows the VM's forecast; the translated formula stays as the
 step-by-step explanation (a difference is shown).
+
+## Turn order (2026-10-24)
+
+`ct_probe.lua` logs the battle objects' CT (+0x16), HP and tile each
+frame while an input plan plays (the clan Waits each turn); `ct1.txt`:
+17 turns from the first battle's state.
+
+- 0x020611B8 builds a list of 12-byte entries (0x02060C90: +0 the unit,
+  +4 CT, +6 Haste / +7 Slow / +8 Stop - the statuses' durations, +9
+  Quicken, +0x0A the unit forced to act) and 0x020610D4 sorts it
+  (qsort, comparator 0x02060DC4: +0x0A, then +9 first, then higher CT,
+  then the lower unit record address) - the first acts when its CT >=
+  100 (0x02060EE4) or a flag is set; otherwise every entry gets a tick
+  (0x02061098) and the list is sorted again.
+- A tick (0x02060F18): + speed (object parameter 0x33 = +0x14), x2 with
+  Haste, / 2 with Slow or status 35 (Speed down); clan members (flags
+  bits 0, 2 clear, ...) + 2 / 4 / 6 / 8 / 10 with clan privileges 11..15
+  (game variable 0x171 = 369).
+- The turn's cost is subtracted by a native of the turn-end script
+  (0x020693DC, clamped at 0): seen 50 for Wait, 80 Move + Wait, 70 Act
+  without moving, 100 Move + Act.
+
+`scripts/games/ffta2/ffta2_turns.das` predicts the next turns (each
+unit ends its turns as its Assumed turn); `tests/test_ffta2_turns.das`:
+the 17 recorded turns (order, CT, ticks). Editing a status bit alone
+(Haste / Slow in the record) does not change ticks in the game: the
+durations count; the model takes the bits.

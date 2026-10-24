@@ -18,6 +18,7 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   `tests/test_nds_mem.das` (чтение RAM melonDS и файлов ROM), `tests/test_ffta2_battle.das` (юниты и экраны Unit Info),
   `tests/test_ffta2_attack.das` (175 прогнозов Attack игры, формула переведена из скриптов VM; 200 настоящих ударов, предсказанных по сидам генераторов),
   `tests/test_ffta2_abilities.das` (236 способностей по прогнозам игры; данные — `research/ffta2/abil1.txt`),
+  `tests/test_ffta2_turns.das` (17 ходов из игры: порядок, CT, тики),
   `tests/test_ffta2_vm.das` (все 245 — интерпретатором VM игры: `ffta2_vm.das` исполняет её скрипты из ROM, `ffta2_forecast.das` — нативные вызовы). Пробы FFTA2: `research/ffta2/plan_probe.lua` (план ввода,
   скриншоты, дампы, лог записей / исполнения), `vary_probe.lua` (прогноз при правках RAM), `exec_probe.lua` (настоящие удары с заданными сидами), `arm.py` (дизассемблер ARM), `vmdis.py` / `vmdec.py` (скрипты VM), `natives.py` (нативные вызовы).
   Общие части игр: `scripts/ui/battle_field.das` (изометрическое поле: `FieldMap`, `FieldUnit`, ввод — `FieldInput`),
