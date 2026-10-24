@@ -192,10 +192,12 @@ class FftaGame : GameModule {
                 rom_path = slice(line, 4)
             }
         }
+        // files named on the command line (tests, screenshots) are not remembered
+        let from_args = gui_arg("--state", "") != "" || gui_arg("--rom", "") != ""
         state_path = gui_arg("--state", state_path)
         rom_path = gui_arg("--rom", rom_path)
         if (stat(state_path).is_valid && stat(rom_path).is_valid) {
-            self->load()
+            self->load(!from_args)
         }
     }
 
@@ -208,7 +210,8 @@ class FftaGame : GameModule {
         return ""
     }
 
-    def load() : void {
+    // remember: write the paths into local.cfg on success
+    def load(remember : bool = true) : void {
         let err = self->load_files()
         if (err != "") {
             message = err
@@ -235,7 +238,9 @@ class FftaGame : GameModule {
         let dot = find(state_path, ".", max(0, length(state_path) - 6))
         export_path = dot >= 0 ? "{slice(state_path, 0, dot)}.edited{slice(state_path, dot)}" : "{state_path}.edited"
         log_line("loaded {state_path}: {message}")
-        fwrite(config_path(), "state={state_path}\nrom={rom_path}\n")
+        if (remember) {
+            fwrite(config_path(), "state={state_path}\nrom={rom_path}\n")
+        }
     }
 
     // the unit taking its turn attacks the nearest unit of another side
