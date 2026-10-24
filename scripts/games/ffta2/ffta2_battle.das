@@ -50,6 +50,7 @@ let private RACE_TEXT = 91
 // Attack, Defense, Magick, Resistance, Speed, Evasion, Move, Jump: the
 // order of the equipment's bonuses (+19..+26) and of the Unit Info screen
 let STAT2_COUNT = 8
+let LEARNED_SIZE = 200
 let STAT2_LABELS = fixed_array<string>("Attack", "Defense", "Magick", "Resistance", "Speed", "Evasion", "Move", "Jump")
 
 // how a turn ends (its CT cost: 50, +30 moved, +20 acted)
@@ -69,6 +70,8 @@ struct Item2 {
     reach : int                     // +5: weapon range (swords 1, spears 2, bows 5..7, guns 7..8)
     two_hand : bool                 // +0x24 bit 2 (Doublehand counts such weapons)
     bonus : int[8]                  // by STAT2_LABELS
+    teach_job : int[3]              // +0x1B: it teaches teach[k] to job number teach_job[k] (job_number)
+    teach : int[3]                  // +0x1E u16: abilities
 }
 
 struct Unit2 {
@@ -112,6 +115,7 @@ struct Unit2 {
     @hide stat_base : int[8]        // raw / 4, Speed, job Move / Jump
     @hide stat_items : int[8]
     @hide stat_total : int[8]       // as the Unit Info screen shows it
+    @hide learned : uint8[LEARNED_SIZE] // record +0x52: per ability index (Ability2.learn), AP; bit 7 mastered
 }
 
 // ------------------------------------------------------------ text
@@ -198,6 +202,10 @@ def read_item2(id : int) : Item2 {
     for (s in range(STAT2_COUNT)) {
         it.bonus[s] = int(int8(nds_buf_read8(buf, base + 19 + s)))
     }
+    for (k in range(3)) {
+        it.teach_job[k] = int(nds_buf_read8(buf, base + 0x1B + k))
+        it.teach[k] = int(nds_buf_read16(buf, base + 0x1E + k * 2))
+    }
     return it
 }
 
@@ -218,6 +226,7 @@ struct Ability2 {
     range_flags : int               // +0x0D: bit 2 - the user's own tile is in reach
     area : int                      // +0x0E: the area's radius
     fx : int4[4]                    // +0x10: effects (type = condition, apply, hit, amount functions)
+    learn : int2[8]                 // +0x24: (job class, index): the unit's learned byte (record +0x52 + index)
 }
 
 def ability_count() : int {
@@ -254,12 +263,125 @@ def read_ability2(id : int) : Ability2 {
     a.reach = int(nds_buf_read8(buf, base + 0x0C))
     a.range_flags = int(nds_buf_read8(buf, base + 0x0D))
     a.area = int(nds_buf_read8(buf, base + 0x0E))
+    for (k in range(8)) {
+        a.learn[k] = int2(int(nds_buf_read8(buf, base + 0x24 + k * 2)), int(nds_buf_read8(buf, base + 0x25 + k * 2)))
+    }
     for (k in range(4)) {
         let o = base + 0x10 + 4 * k
         a.fx[k] = int4(int(nds_buf_read8(buf, o)), int(nds_buf_read8(buf, o + 1)), int(nds_buf_read8(buf, o + 2)),
             int(nds_buf_read8(buf, o + 3)))
     }
     return a
+}
+
+// ------------------------------------------------------------ jobs and learning
+
+// the job's class (+14): 1..7 the races' jobs, 10.. monster families;
+// an ability has a learned byte for each class it belongs to
+def job_class(job : int) : int {
+    return job_byte(job, 14)
+}
+
+let JOB_COUNT = 163
+
+// item kinds the job can wear: bit k of the 40 bits at +67 (1..25
+// weapons, 26 shields, 27.. head, body, feet, hands, accessories)
+def can_equip(job : int; it : Item2) : bool {
+    if (it.kind <= 0 || it.kind >= 40) {
+        return false
+    }
+    return (job_byte(job, 67 + (it.kind >> 3)) & (1 << (it.kind & 7))) != 0
+}
+
+// the learned byte of an ability for a class, -1: not of that class
+def learn_slot(ab : Ability2; cls : int) : int {
+    for (p in ab.learn) {
+        if (p.x == cls && p.x != 0 && p.y < LEARNED_SIZE) {
+            return p.y
+        }
+    }
+    return -1
+}
+
+// Items name the jobs they teach by a number in the list of job names
+// without repeats (1 Soldier .. 23 Trickster, 24 Beastmaster - the Nu
+// Mou White Mage repeats the Hume one ...): every job of that name
+def job_number(job : int) : int {
+    var names : array<string>
+    for (j in range(1, JOB_COUNT)) {
+        let n = job_name(j)
+        if (n != "" && n != "-" && find_index(names, n) < 0) {
+            names |> push(n)
+        }
+        if (j == job) {
+            return find_index(names, n) + 1
+        }
+    }
+    return 0
+}
+
+struct private JobAbilityCache {
+    rom : uint
+    lists : table<int; array<int>>
+}
+
+var private job_ability_cache : JobAbilityCache
+
+// the abilities a job learns: of a race's job, those the equipment
+// teaches it (and its class has a byte for); of a monster family, all
+// of the class; in id order
+def job_abilities(job : int) : array<int> {
+    if (job_ability_cache.rom != gba_rom_serial()) {
+        job_ability_cache.rom = gba_rom_serial()
+        job_ability_cache.lists |> clear()
+    }
+    if (!key_exists(job_ability_cache.lists, job)) {
+        var list : array<int>
+        let cls = job_class(job)
+        if (cls >= 10) {
+            for (aid in range(1, ability_count())) {
+                let ab = read_ability2(aid)
+                if (ab.name != "" && ab.name != "-" && learn_slot(ab, cls) >= 0) {
+                    list |> push(aid)
+                }
+            }
+        } else {
+            let num = job_number(job)
+            for (iid in range(1, item_count())) {
+                let it = read_item2(iid)
+                for (k in range(3)) {
+                    let aid = it.teach[k]
+                    if (it.teach_job[k] == num && aid != 0 && find_index(list, aid) < 0 &&
+                            learn_slot(read_ability2(aid), cls) >= 0) {
+                        list |> push(aid)
+                    }
+                }
+            }
+            sort(list)
+        }
+        job_ability_cache.lists[job] <- list
+    }
+    var res : array<int>
+    res := job_ability_cache.lists[job]
+    return <- res
+}
+
+// the jobs of a class (the inspector's ability blocks): the class's own
+// jobs; a monster - its own job
+def class_jobs(job : int) : array<int> {
+    var res : array<int>
+    let cls = job_class(job)
+    if (cls >= 10) {
+        res |> push(job)
+        return <- res
+    }
+    for (j in range(1, JOB_COUNT)) {
+        let n = job_name(j)
+        if (n != "" && n != "-" && job_class(j) == cls) {
+            res |> push(j)
+        }
+    }
+    return <- res
 }
 
 def is_magick2(a : Ability2) : bool {
@@ -352,6 +474,9 @@ def read_unit2(rec, obj : uint) : Unit2 {
     u.support_name = u.support != 0 ? ffta2_message(ABILITY_NAMES, u.support) : "none"
     for (k in range(9)) {
         u.status[k] = uint8(gba_read8(rec + 0x28u + uint(k)))
+    }
+    for (k in range(LEARNED_SIZE)) {
+        u.learned[k] = uint8(gba_read8(rec + 0x52u + uint(k)))
     }
     u.ct = int(gba_read16(obj + 0x16u))
     u.speed = int(gba_read16(obj + 0x14u))

@@ -31,6 +31,24 @@ def find_unit(units : array<Unit2>; name : string) : int {
     return -1
 }
 
+def find_item(name : string) : int {
+    for (i in range(1, item_count())) {
+        if (read_item2(i).name == name) {
+            return i
+        }
+    }
+    return 0
+}
+
+def find_ability(name : string) : int {
+    for (i in range(1, ability_count())) {
+        if (read_ability2(i).name == name) {
+            return i
+        }
+    }
+    return 0
+}
+
 // Attack, Defense, Magick, Resistance, Speed, Evasion, Move, Jump
 def check_stats(units : array<Unit2>; name : string; want : int[8]) {
     let i = find_unit(units, name)
@@ -87,6 +105,24 @@ def main() : int {
         }
     }
     check("map heights: {tiles} tiles, {wrong} differ", tiles == 144 && wrong == 0)
+    // what a job can wear (job +67 bits by item kind)
+    check("Soldier wears Broadsword", can_equip(1, read_item2(15)))
+    check("Soldier wears Bronze Shield", can_equip(1, read_item2(find_item("Bronze Shield"))))
+    check("Soldier does not wear White Staff", !can_equip(1, read_item2(142)))
+    check("White Mage wears White Staff", can_equip(3, read_item2(142)))
+    // the abilities of a job (taught by the equipment) and the learned
+    // bytes (the Soldier's menu reads +0x52 + 0x98 for First Aid)
+    let soldier <- [for (a in job_abilities(1)); read_ability2(a).name]
+    check("Soldier: {soldier}", join(soldier, ", ") ==
+        "First Aid, Rend Power, Rend Magick, Rend MP, Rend Speed, Mug Gil, Provoke, Gauge")
+    check("Spellblade is job number 35 in the items", job_number(40) == 35)
+    let blades <- [for (a in job_abilities(40)); read_ability2(a).name]
+    check("Spellblade: {blades}", length(blades) == 8 && blades[1] == "Oil Blade")
+    check("First Aid: Hume byte 0x98", learn_slot(read_ability2(39), 1) == 0x98)
+    if (cid >= 0) {
+        let sl = learn_slot(read_ability2(find_ability("Body Slam")), job_class(units[cid].job_id))
+        check("Cid mastered Body Slam ({sl})", sl >= 0 && (uint(units[cid].learned[sl]) & 0x80u) != 0u)
+    }
     for (un in units) {
         print("{un.name} ({un.race} {un.job}) Lv{un.level} HP {un.hp}/{un.max_hp} MP {un.mp}/{un.max_mp} {un.position} CT {un.ct} team {fmt(":02X", un.team_byte)} stats {un.stat_total}\n")
     }

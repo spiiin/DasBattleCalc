@@ -44,6 +44,16 @@ def private bonus2_text(it : Item2) : string {
     return length(parts) > 0 ? join(parts, "  ") : "no stat bonus"
 }
 
+// equipment kinds (equipment +0), by their items
+let private KIND2_NAMES = fixed_array<string>("", "Knife", "Sword", "Blade", "Saber", "Knightsword", "Rapier",
+    "Greatsword", "Broadsword", "Katana", "Spear", "Rod", "Staff", "Pole", "Knuckles", "Bow", "Greatbow", "Gun",
+    "Instrument", "Hand-cannon", "-", "Axe", "Hammer", "Mace", "Card", "Book", "Shield", "Helm", "Ribbon", "Hat",
+    "Armor", "Clothing", "Robe", "Shoes", "Gloves", "Accessory")
+
+def private kind2_name(kind : int) : string {
+    return kind > 0 && kind < length(KIND2_NAMES) ? KIND2_NAMES[kind] : "kind {kind}"
+}
+
 def private right2(x, baseline : float; s : string; color : uint) {
     text_at_baseline(x - text_width(s), baseline, s, color)
 }
@@ -117,6 +127,12 @@ class Ffta2Game : GameModule {
     rom_serial : uint                 // actions are rebuilt for another ROM
     stats_open : bool = true
     equip_open : bool = true
+    status_open : bool = false
+    abilities_open : bool = true
+    job_open : table<string; bool>    // "unit job": an open job block of the abilities
+    pick_slot : int = 0
+    item_filter = ImGuiInputTextBuffer("", 64)
+    item_all : bool = false           // the item list: every item, not only what the job can wear
     state_path : string
     rom_path : string
     loaded_state : string
@@ -262,16 +278,119 @@ class Ffta2Game : GameModule {
         }
         var bottom = inspect("unit2_{selected}", units[selected], saved[selected], x, by, w)
         bottom = self->stat_rows(units[selected], x, bottom + u(6.0), w)
-        bottom = self->equip_rows(units[selected], x, bottom + u(6.0), w)
+        bottom = self->equip_rows(units[selected], saved[selected], x, bottom + u(6.0), w)
+        bottom = self->status_rows(units[selected], saved[selected], x, bottom + u(6.0), w)
+        bottom = self->ability_rows(units[selected], saved[selected], x, bottom + u(6.0), w)
+        recompute_unit(units[selected])
+        return bottom
+    }
+
+    // statuses 1..71 (record +0x28 bits) as check boxes in two columns;
+    // "*": changed, the button reverts all of them
+    def status_rows(var unit : Unit2; saved_u : Unit2; x, y, w : float) : float {
         var names : array<string>
+        var changed = false
         for (n in range(1, 72)) {
-            if (has_status2(units[selected], n)) {
+            changed = changed || has_status2(unit, n) != has_status2(saved_u, n)
+            if (has_status2(unit, n)) {
                 names |> push(status_name(n))
             }
         }
-        SetCursorScreenPos(ImVec2(x, bottom + u(6.0)))
-        bl_label("Status: {length(names) > 0 ? join(names, ", ") : "none"}")
-        return bottom + u(30.0)
+        if (changed && bl_revert_button("status2_revert", x + w - u(22.0), y)) {
+            unit.status = saved_u.status
+        }
+        SetCursorScreenPos(ImVec2(x, y))
+        let now = length(names) > 0 ? join(names, ", ") : "none"
+        var ry = y + u(23.0)
+        if (!bl_section("status2_section", "Status: {now}", status_open)) {
+            return ry
+        }
+        let cw = floor(w * 0.5)
+        var col = 0
+        for (n in range(1, 72)) {
+            let name = status_name(n)
+            if (name == "" || name == "-") {
+                continue
+            }
+            SetCursorScreenPos(ImVec2(x + u(6.0) + float(col) * cw, ry))
+            var on = has_status2(unit, n)
+            let caption = on != has_status2(saved_u, n) ? "{name} *" : name
+            if (bl_option("status2_{n}", caption, on)) {
+                let mask = 1u << uint(n & 7)
+                let b = uint(unit.status[n >> 3])
+                unit.status[n >> 3] = uint8(on ? (b | mask) : (b & ~mask))
+            }
+            col = 1 - col
+            if (col == 0) {
+                ry += u(21.0)
+            }
+        }
+        return ry + (col == 1 ? u(25.0) : u(4.0))
+    }
+
+    // Learned abilities (record +0x52 + the ability's index for the job
+    // class: AP, bit 7 mastered), one collapsible block per job of the
+    // unit's class with a check box per ability (mastered); the unit's
+    // job is open at first. "*": changed, "AP n": learning.
+    def ability_rows(var unit : Unit2; saved_u : Unit2; x, y, w : float) : float {
+        var changed = false
+        for (i in range(LEARNED_SIZE)) {
+            changed = changed || unit.learned[i] != saved_u.learned[i]
+        }
+        if (changed && bl_revert_button("abilities2_revert", x + w - u(22.0), y)) {
+            unit.learned = saved_u.learned
+        }
+        SetCursorScreenPos(ImVec2(x, y))
+        var ry = y + u(23.0)
+        if (!bl_section("abilities2_section", "Abilities", abilities_open)) {
+            return ry
+        }
+        let cls = job_class(unit.job_id)
+        let cw = floor(w * 0.5)
+        for (j in class_jobs(unit.job_id)) {
+            let list <- job_abilities(j)
+            if (length(list) == 0) {
+                continue
+            }
+            var have = 0
+            var diff = false
+            for (aid in list) {
+                let sl = learn_slot(read_ability2(aid), cls)
+                have += (uint(unit.learned[sl]) & 0x80u) != 0u ? 1 : 0
+                diff = diff || unit.learned[sl] != saved_u.learned[sl]
+            }
+            let key = "{unit.name} {j}"
+            if (!key_exists(job_open, key)) {
+                job_open[key] = j == unit.job_id
+            }
+            var open = job_open[key]
+            SetCursorScreenPos(ImVec2(x + u(8.0), ry))
+            bl_section("job2_block{j}", "{job_name(j)}  {have} / {length(list)}{diff ? " *" : ""}", open)
+            job_open[key] = open
+            ry += u(22.0)
+            if (!open) {
+                continue
+            }
+            var col = 0
+            for (aid in list) {
+                let sl = learn_slot(read_ability2(aid), cls)
+                let v = uint(unit.learned[sl])
+                let ap = (v & 0x7Fu) != 0u && (v & 0x80u) == 0u ? " (AP {v & 0x7Fu})" : ""
+                let name = "{read_ability2(aid).name}{ap}"
+                SetCursorScreenPos(ImVec2(x + u(14.0) + float(col) * cw, ry))
+                var on = (v & 0x80u) != 0u
+                let caption = unit.learned[sl] != saved_u.learned[sl] ? "{name} *" : name
+                if (bl_option("learned2_{j}_{aid}", caption, on)) {
+                    unit.learned[sl] = uint8(on ? (v | 0x80u) : (v & 0x7Fu))
+                }
+                col = 1 - col
+                if (col == 0) {
+                    ry += u(21.0)
+                }
+            }
+            ry += col == 1 ? u(25.0) : u(4.0)
+        }
+        return ry + u(4.0)
     }
 
     // Unit Info stats: base (raw / 4, Speed, job Move / Jump) + equipment
@@ -304,7 +423,10 @@ class Ffta2Game : GameModule {
         return ry
     }
 
-    def equip_rows(un : Unit2; x, y, w : float) : float {
+    // equipment slots: a click opens the list of items the unit's job
+    // can wear (name filter; "All items" shows the rest too); the stats
+    // each item changes under it
+    def equip_rows(var un : Unit2; saved_u : Unit2; x, y, w : float) : float {
         SetCursorScreenPos(ImVec2(x, y))
         var ry = y + u(23.0)
         if (!bl_section("equip2_section", "Equipment", equip_open)) {
@@ -312,21 +434,83 @@ class Ffta2Game : GameModule {
         }
         let fg = bt.regular.text | 0xffu
         let dim = offset_color(fg, 60)
+        let bw = u(24.0)
+        let kw = u(96.0)
         for (slot in range(EQUIP_SLOTS)) {
             let it = un.equip[slot]
-            if (it.id == 0) {
-                continue
+            SetCursorScreenPos(ImVec2(x, ry))
+            let caption = it.id != 0 ? it.name : "(empty)"
+            if (bl_tool_button("equip2_slot{slot}", caption, -1, w - bw - kw - u(4.0))) {
+                OpenPopup("##item2_pick")
+                pick_slot = slot
+                item_filter = ImGuiInputTextBuffer("", 64)
             }
-            text_at_baseline(x + u(8.0), ry + u(15.0), it.name, fg)
-            ry += u(20.0)
-            text_at_baseline(x + u(16.0), ry + u(13.0), bonus2_text(it), dim)
-            ry += u(19.0)
+            if (it.id != 0) {
+                let bad = can_equip(un.job_id, it) ? "" : " (!)"
+                right2(x + w - bw - u(6.0), ry + u(15.0), "{kind2_name(it.kind)}{bad}", dim)
+            }
+            if (it.id != saved_u.equip[slot].id && bl_revert_button("equip2_revert{slot}", x + w - u(22.0), ry)) {
+                un.equip[slot] = saved_u.equip[slot]
+                un.items[slot] = saved_u.items[slot]
+            }
+            ry += u(22.0)
+            if (it.id != 0) {
+                text_at_baseline(x + u(12.0), ry + u(13.0), bonus2_text(it), dim)
+                ry += u(19.0)
+            }
         }
-        if (ry == y + u(23.0)) {
-            text_at_baseline(x + u(8.0), ry + u(15.0), "(none)", dim)
-            ry += u(20.0)
-        }
+        self->item_picker(un, x, w)
         return ry
+    }
+
+    // the list of equipment for the slot pick_slot: what the job can wear
+    def item_picker(var un : Unit2; x, w : float) : void {
+        SetNextWindowSize(ImVec2(max(w, u(330.0)), u(360.0)), ImGuiCond.Always)
+        bl_push_popup_style()
+        PushStyleColor(ImGuiCol.PopupBg, abgr(bt.menu.inner | 0xffu))
+        if (BeginPopup("##item2_pick")) {
+            let pw = GetContentRegionAvail().x
+            let p = GetCursorScreenPos()
+            SetCursorScreenPos(ImVec2(p.x + u(6.0), p.y + u(3.0)))
+            bl_label("Name:", -1, u(52.0), bt.menu_item.text)
+            SetCursorScreenPos(ImVec2(p.x + u(58.0), p.y + u(3.0)))
+            if (!IsAnyItemActive()) {
+                SetKeyboardFocusHere(0)
+            }
+            bl_text_field("item2_filter", item_filter, pw - u(64.0))
+            SetCursorScreenPos(ImVec2(p.x + u(6.0), p.y + u(28.0)))
+            bl_option("item2_all", "All items (not only what {un.job} can wear)", item_all)
+            SetCursorScreenPos(ImVec2(p.x, p.y + u(56.0)))
+            let filter = to_lower(to_string(item_filter))
+            PushStyleColor(ImGuiCol.ChildBg, abgr(bt.menu.inner | 0xffu))
+            BeginChild("item2_list", ImVec2(pw, GetContentRegionAvail().y), ImGuiChildFlags.None, ImGuiWindowFlags.None)
+            bl_popup_rows() {
+                if (bl_menu_item("(empty)")) {
+                    un.equip[pick_slot] = Item2()
+                    un.items[pick_slot] = 0
+                    CloseCurrentPopup()
+                }
+                for (iid in range(1, item_count())) {
+                    let it = read_item2(iid)
+                    if (it.kind <= 0 || it.name == "" || it.name == "-" || (!item_all && !can_equip(un.job_id, it))) {
+                        continue
+                    }
+                    if (filter != "" && find(to_lower(it.name), filter) < 0) {
+                        continue
+                    }
+                    if (bl_menu_item("{it.name}   {kind2_name(it.kind)}   {bonus2_text(it)}")) {
+                        un.equip[pick_slot] = it
+                        un.items[pick_slot] = it.id
+                        CloseCurrentPopup()
+                    }
+                }
+            }
+            EndChild()
+            PopStyleColor(1)
+            EndPopup()
+        }
+        PopStyleColor(1)
+        bl_pop_popup_style()
     }
 
     def override draw_scene(x, y, w, h : float) : void {
@@ -942,5 +1126,6 @@ class Ffta2Game : GameModule {
 // any field of the unit differs from the loaded one
 def private inspect_changed(a, b : Unit2) : bool {
     return (a.hp != b.hp || a.max_hp != b.max_hp || a.mp != b.mp || a.max_mp != b.max_mp || a.ct != b.ct ||
-        a.x != b.x || a.y != b.y || a.facing != b.facing)
+        a.x != b.x || a.y != b.y || a.facing != b.facing || "{a.items} {a.status}" != "{b.items} {b.status}" ||
+        "{a.learned}" != "{b.learned}")
 }

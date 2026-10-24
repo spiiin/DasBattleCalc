@@ -452,6 +452,27 @@ not in the log).
 
 `tests/test_ffta2_status.das`: the 70 forecasts by the VM.
 
+## Equipment and learned abilities (2026-10-25)
+
+- What a job wears: job +67, 40 bits by item kind (equipment +0: 1..25
+  weapons - 1 knives, 2 swords, ... 24 cards, 25 books; 26 shields, 27
+  helms, 28 ribbons, 29 hats, 30 armor, 31 clothing, 32 robes, 33 shoes,
+  34 gloves, 35 accessories). Soldier: 2, 7, 26, 27, 29..31, 33..35.
+- An item teaches up to three (job, ability): job numbers at +0x1B,
+  ability ids u16 at +0x1E. The job number is the position in the list
+  of job names without repeats (1..23 as the job ids, 24 Beastmaster,
+  ... 35 Spellblade, ...): a White Mage ability is every White Mage's.
+- The learned bytes: record +0x52 + index, 200 bytes (0x020BBE88: the
+  unit getter 0x26 + 4 + index, index < 0xC8). The index is the
+  ability's for the job's class: ability +0x24, up to 8 pairs (class,
+  index); the class is job +14 (1..7 the races, 10.. monster families).
+  The byte holds AP; 0x020BBF0C adds AP and sets bit 7 (mastered) at the
+  maximum. Luso's Arts of War menu reads the bytes of abilities 39..46
+  (First Aid 0x98 -> +0xEA, Rend Power 0x70 -> +0xC2, ...); Cid has Body
+  Slam at 0x9E (mastered), the monsters Peck / Territorial Marking.
+- The calculator groups a unit's abilities by the jobs of its class
+  (what the equipment teaches them); a monster - all of its class.
+
 ## Unit graphics (2026-10-25, in progress)
 
 Paths in the code (0x0211C078..): `char/rom/rom_idx/UnitCg.rom_idx` +
