@@ -397,3 +397,35 @@ found yet): ability +0x0B = 7 - the weapon's range (equipment +5: swords
 1, spears 2, bows 5..7, guns 7..8, cards 8), 8 - the user only; else
 +0x0C tiles (Fire 4, Holy 3, Air Render 3); +0x0E the area's radius.
 Distance |dx| + |dy|; heights not checked yet.
+
+## Statuses (2026-10-24)
+
+The forecast shows a status ability as (hit, 10001: no damage) at the
+same place as Attack's (0x02292FC6); `vary_probe.lua` with
+`status_cases.py` -> `status4.txt`: 16 status abilities, 10 target jobs,
+10 target and 4 attacker statuses (support edits broke the probe's menu:
+not in the log).
+
+- Apply functions (script 897) put a status by native_1615(target,
+  status, 1, 0): 64 Poison (12), 65 Stone (9), 66 Silence (28), 68 Sleep
+  (27), 69 Blind (13), 71 Toad (11), 74 Slow (23), 79 Doom (21), 80 Stop
+  (24), 78 Charm (30), ...; 82 / 86 / 87 / 88 one of several. The table
+  is in `ffta2_forecast.das` (APPLY_STATUS).
+- Hit F7 (spells) = sub_5600(.., 1) then sub_4390: the target job's
+  status base (job +45, native 2855: 60 Cockatrice, 10..65 by job),
+  privileges 6..10 +-2..10 (clan vs others), Turbo MP +15 with a magick,
+  Concentration +5, attacker Blind -30, attacker status 54 +30, target
+  Resilience up -15 / down +15, Evasion up -20; 1..99; / the argument;
+  100 on a target with status 2, 9, 27, 24, 17, 34 (0 HP, Stone, Sleep,
+  Stop, Evasion 0, Bulwark); 0 out of Elusion's reach. F15 / F16
+  (weapon techniques' secondary effects) first ask native 18 (2, ..):
+  whether the effect before hit - 0 in a forecast, so the game shows only
+  the damage; the calculator shows the chance if it hits (not checked:
+  the game does not show it).
+- sub_4390: equipment immunities (item native 2316 = its code) per apply
+  function, then for every status the target has native 1699(apply,
+  status) bit 0: 0 - the status can not land (Sleep / Poison on Stone:
+  0). Native 1699 (0x020CF63C) reads sysdata file 20 (0x020CB4D0: 20
+  bytes per apply function 0..179), bits 2s and 2s + 1.
+
+`tests/test_ffta2_status.das`: the 70 forecasts by the VM.

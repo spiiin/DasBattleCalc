@@ -19,6 +19,7 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   `tests/test_ffta2_attack.das` (175 прогнозов Attack игры, формула переведена из скриптов VM; 200 настоящих ударов, предсказанных по сидам генераторов),
   `tests/test_ffta2_abilities.das` (236 способностей по прогнозам игры; данные — `research/ffta2/abil1.txt`),
   `tests/test_ffta2_turns.das` (17 ходов из игры: порядок, CT, тики),
+  `tests/test_ffta2_status.das` (70 прогнозов статусных способностей игры через VM; данные — `research/ffta2/status4.txt`, сейв `ffta2_test_attack.State`),
   `tests/test_ffta2_explore.das` (Explore FFTA2, `ffta2_explore.das`: точки = action2 после той же правки, примеры
   вкладки; сейв, где Luso стоит рядом с Sasarr — `ffta2_test_attack.State`),
   `tests/test_ffta2_vm.das` (все 245 — интерпретатором VM игры: `ffta2_vm.das` исполняет её скрипты из ROM, `ffta2_forecast.das` — нативные вызовы). Пробы FFTA2: `research/ffta2/plan_probe.lua` (план ввода,

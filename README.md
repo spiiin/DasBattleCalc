@@ -33,7 +33,8 @@ and Dear ImGui (Blender 2.7-style widgets). Runs on the desktop (Windows) and in
   elements, statuses, support abilities) comes from the game's own formula scripts, run from your ROM by a small
   interpreter of its script VM (245 abilities checked against the game), with a step-by-step explanation; also the
   real hit chance, criticals and damage spread, and the next attack's outcome from the save's random generators
-  (200 real attacks predicted exactly). Explore works for FFTA2 too (its own parameters: `atk.attack`,
+  (200 real attacks predicted exactly). Status abilities (Sleep, Poison, Doom, Charm, ...) show their chance to land,
+  as the game forecasts it (70 cases checked). Explore works for FFTA2 too (its own parameters: `atk.attack`,
   `tgt.status.protect`, `action`, `privilege`, ...). See [research/ffta2/notes.md](research/ffta2/notes.md).
 
 ![Attack calculator: damage breakdown, hit and critical chances](docs/images/attack.png)

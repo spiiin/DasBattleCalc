@@ -737,9 +737,31 @@ class Ffta2Game : GameModule {
         var ry = y + u(54.0)
         let col = x + u(150.0)
         let what = f.healing ? "healing" : "damage"
-        let big = v.ok && v.no_effect ? "No effect on {tgt.name}   ({ab.name})" : (f.unsupported ? "Not computed: {v.problem}" : "Forecast: {f.damage} {what}, {f.hit}% hit   ({ab.name}{magick_text(ab)})")
+        // every effect that applies: "Sleep 60%", ...
+        var others : array<string>
+        for (e in v.effects) {
+            if (e.index != v.effect) {
+                let amount = e.amount != 0 ? " {e.amount}" : ""
+                others |> push(e.problem != "" ? "{effect_text(e.apply)} (not computed: {e.problem})" : "{effect_text(e.apply)}{amount} {e.hit}%{e.after_hit ? " if it hits" : ""}")
+            }
+        }
+        let status_only = v.ok && v.effect < 0 && length(others) > 0
+        var big = v.ok && v.no_effect ? "No effect on {tgt.name}   ({ab.name})" : (f.unsupported ? "Not computed: {v.problem}" : "Forecast: {f.damage} {what}, {f.hit}% hit   ({ab.name}{magick_text(ab)})")
+        if (status_only) {
+            big = "Forecast: {join(others, ", ")}   ({ab.name}{magick_text(ab)})"
+        }
         text_at_baseline(x + u(8.0), ry + u(15.0), big, fg)
         ry += u(21.0)
+        if (status_only) {
+            text_at_baseline(x + u(8.0), ry + u(15.0),
+                "Hit: the target job's status base +- statuses (1..99); 100 on a helpless target, 0 where it can not land", dim)
+            ry += u(21.0)
+            return
+        }
+        if (length(others) > 0) {
+            text_at_baseline(x + u(8.0), ry + u(15.0), "Also: {join(others, ", ")}", fg)
+            ry += u(21.0)
+        }
         let crit = f.crit_prob > 0.0 ? ", critical {fmt(":.2f", f.crit_prob * 100.0)}% (x2)" : ""
         let real = "Real: hit {fmt(":.1f", f.hit_prob * 100.0)}%{crit}, {what} {f.dmg_min}..{f.dmg_max}, ~{fmt(":.1f", f.expected)} per use"
         text_at_baseline(x + u(8.0), ry + u(15.0), real, fg)
@@ -794,7 +816,7 @@ class Ffta2Game : GameModule {
         action_names |> push("Attack")
         for (aid in range(1, ability_count())) {
             let ab = read_ability2(aid)
-            if (aid != ATTACK_ABILITY && damages_or_heals(ab)) {
+            if (aid != ATTACK_ABILITY && (damages_or_heals(ab) || inflicts_status(ab))) {
                 actions |> push(aid)
                 action_names |> push(ab.name)
             }

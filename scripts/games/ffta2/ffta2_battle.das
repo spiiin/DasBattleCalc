@@ -37,6 +37,8 @@ let private EQUIP_FILE = 16             // sysdata: equipment, 40 bytes by item 
 let private EQUIP_SIZE = 40
 let private ABILITY_FILE = 4            // sysdata: abilities, 0x34 bytes
 let private ABILITY_SIZE = 52
+let private STATUS_RULE_FILE = 20       // sysdata: which effects land on which statuses
+let private STATUS_RULE_SIZE = 20
 let private NAMES = 0                   // JD_message tables
 let private JOB_NAMES = 1
 let private ITEM_NAMES = 11
@@ -219,6 +221,20 @@ struct Ability2 {
 
 def ability_count() : int {
     return nds_buf_size(nds_pak_file(SYSDATA_IDX, SYSDATA_PAK, ABILITY_FILE)) / ABILITY_SIZE
+}
+
+// Native 1699 (0x020CF63C): sysdata 20, 20 bytes per apply function
+// (0..179), two bits per status the target has: bit 0 - the effect
+// can land on it, bit 1 - (another rule, seen in the hit script 784)
+def status_rule(apply, status : int) : int {
+    let buf = nds_pak_file(SYSDATA_IDX, SYSDATA_PAK, STATUS_RULE_FILE)
+    let base = clamp(apply, 0, 179) * STATUS_RULE_SIZE
+    if (buf < 0 || status < 0 || base + STATUS_RULE_SIZE > nds_buf_size(buf)) {
+        return 1
+    }
+    let bit = status * 2
+    let b = int(nds_buf_read8(buf, base + (bit >> 3))) >> (bit & 7)
+    return b & 3
 }
 
 def read_ability2(id : int) : Ability2 {
