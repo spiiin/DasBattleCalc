@@ -105,6 +105,14 @@ def main() : int {
         }
     }
     check("map heights: {tiles} tiles, {wrong} differ", tiles == 144 && wrong == 0)
+    // graphics sets: the palettes in RAM in the first battle are those of
+    // these sets (research/ffta2/notes.md, "Unit graphics")
+    var sets : array<string>
+    for (un in units) {
+        sets |> push("{un.name} {unit_gfx_set(un)}")
+    }
+    check("graphics sets: {sets}", join(sets, ", ") ==
+        "Klesta 154, Sasarr 119, Kaveisl 119, Cid 62, Belissana 34, Moricad 24, Luso 61")
     // what a job can wear (job +67 bits by item kind)
     check("Soldier wears Broadsword", can_equip(1, read_item2(15)))
     check("Soldier wears Bronze Shield", can_equip(1, read_item2(find_item("Bronze Shield"))))

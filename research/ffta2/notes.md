@@ -473,20 +473,33 @@ not in the log).
 - The calculator groups a unit's abilities by the jobs of its class
   (what the equipment teaches them); a monster - all of its class.
 
-## Unit graphics (2026-10-25, in progress)
+## Unit graphics (2026-10-25)
 
 Paths in the code (0x0211C078..): `char/rom/rom_idx/UnitCg.rom_idx` +
 `char/rom/pak/UnitCg.pak`, `UnitSst.rom_idx` + `UnitSst.pak` (idx / pak
 like sysdata; 324 sets each), `char/NaUnitAnimTable.bin`; the async
 loader at 0x0203D5xx (a request: u16 +2 the set). `unit_gfx.py`:
 
-- UnitCg: a set is a chain of NDS LZ77 (0x10) blocks, 4-aligned; set 0:
-  32 blocks of 1536 bytes = frames of 32 x 48 texels, 1 byte each, NDS
-  texture format A3I5 (top 3 bits alpha: 7 opaque, 0 clear; 5 bits a
-  palette index, 1..27 used). Set 155 (in RAM in the first battle): 10240
-  -byte blocks (a bigger monster).
-- UnitSst: 8-byte animation records, then packed sequences (not decoded).
-- Not found yet: the palettes (not in sysdata, UnitCg or UnitSst as
-  plain BGR555; the game uploads them to texture palette memory, which
-  BizHawk's melonDS core does not expose), which set a unit uses, which
-  frame is standing per facing.
+- The set of a unit: a story character's (name id 0x8000 | n: sysdata 0,
+  28 bytes per character, +6: Luso 61, Cid 62), else the job's (+4;
+  +6 another set, perhaps the female / variant). Checked by the
+  palettes in RAM in the first battle (the heap block at 0x022C0600:
+  Klesta 154, Sasarr / Kaveisl 119, Cid 62, Belissana 34, Moricad 24,
+  Luso 61).
+- UnitCg: a set is a chain of NDS LZ77 (0x10) blocks, 4-aligned, one per
+  frame; most frames 32 x 48 texels (1536 bytes) or 64 x 48 (3072, the
+  cockatrices), A3I5 (top 3 bits alpha: 7 opaque, 0 clear; 5 bits a
+  palette index). Small parts (256 bytes) follow. Frame 0 stands facing
+  the viewer (down-left), frame 1 shows the back. Five big monsters
+  (10240-byte blocks, Klesta) are 4bpp pieces assembled by UnitSst: not
+  decoded.
+- UnitSst: 8-byte animation records, packed sequences, and the palette
+  block: u16 size, u16 2, LZ77 of 32-colour BGR555 palettes (Cid 6, the
+  cockatrices 4: team / variant colours; the units of the first battle
+  use palette 0). Found by searching RAM for the colours of the bottom
+  screen's sprites.
+- The top screen's sprites are other pictures (menu/atl_rom/atl.pak,
+  16-colour).
+
+The calculator draws frame 0 / 1 (mirrored for two facings, as FFTA)
+by nds_unit_sprite (native/gba_gfx.cpp); View -> ROM sprites.

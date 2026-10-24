@@ -34,7 +34,7 @@ and Dear ImGui (Blender 2.7-style widgets). Runs on the desktop (Windows) and in
   interpreter of its script VM (245 abilities checked against the game), with a step-by-step explanation; also the
   real hit chance, criticals and damage spread, and the next attack's outcome from the save's random generators
   (200 real attacks predicted exactly). Status abilities (Sleep, Poison, Doom, Charm, ...) show their chance to land,
-  as the game forecasts it (70 cases checked). The inspector edits the equipment (a list of what the job can wear), statuses and learned abilities by job.
+  as the game forecasts it (70 cases checked). The field shows the units' sprites from the ROM (not the big monsters yet). The inspector edits the equipment (a list of what the job can wear), statuses and learned abilities by job.
   Explore works for FFTA2 too (its own parameters: `atk.attack`,
   `tgt.status.protect`, `action`, `privilege`, ...). See [research/ffta2/notes.md](research/ffta2/notes.md).
 

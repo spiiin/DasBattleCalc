@@ -157,6 +157,95 @@ int gba_gfx_sprite(SDL_Renderer * r, uint32_t tiles, uint32_t layout, uint32_t p
     return handle;
 }
 
+namespace {
+
+// NDS LZ77 (type 0x10) at `p` of `b`; the end in `end`
+bool lz77(const std::vector<uint8_t> & b, size_t p, std::vector<uint8_t> & out, size_t & end) {
+    if (p + 4 > b.size() || b[p] != 0x10) return false;
+    size_t size = b[p + 1] | b[p + 2] << 8 | b[p + 3] << 16;
+    out.clear();
+    p += 4;
+    while (out.size() < size) {
+        if (p >= b.size()) return false;
+        uint8_t flags = b[p++];
+        for (int bit = 0; bit < 8 && out.size() < size; ++bit) {
+            if (flags & (0x80 >> bit)) {
+                if (p + 2 > b.size()) return false;
+                int v = b[p] << 8 | b[p + 1];
+                p += 2;
+                size_t n = (v >> 12) + 3, d = (v & 0xFFF) + 1;
+                if (d > out.size()) return false;
+                for (size_t i = 0; i < n; ++i) out.push_back(out[out.size() - d]);
+            } else {
+                if (p >= b.size()) return false;
+                out.push_back(b[p++]);
+            }
+        }
+    }
+    out.resize(size);
+    end = p;
+    return true;
+}
+
+std::vector<uint8_t> buf_bytes(int h) {
+    std::vector<uint8_t> v(h >= 0 ? nds_buf_size(h) : 0);
+    for (size_t i = 0; i < v.size(); ++i) v[i] = (uint8_t)nds_buf_read8(h, (int)i);
+    return v;
+}
+
+}  // namespace
+
+int nds_unit_sprite(SDL_Renderer * r, int set, int palette, int frame, bool flip) {
+    check_rom();
+    auto key = std::make_tuple(2, (uint32_t)set, (uint32_t)palette, (uint32_t)frame, flip ? 1 : 0);
+    auto it = g_cache.find(key);
+    if (it != g_cache.end()) return it->second;
+    int handle = -1;
+    auto cg = buf_bytes(nds_pak_file("char/rom/rom_idx/UnitCg.rom_idx", "char/rom/pak/UnitCg.pak", set));
+    auto sst = buf_bytes(nds_pak_file("char/rom/rom_idx/UnitSst.rom_idx", "char/rom/pak/UnitSst.pak", set));
+    // the frame: the chain of 4-aligned LZ77 blocks
+    std::vector<uint8_t> tex;
+    size_t p = 0, end = 0;
+    bool found = false;
+    for (int k = 0; k <= frame && p < cg.size(); ++k) {
+        if (!lz77(cg, p, tex, end)) break;
+        p = (end + 3) & ~size_t(3);
+        found = k == frame;
+    }
+    // the palettes: u16 size, u16 2, LZ77 of 32-colour BGR555 palettes
+    std::vector<uint8_t> pals;
+    for (size_t q = 0; q + 8 <= sst.size() && pals.empty(); q += 2) {
+        size_t s = sst[q] | sst[q + 1] << 8;
+        if (s && s % 64 == 0 && sst[q + 2] == 2 && sst[q + 3] == 0 && sst[q + 4] == 0x10 &&
+            (size_t)(sst[q + 5] | sst[q + 6] << 8 | sst[q + 7] << 16) == s) {
+            if (!lz77(sst, q + 4, pals, end)) pals.clear();
+        }
+    }
+    int w = tex.size() == 1536 ? 32 : (tex.size() == 3072 ? 64 : 0);
+    size_t plain = 0;
+    for (uint8_t v : tex) plain += (v >> 5) == 0 || (v >> 5) == 7;
+    if (r && found && w && plain * 20 >= tex.size() * 19 && pals.size() >= size_t(palette + 1) * 64) {
+        int h = (int)tex.size() / w;
+        const uint8_t * pal = &pals[palette * 64];
+        std::vector<uint32_t> px(w * h, 0);
+        int bottom = 0;
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                uint8_t v = tex[y * w + x];
+                if ((v >> 5) == 0) continue;
+                uint32_t c = pal[(v & 31) * 2] | pal[(v & 31) * 2 + 1] << 8;
+                uint32_t cr = c & 31, cg5 = (c >> 5) & 31, cb = (c >> 10) & 31;
+                cr = cr << 3 | cr >> 2; cg5 = cg5 << 3 | cg5 >> 2; cb = cb << 3 | cb >> 2;
+                uint32_t a = (v >> 5) * 255 / 7;
+                px[y * w + (flip ? w - 1 - x : x)] = a << 24 | cb << 16 | cg5 << 8 | cr;
+                bottom = SDL_max(bottom, y + 1);
+            }
+        handle = make(r, px, w, h, w * 0.5f, (float)bottom);
+    }
+    g_cache[key] = handle;
+    return handle;
+}
+
 static const Gfx * gfx(int handle) {
     check_rom();
     return handle >= 0 && handle < (int)g_gfx.size() ? &g_gfx[handle] : nullptr;

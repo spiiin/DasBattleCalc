@@ -37,6 +37,8 @@ let private EQUIP_FILE = 16             // sysdata: equipment, 40 bytes by item 
 let private EQUIP_SIZE = 40
 let private ABILITY_FILE = 4            // sysdata: abilities, 0x34 bytes
 let private ABILITY_SIZE = 52
+let private CHARACTER_FILE = 0          // sysdata: story characters, 28 bytes
+let private CHARACTER_SIZE = 28
 let private STATUS_RULE_FILE = 20       // sysdata: which effects land on which statuses
 let private STATUS_RULE_SIZE = 20
 let private NAMES = 0                   // JD_message tables
@@ -272,6 +274,23 @@ def read_ability2(id : int) : Ability2 {
             int(nds_buf_read8(buf, o + 3)))
     }
     return a
+}
+
+// ------------------------------------------------------------ graphics
+
+// The unit's graphics set (char/rom/pak/UnitCg.pak and UnitSst.pak): a
+// story character's (name id 0x8000 | n: sysdata 0, 28 bytes per
+// character, +6), else the job's (+4). research/ffta2/notes.md, "Unit
+// graphics".
+def unit_gfx_set(u : Unit2) : int {
+    if ((u.name_id & 0x8000) != 0) {
+        let buf = nds_pak_file(SYSDATA_IDX, SYSDATA_PAK, CHARACTER_FILE)
+        let n = u.name_id & 0x7FFF
+        if (n > 0 && (n + 1) * CHARACTER_SIZE <= nds_buf_size(buf)) {
+            return int(nds_buf_read16(buf, n * CHARACTER_SIZE + 6))
+        }
+    }
+    return int(job_byte(u.job_id, 4)) | (int(job_byte(u.job_id, 5)) << 8)
 }
 
 // ------------------------------------------------------------ jobs and learning

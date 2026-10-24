@@ -64,6 +64,12 @@ int gba_gfx_icon(SDL_Renderer * r, uint32_t archive, int index, uint32_t palette
 // (u16 count, 6 bytes per piece as in OAM), 16-colour palette; flip -
 // mirrored. The origin (the layout's 0, 0) is gba_gfx_origin_x / _y.
 int gba_gfx_sprite(SDL_Renderer * r, uint32_t tiles, uint32_t layout, uint32_t palette, bool flip);
+// FFTA2 (NDS): frame `frame` of unit graphics set `set` (char/rom/pak/
+// UnitCg.pak: LZ77 blocks of A3I5 texels; palette `palette` of the
+// set's palette block in UnitSst.pak); flip - mirrored. The origin is
+// the frame's bottom centre (the feet). -1: no such frame, or a frame
+// not in plain A3I5 (the big monsters' are assembled from parts).
+int nds_unit_sprite(SDL_Renderer * r, int set, int palette, int frame, bool flip);
 float gba_gfx_width(int handle);
 float gba_gfx_height(int handle);
 float gba_gfx_origin_x(int handle);

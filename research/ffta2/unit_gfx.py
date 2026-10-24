@@ -87,3 +87,42 @@ if __name__ == '__main__':
             x += im.width + 4
         out = out.resize((out.width * 2, out.height * 2))
         out.save(sys.argv[4])
+
+
+def palettes(sst_entry):
+    """The palettes of a set: a block u16 size, u16 2, LZ77 of 32-color
+    BGR555 palettes (team / variant colors)."""
+    f = sst_entry
+    for q in range(0, len(f) - 8, 2):
+        s = struct.unpack_from('<H', f, q)[0]
+        if s and s % 64 == 0 and struct.unpack_from('<H', f, q + 2)[0] == 2 and f[q + 4] == 0x10 and \
+                (f[q + 5] | f[q + 6] << 8 | f[q + 7] << 16) == s:
+            d, _ = lz77(f, q + 4)
+            return [d[k:k + 64] for k in range(0, s, 64)]
+    return []
+
+
+FRAME_W = {256: 16, 512: 32, 1024: 32, 1280: 32, 1536: 32, 2048: 64, 3072: 64, 10240: 128, 11264: 128}
+
+
+def frames_image(cg_entry, pal, cols=16):
+    from PIL import Image
+    rgb = [((c & 31) * 255 // 31, (c >> 5 & 31) * 255 // 31, (c >> 10 & 31) * 255 // 31)
+           for c in struct.unpack('<32H', pal)]
+    cs, _ = chunks(cg_entry)
+    ims = []
+    for c in cs:
+        w = FRAME_W.get(len(c), 32)
+        h = len(c) // w
+        im = Image.new('RGB', (w, h), (200, 200, 200))
+        px = im.load()
+        for i, v in enumerate(c):
+            if v >> 5:
+                px[i % w, i // w] = rgb[v & 31]
+        ims.append(im)
+    cw = max(i.width for i in ims) + 2
+    ch = max(i.height for i in ims) + 2
+    out = Image.new('RGB', (cw * cols, ch * ((len(ims) + cols - 1) // cols)), (255, 0, 255))
+    for k, im in enumerate(ims):
+        out.paste(im, (k % cols * cw, k // cols * ch))
+    return out

@@ -133,6 +133,7 @@ class Ffta2Game : GameModule {
     pick_slot : int = 0
     item_filter = ImGuiInputTextBuffer("", 64)
     item_all : bool = false           // the item list: every item, not only what the job can wear
+    rom_sprites2 : bool = true        // the units' sprites from the ROM on the field (View menu, local.cfg)
     state_path : string
     rom_path : string
     loaded_state : string
@@ -154,6 +155,7 @@ class Ffta2Game : GameModule {
 
     def Ffta2Game {
         state_path = config_get("ffta2_state")
+        rom_sprites2 = config_get("ffta2_rom_sprites", "1") == "1"
         rom_path = config_get("ffta2_rom")
         // the command line names the files of the game it starts with
         if (gui_arg("--game", "") == "ffta2") {
@@ -165,6 +167,18 @@ class Ffta2Game : GameModule {
 
     def override id() : string {
         return "ffta2"
+    }
+
+    // the units' sprites from the ROM, remembered in local.cfg
+    def override view_items() : array<string> {
+        return <- ["ROM sprites: {rom_sprites2 ? "on" : "off"}"]
+    }
+
+    def override view_pick(i : int) : void {
+        if (i == 0) {
+            rom_sprites2 = !rom_sprites2
+            config_set("ffta2_rom_sprites", rom_sprites2 ? "1" : "0")
+        }
     }
 
     def override title() : string {
@@ -545,7 +559,11 @@ class Ffta2Game : GameModule {
         }
         var fu : array<FieldUnit>
         for (un in units) {
-            fu |> push(FieldUnit(name = un.name, x = un.x, y = un.y, facing = un.facing, team = un.team, alive = un.hp > 0))
+            // standing: frame 0 facing +y / +x, 1 facing -x / -y; -y and +x mirrored (as in FFTA)
+            let f = un.facing & 3
+            let spr = rom_sprites2 ? nds_unit_sprite(shell_renderer(), unit_gfx_set(un), 0, f == 0 || f == 3 ? 0 : 1, f >= 2) : -1
+            fu |> push(FieldUnit(name = un.name, x = un.x, y = un.y, facing = un.facing, team = un.team, alive = un.hp > 0,
+                sprite = spr, sprite_dy = 4.0))
         }
         let bar = u(28.0)
         // the tiles the selected unit reaches with the Attack tab's action
