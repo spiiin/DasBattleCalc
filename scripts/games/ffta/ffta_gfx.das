@@ -3,7 +3,7 @@ options indenting = 4
 
 // Pictures from the ROM: the units' map sprites and the item icons
 // (research/notes.md, "Graphics"), decoded into textures by gba_gfx.cpp.
-// Off by default: View -> "ROM sprites" / "ROM icons" (saved in local.cfg).
+// On by default; View -> "ROM sprites" / "ROM icons" turn them off (saved in local.cfg).
 module ffta_gfx shared public
 
 require gba_mem
@@ -20,8 +20,8 @@ let private ICON_PALETTE_INDEX = 0x083C7FE4u  // byte +4 + 2 * item: palette << 
 let private ICON_PALETTES = 0x0841A100u       // 3 palettes of 16 colours
 let private ICON_BASE = 65536                 // 0x10000 = GBA_GFX_ICON_BASE: icon ids drawn by gba_gfx
 
-var rom_sprites = false
-var rom_icons = false
+var rom_sprites = true
+var rom_icons = true
 
 // a story character's own set, else the job's (+0x07 through the parent chain)
 def unit_sprite_set(un : BattleUnit) : int {
