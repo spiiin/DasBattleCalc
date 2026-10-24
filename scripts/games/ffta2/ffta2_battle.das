@@ -19,7 +19,13 @@ let FFTA2_CODE = "A6FE"
 let RECORD_SIZE = 0x11Cu
 let OBJECT_SIZE = 0x48u
 let EQUIP_SLOTS = 5
+// facing in the field's numbering (0 +y, 1 -x, 2 -y, 3 +x, as FFTA);
+// the game's object +0x0E is 0 +y, 1 -x, 2 +x, 3 -y (the side of a Fight
+// by the target's facing, research/ffta2/notes.md) - the table maps both
+// ways
 let FFTA2_FACING_NAMES = fixed_array<string>("+y", "-x", "-y", "+x")
+let FACING_FROM_GAME = fixed_array<int>(0, 1, 3, 2)
+let ELEMENT2_NAMES = fixed_array<string>("None", "Fire", "Wind", "Earth", "Water", "Ice", "Lightning", "Holy", "Dark")
 
 let private SYSDATA_IDX = "system/rom/sysdata_rom.idx"
 let private SYSDATA_PAK = "system/rom/sysdata.pak"
@@ -43,7 +49,8 @@ let STAT2_LABELS = fixed_array<string>("Attack", "Defense", "Magick", "Resistanc
 struct Item2 {
     id : int
     name : string
-    kind : int                      // equipment +0 u16
+    kind : int                      // equipment +0 u16: 1..25 weapons, 26 shields, ...
+    element : int                   // +4: ELEMENT2_NAMES
     bonus : int[8]                  // by STAT2_LABELS
 }
 
@@ -69,7 +76,9 @@ struct Unit2 {
     @hide base_speed : int          // record +0x1C
     @hide x : int                   // object +0x0C / +0x0D
     @hide y : int
-    @hide facing : int              // object +0x0E: 0 +y, 1 -x, 2 -y, 3 +x (as FFTA, see notes)
+    @hide facing : int              // FACING_FROM_GAME[object +0x0E]: 0 +y, 1 -x, 2 -y, 3 +x
+    @hide affinity : int[8]         // job +33.., by element 1..8: 0 weak, 1 normal, 2 half, 3 immune, 4 absorb
+    @hide bare_power : int          // job +48: Fight power without a weapon
     @hide items : int[5]            // record +0x44, item ids (0 empty)
     @hide equip : Item2[5]
     @hide stat_base : int[8]        // raw / 4, Speed, job Move / Jump
@@ -146,6 +155,7 @@ def read_item2(id : int) : Item2 {
     let base = id * EQUIP_SIZE
     it.name = ffta2_message(ITEM_NAMES, id)
     it.kind = int(nds_buf_read16(buf, base))
+    it.element = int(nds_buf_read8(buf, base + 4))
     for (s in range(STAT2_COUNT)) {
         it.bonus[s] = int(int8(nds_buf_read8(buf, base + 19 + s)))
     }
@@ -213,7 +223,11 @@ def read_unit2(rec, obj : uint) : Unit2 {
     }
     u.x = int(gba_read8(obj + 0x0Cu))
     u.y = int(gba_read8(obj + 0x0Du))
-    u.facing = int(gba_read8(obj + 0x0Eu)) & 3
+    u.facing = FACING_FROM_GAME[int(gba_read8(obj + 0x0Eu)) & 3]
+    for (e in range(8)) {
+        u.affinity[e] = job_byte(u.job_id, 33 + e)
+    }
+    u.bare_power = job_byte(u.job_id, 48)
     u.ct = int(gba_read16(obj + 0x16u))
     recompute_unit(u)
     return u

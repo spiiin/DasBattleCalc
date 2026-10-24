@@ -1,0 +1,12 @@
+w30_fire 99 27
+w46_water 99 37
+w106_water 99 33
+w19_wind 99 24
+w32_ice 99 27
+fire_aff0 99 40
+fire_aff1 99 27
+fire_aff2 99 13
+fire_aff3 99 0
+fire_aff4 99 65509
+fire_aff5 99 27
+fire_aff6 99 27

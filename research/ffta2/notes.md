@@ -117,12 +117,50 @@ points at its object's +0x04 (so the object array starts 4 bytes before the
 first match) - filtered by level 1..99, HP 1..999, team byte 0x8x / 0x9x.
 Races: menu text table 9, entries 92..98 (Hume, Bangaa, Nu Mou, Viera,
 Moogle, Seeq, Gria; record +0x07 = 1..7, monsters 20). Test:
-`tests/test_ffta2_battle.das` (Unit Info of Luso and Moricad).
+`tests/test_ffta2_battle.das` (Unit Info of Luso and Moricad). Klesta
+(Crushatrice, job 135) gets Move 0 / Jump 0 from the job table, and that is
+right: the boss stays in place.
 
 Open:
-- facing: object +0x0E taken as FFTA's numbering (0 +y, 1 -x, 2 -y, 3 +x);
-  the screen positions agree (+x goes down-right, +y down-left), the facings
-  of this battle fit it, but no probe turned a unit yet;
-- Klesta (Crushatrice, job 135) gets Move 0 / Jump 0 from the job table:
-  bosses / monsters may take Move elsewhere;
 - map heights (MapData PANL, or the battle grid in RAM): the field is flat.
+
+## Fight (2026-10-24)
+
+Reached in game with `plan_probe.lua` (input plan, screenshots, RAM dumps,
+write / exec logs with registers): Luso moves to (9, 8) next to Sasarr
+(10, 8) - Move, Right, Down, A; Action, Attack, Right, A. The target
+screen shows 17 damage, 99 % (`ffta2_test_attack.State`: the target
+cursor, a test copy in `NDS/State`).
+
+Code (ARM, `arm.py` - a small disassembler for the dumps): 0x02072FFC
+fills the forecast (u16 damage, u16 hit), 0x02070ACC runs the action into
+a result array (0x2C per target: +4 hit, +8 damage), and the numbers come
+from 0x02070478: arguments by a "%d%d..." format into a **script VM**
+(0x0203A788 / 0x0203A838 / 0x0203A9C4; VM at 0x0223B900). The scripts are
+whole files of the pc.bin archive (hash 897: damage, 93 KB; 784: hit),
+bytecode, not reversed. After the script: damage x [+0x14] (4.12 fixed
+point, 1.0 here), at most 999.
+
+So the formula was fitted, not read: `vary_probe.lua` edits Main RAM
+(records, the equipment table at 0x022F8C40 = 40 bytes x item, jobs at
+0x022F5E40 = 72 x job), confirms the target (A), reads the forecast,
+goes back (B). 148 forecasts (`grid1.txt`, `weapons1.txt`, `hit1.txt`,
+`hit2.txt`, `elem1.txt`, `elem2.txt`, `min1.txt`; all in
+`tests/test_ffta2_attack.das`). In raw units (shown stat = raw / 4):
+
+- base = (2 Atk4 - Def4) / 16, rounded down; Atk4 = raw Attack + 4 x the
+  weapon's Attack (no weapon: job +48, Soldier 18); Def4 = target's raw
+  Defense + 4 x its equipment's Defense. All 20 weapon kinds alike; the
+  jobs and races of either unit, the level do not matter.
+- side: the target's facing (object +0x0E: **0 +y, 1 -x, 2 +x, 3 -y** -
+  not FFTA's order): side x1.5, back x2, rounded down.
+- then the weapon's element (equipment +4: 1 Fire, 2 Wind, 3 Earth,
+  4 Water, 5 Ice, 6 Lightning, 7 Holy, 8 Dark) by the target's affinity
+  (job +33 + element - 1: 0 weak x1.5, 1 normal, 2 half, 3 immune -> 0,
+  4 absorb -> minus, 5 / 6 normal), rounded down.
+- at least 1 at the end (not for immune / absorb).
+- hit = 100 - target Evasion, 1..99; the side does not change it.
+
+Not checked yet: Attack of non-weapon equipment (none in the tests has
+any), statuses, supports and laws, height, criticals, the real hit roll;
+reach (weapon range +6, heights).

@@ -26,6 +26,7 @@ require ../../core/config.das
 require ../../core/result_try.das
 require ../../app/shell.das
 require ffta2_battle
+require ffta2_attack
 
 let private STAT2_SHORT = fixed_array<string>("Atk", "Def", "Mag", "Res", "Spd", "Eva", "Move", "Jump")
 
@@ -50,6 +51,8 @@ class Ffta2Game : GameModule {
     field = FieldState()
     field_map : FieldMap
     scene_tab : int = 0               // 0 field, 1 the game screen
+    calc_tab : int = 0                // 0 units, 1 attack
+    side_choice : int = 0             // 0 auto, 1 + Side2
     stats_open : bool = true
     equip_open : bool = true
     state_path : string
@@ -268,6 +271,9 @@ class Ffta2Game : GameModule {
         let input = draw_battle_field(field_map, fu, selected, target, reach, field, x + u(8.0), y, w - u(16.0), h - bar)
         if (input.select >= 0) {
             selected = input.select
+            if (target == selected) {
+                target = -1
+            }
         }
         if (input.target >= 0) {
             target = input.target
@@ -311,6 +317,89 @@ class Ffta2Game : GameModule {
             bl_label(message, ICON_TURNS)
             return
         }
+        let tw = u(120.0)
+        if (bl_radio_button("tab2_units", "Units", ICON_TURNS, tw, BND_CORNER_RIGHT, calc_tab == 0)) {
+            calc_tab = 0
+        }
+        SetCursorScreenPos(ImVec2(x + tw, y))
+        if (bl_radio_button("tab2_attack", "Attack", ICON_ATTACK, tw, BND_CORNER_LEFT, calc_tab == 1)) {
+            calc_tab = 1
+        }
+        let ty = y + u(28.0)
+        if (calc_tab == 1) {
+            self->attack_view(x, ty, w, y + h - ty)
+        } else {
+            self->unit_table(x, ty, w, y + h - ty)
+        }
+    }
+
+    // the selected unit attacks the target (right click on the field;
+    // until then the nearest unit of another team)
+    def pick_target() : void {
+        if (target >= 0 && target < length(units) && target != selected) {
+            return
+        }
+        target = -1
+        var best = 1000
+        for (i in range(length(units))) {
+            if (selected >= 0 && i != selected && units[i].team != units[selected].team) {
+                let d = abs(units[i].x - units[selected].x) + abs(units[i].y - units[selected].y)
+                if (d < best) {
+                    best = d
+                    target = i
+                }
+            }
+        }
+    }
+
+    // Fight: the forecast and how it is made (ffta2_attack.das)
+    def attack_view(x, y, w, h : float) : void {
+        self->pick_target()
+        if (selected < 0 || target < 0) {
+            SetCursorScreenPos(ImVec2(x, y))
+            bl_label("Select an attacker and right-click a target on the field", ICON_INFO)
+            return
+        }
+        let att = units[selected]
+        let tgt = units[target]
+        let auto_side = side_of2(att, tgt)
+        let side = side_choice == 1 ? Side2.Front : (side_choice == 2 ? Side2.Side : (side_choice == 3 ? Side2.Back : auto_side))
+        let f = fight2(att, tgt, side)
+        let fg = bt.regular.text | 0xffu
+        let dim = offset_color(fg, 60)
+        SetCursorScreenPos(ImVec2(x, y))
+        bl_label("{att.name} -> {tgt.name}: Fight with {f.weapon}", ICON_ATTACK)
+        SetCursorScreenPos(ImVec2(x + w - u(250.0), y))
+        bl_label("Side:", -1, u(50.0))
+        SetCursorScreenPos(ImVec2(x + w - u(200.0), y))
+        var sides <- ["Auto ({SIDE2_NAMES[int(auto_side)]})", "Front", "Side", "Back"]
+        bl_choice("side2_choice", sides, side_choice, u(200.0))
+        var ry = y + u(30.0)
+        let col = x + u(220.0)
+        let big = "{f.damage} damage   {f.hit}% hit   ~{fmt(":.1f", float(f.damage) * float(f.hit) / 100.0)} expected"
+        text_at_baseline(x + u(8.0), ry + u(15.0), big, fg)
+        ry += u(28.0)
+        var rows : array<tuple<string; string>>
+        let ws = weapon_slot2(att)
+        let power = ws >= 0 ? "{f.weapon} {att.equip[ws].bonus[0]}" : "bare hands {att.bare_power} (job)"
+        rows |> push(("Attack, raw x4", "{f.atk4} = raw {att.raw[0]} + 4 x items ({power}, others)"))
+        rows |> push(("Defense, raw x4", "{f.def4} = raw {tgt.raw[1]} + 4 x {tgt.name}'s items"))
+        rows |> push(("Base", "{f.base} = (2 x {f.atk4} - {f.def4}) / 16"))
+        let side_k = side == Side2.Back ? "x2" : (side == Side2.Side ? "x1.5" : "x1")
+        rows |> push(("Side", "{SIDE2_NAMES[int(side)]} {side_k} -> {f.after_side}"))
+        let aff = f.affinity >= 0 && f.affinity < 5 ? AFFINITY_NAMES[f.affinity] : "{f.affinity}"
+        rows |> push(("Element", "{ELEMENT2_NAMES[f.element]}: target {aff} -> {f.damage}"))
+        rows |> push(("Hit", "100 - Evasion {f.evasion} = {f.hit}% (1..99)"))
+        rows |> push(("Distance", "{abs(att.x - tgt.x) + abs(att.y - tgt.y)} tiles (reach is not checked yet)"))
+        for (r in rows) {
+            text_at_baseline(x + u(8.0), ry + u(15.0), r._0, dim)
+            text_at_baseline(col, ry + u(15.0), r._1, fg)
+            ry += u(21.0)
+        }
+    }
+
+    def unit_table(x, y, w, h : float) : void {
+        SetCursorScreenPos(ImVec2(x, y))
         bl_label("Units  (by CT: the next to act first)", ICON_TURNS)
         var order : array<int>
         for (i in range(length(units))) {
