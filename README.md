@@ -11,7 +11,7 @@ changes back into a new save, or run parameter experiments and plot the results.
 Written in [daslang](https://github.com/GaijinEntertainment/daScript) with [dasSDL3](https://github.com/spiiin/dasSDL3)
 and Dear ImGui (Blender 2.7-style widgets). Runs on the desktop (Windows) and in the browser (standalone AOT, WebAssembly).
 
-![Battle overview: roster, field, turn order, inspector](docs/images/overview.png)
+![Battle in the browser: roster, the isometric field with the game's sprites, the attack calculator, inspector](docs/images/field.png)
 
 ## What it does
 
