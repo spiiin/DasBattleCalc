@@ -116,7 +116,9 @@ const char * gba_load_state(const char * path) {
         if (!nds_state_ram(core, ram, g_error)) return g_error.c_str();
         g_ewram.swap(ram);
         g_iwram.clear();
-        g_core.clear();
+        g_zip.swap(zip);
+        g_core.swap(core);
+        g_core_base = 0;
         g_state_nds = true;
         if (!unzip_entry(zip, "Framebuffer.bmp", g_frame)) g_frame.clear();
         g_state_serial++;
@@ -243,12 +245,18 @@ static std::vector<uint8_t> zstd_store(const std::vector<uint8_t> & data) {
 // original zip is copied, Core.bin(.zst) gets the new core image.
 const char * gba_save_state(const char * path) {
     g_error.clear();
-    if (g_state_nds) return (g_error = "writing NDS states is not supported").c_str();
-    if (g_core.empty() || g_edit_ewram.size() != 0x40000 || g_edit_iwram.size() != 0x8000)
-        return (g_error = "no state loaded or no edit begun").c_str();
     std::vector<uint8_t> core = g_core;
-    memcpy(core.data() + g_core_base + 0x19000, g_edit_iwram.data(), 0x8000);
-    memcpy(core.data() + g_core_base + 0x21000, g_edit_ewram.data(), 0x40000);
+    if (g_state_nds) {
+        // melonDS: the main RAM's saved pages of the waterbox image
+        if (g_core.empty() || g_edit_ewram.size() != 0x400000)
+            return (g_error = "no state loaded or no edit begun").c_str();
+        if (!nds_state_write_ram(core, g_edit_ewram, g_ewram, g_error)) return g_error.c_str();
+    } else {
+        if (g_core.empty() || g_edit_ewram.size() != 0x40000 || g_edit_iwram.size() != 0x8000)
+            return (g_error = "no state loaded or no edit begun").c_str();
+        memcpy(core.data() + g_core_base + 0x19000, g_edit_iwram.data(), 0x8000);
+        memcpy(core.data() + g_core_base + 0x21000, g_edit_ewram.data(), 0x40000);
+    }
     mz_zip_archive in, out;
     memset(&in, 0, sizeof(in));
     memset(&out, 0, sizeof(out));

@@ -9,6 +9,8 @@
 const std::vector<uint8_t> & gba_rom_bytes();
 bool nds_state_ram(const std::vector<uint8_t> & core, std::vector<uint8_t> & ram, std::string & error);
 bool nds_is_rom(const std::vector<uint8_t> & rom);
+bool nds_state_write_ram(std::vector<uint8_t> & core, const std::vector<uint8_t> & ram,
+                         const std::vector<uint8_t> & loaded, std::string & error);
 
 // "" on success, else the error text
 const char * gba_load_state(const char * path);
@@ -70,6 +72,10 @@ int gba_gfx_sprite(SDL_Renderer * r, uint32_t tiles, uint32_t layout, uint32_t p
 // the frame's bottom centre (the feet). -1: no such frame, or a frame
 // not in plain A3I5 (the big monsters' are assembled from parts).
 int nds_unit_sprite(SDL_Renderer * r, int set, int palette, int frame, bool flip);
+// FFTA2 (NDS): 16 x 16 item icon `icon` (equipment +2): menu/icon_rom/
+// itemicon00..02.pak (256 icons each, 4bpp, rows of 8 bytes), the
+// palette (0..2 of itemicon.plt) by 4 bits per icon of itemicon0N.bhd +4
+int nds_item_icon(SDL_Renderer * r, int icon);
 float gba_gfx_width(int handle);
 float gba_gfx_height(int handle);
 float gba_gfx_origin_x(int handle);

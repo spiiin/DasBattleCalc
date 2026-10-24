@@ -503,3 +503,24 @@ loader at 0x0203D5xx (a request: u16 +2 the set). `unit_gfx.py`:
 
 The calculator draws frame 0 / 1 (mirrored for two facings, as FFTA)
 by nds_unit_sprite (native/gba_gfx.cpp); View -> ROM sprites.
+
+## Item icons (2026-10-25)
+
+`menu/icon_rom/itemicon00..02.pak`: 256 icons each, 16 x 16, 4bpp, rows
+of 8 bytes; `itemicon0N.bhd`: 4 bytes, then 4 bits per icon (low nibble
+first) - the palette 0..2 of `itemicon.plt` (3 x 16 BGR555). The icon of
+an item is equipment +2 (u16). nds_item_icon (native/gba_gfx.cpp).
+
+## Writing a state (2026-10-25)
+
+The melonDS state's main RAM is the waterbox image's saved pages (the
+same map as reading, nds_mem.cpp): the edited pages are written back in
+place, the zip copied, Core.bin.zst stored (raw zstd blocks); BizHawk
+loads it (the hash after "ActivatedMemoryBlock" is not of these pages).
+`write_unit2` writes the record and battle object fields the calculator
+edits. In the loaded state the game computes with them at once (Luso's
+Attack 200: the forecast 17 -> 38, as the model); the bottom screen's
+HP / MP panel keeps its copy until redrawn. Positions and facings are
+not written: the game draws a unit from another structure (not found),
+and moving the object only would make them disagree.
+`tests/test_ffta2_export.das` (+ `--forecast` with vary_probe.lua).

@@ -20,6 +20,7 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   `tests/test_ffta2_abilities.das` (236 способностей по прогнозам игры; данные — `research/ffta2/abil1.txt`),
   `tests/test_ffta2_turns.das` (17 ходов из игры: порядок, CT, тики),
   `tests/test_ffta2_reach.das` (91 списков досягаемости игры: высоты, оружие, заклинания; `research/ffta2/reach1.txt`),
+  `tests/test_ffta2_export.das` (запись сейва: правки юнитов -> новый .State -> чтение обратно; `--out <new.State>`, `--forecast N` — прогноз игры по нему из `vary_probe.lua`),
   `tests/test_ffta2_status.das` (70 прогнозов статусных способностей игры через VM; данные — `research/ffta2/status4.txt`, сейв `ffta2_test_attack.State`),
   `tests/test_ffta2_explore.das` (Explore FFTA2, `ffta2_explore.das`: точки = action2 после той же правки, примеры
   вкладки; сейв, где Luso стоит рядом с Sasarr — `ffta2_test_attack.State`),

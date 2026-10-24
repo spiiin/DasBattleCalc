@@ -34,6 +34,7 @@ public:
         GUI_BIND(gba_gfx_icon);
         GUI_BIND(gba_gfx_sprite);
         GUI_BIND(nds_unit_sprite);
+        GUI_BIND(nds_item_icon);
         GUI_BIND(gba_gfx_width);
         GUI_BIND(gba_gfx_height);
         GUI_BIND(gba_gfx_origin_x);

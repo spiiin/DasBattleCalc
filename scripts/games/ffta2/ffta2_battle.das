@@ -67,6 +67,7 @@ struct Item2 {
     id : int
     name : string
     kind : int                      // equipment +0 u16: 1..25 weapons, 26 shields, ...
+    icon : int                      // +2 u16: the icon (menu/icon_rom/itemicon*.pak, nds_item_icon)
     element : int                   // +4: ELEMENT2_NAMES
     code : int                      // +0x12: special property; 1..40 by element, 5 each: 1 absorb, 2 immune, 3 half, 4 weak
     reach : int                     // +5: weapon range (swords 1, spears 2, bows 5..7, guns 7..8)
@@ -197,6 +198,7 @@ def read_item2(id : int) : Item2 {
     let base = id * EQUIP_SIZE
     it.name = ffta2_message(ITEM_NAMES, id)
     it.kind = int(nds_buf_read16(buf, base))
+    it.icon = int(nds_buf_read16(buf, base + 2))
     it.element = int(nds_buf_read8(buf, base + 4))
     it.code = int(nds_buf_read8(buf, base + 0x12))
     it.reach = int(nds_buf_read8(buf, base + 5))
@@ -322,10 +324,30 @@ def learn_slot(ab : Ability2; cls : int) : int {
     return -1
 }
 
+struct private JobAbilityCache {
+    rom : uint
+    lists : table<int; array<int>>
+    numbers : table<int; int>
+}
+
+var private job_ability_cache : JobAbilityCache
+
 // Items name the jobs they teach by a number in the list of job names
 // without repeats (1 Soldier .. 23 Trickster, 24 Beastmaster - the Nu
 // Mou White Mage repeats the Hume one ...): every job of that name
 def job_number(job : int) : int {
+    if (job_ability_cache.rom != gba_rom_serial()) {
+        job_ability_cache.rom = gba_rom_serial()
+        job_ability_cache.lists |> clear()
+        job_ability_cache.numbers |> clear()
+    }
+    if (!key_exists(job_ability_cache.numbers, job)) {
+        job_ability_cache.numbers[job] = job_number_slow(job)
+    }
+    return job_ability_cache.numbers[job]
+}
+
+def private job_number_slow(job : int) : int {
     var names : array<string>
     for (j in range(1, JOB_COUNT)) {
         let n = job_name(j)
@@ -339,12 +361,6 @@ def job_number(job : int) : int {
     return 0
 }
 
-struct private JobAbilityCache {
-    rom : uint
-    lists : table<int; array<int>>
-}
-
-var private job_ability_cache : JobAbilityCache
 
 // the abilities a job learns: of a race's job, those the equipment
 // teaches it (and its class has a byte for); of a monster family, all
@@ -353,6 +369,7 @@ def job_abilities(job : int) : array<int> {
     if (job_ability_cache.rom != gba_rom_serial()) {
         job_ability_cache.rom = gba_rom_serial()
         job_ability_cache.lists |> clear()
+        job_ability_cache.numbers |> clear()
     }
     if (!key_exists(job_ability_cache.lists, job)) {
         var list : array<int>
@@ -383,6 +400,28 @@ def job_abilities(job : int) : array<int> {
     var res : array<int>
     res := job_ability_cache.lists[job]
     return <- res
+}
+
+// the unit knows the ability: it has AP in it or mastered it (its learned
+// byte for the job's class is not 0), or an item it wears teaches it to
+// the unit's job; Attack always
+def unit_knows(u : Unit2; aid : int) : bool {
+    if (aid == 799) {
+        return true
+    }
+    let sl = learn_slot(read_ability2(aid), job_class(u.job_id))
+    if (sl >= 0 && u.learned[sl] != 0u8) {
+        return true
+    }
+    let num = job_number(u.job_id)
+    for (it in u.equip) {
+        for (k in range(3)) {
+            if (it.teach[k] == aid && it.teach_job[k] == num) {
+                return true
+            }
+        }
+    }
+    return false
 }
 
 // the jobs of a class (the inspector's ability blocks): the class's own
@@ -624,4 +663,54 @@ def read_battle2(var units : array<Unit2>) : string {
         u.rng_seed = seeds?[u.record] ?? 0u
     }
     return ""
+}
+
+// ------------------------------------------------------------ export
+
+// Puts a unit into the edit copy of RAM (gba_edit_begin): the record and
+// battle object fields the calculator reads (read_unit2) and edits. The
+// game computes with them at once; the bottom screen's HP / MP panel
+// shows its own copy until it is redrawn.
+def write_unit2(u : Unit2) {
+    let rec = u.record
+    let obj = u.object
+    gba_edit8(rec + 0x06u, uint(u.job_id))
+    gba_edit16(rec + 0x1Au, uint(u.level))
+    gba_edit8(rec + 0x1Cu, uint(u.base_speed))
+    gba_edit16(rec + 0x36u, uint(u.max_hp))
+    gba_edit16(rec + 0x38u, uint(u.mp))
+    gba_edit16(rec + 0x3Au, uint(u.max_mp))
+    for (s in range(4)) {
+        gba_edit16(rec + 0x3Cu + uint(s) * 2u, uint(clamp(u.raw[s], 0, 65535)))
+    }
+    for (k in range(EQUIP_SLOTS)) {
+        gba_edit16(rec + 0x44u + uint(k) * 2u, uint(u.items[k]))
+    }
+    gba_edit16(rec + 0x4Eu, uint(u.reaction))
+    gba_edit16(rec + 0x50u, uint(u.support))
+    for (k in range(9)) {
+        gba_edit8(rec + 0x28u + uint(k), uint(u.status[k]))
+    }
+    for (k in range(LEARNED_SIZE)) {
+        gba_edit8(rec + 0x52u + uint(k), uint(u.learned[k]))
+    }
+    gba_edit16(obj + 0x08u, uint(u.hp))
+    // the position and facing are not written: the game draws the unit
+    // from another structure (not found), which would disagree
+    gba_edit16(obj + 0x14u, uint(u.speed))
+    gba_edit16(obj + 0x16u, uint(u.ct))
+}
+
+// Writes the loaded state (BizHawk, melonDS) with the units to path:
+// the main RAM pages of the waterbox image (gba_save_state). "" or the
+// error.
+def export_battle2(units : array<Unit2>; path : string) : string {
+    if (!gba_has_state()) {
+        return "no state loaded"
+    }
+    gba_edit_begin()
+    for (u in units) {
+        write_unit2(u)
+    }
+    return gba_save_state(path)
 }

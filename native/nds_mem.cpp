@@ -36,7 +36,10 @@ const size_t MAIN_RAM_PAGE = 143532;
 
 }  // namespace
 
-bool nds_state_ram(const std::vector<uint8_t> & core, std::vector<uint8_t> & ram, std::string & error) {
+// The saved pages of the main RAM in a waterbox core image: (offset in
+// the core, main RAM page) for each page the state holds.
+static bool nds_ram_pages(const std::vector<uint8_t> & core, std::vector<std::pair<size_t, size_t>> & pages_out,
+                          std::string & error) {
     static const char magic[] = "ActivatedMemoryBlock";
     const size_t mlen = sizeof(magic) - 1;
     size_t m = 0;
@@ -55,14 +58,41 @@ bool nds_state_ram(const std::vector<uint8_t> & core, std::vector<uint8_t> & ram
     for (size_t k = 0; k < pages; ++k)
         if (is_nds_header(core.data() + data + k * PAGE + 0xE00)) anchor = k;
     if (anchor == SIZE_MAX || !dirty[MAIN_RAM_PAGE + 1023]) { error = "NDS main RAM not found in the state"; return false; }
-    ram.assign(0x400000, 0);
+    pages_out.clear();
     size_t k = anchor;
     for (size_t j = 1024; j-- > 0;) {
         if (!dirty[MAIN_RAM_PAGE + j]) continue;      // not saved: never written since the core started
-        memcpy(ram.data() + j * PAGE, core.data() + data + k * PAGE, PAGE);
+        pages_out.push_back({data + k * PAGE, j});
         if (k == 0) break;
         --k;
     }
+    return true;
+}
+
+bool nds_state_ram(const std::vector<uint8_t> & core, std::vector<uint8_t> & ram, std::string & error) {
+    std::vector<std::pair<size_t, size_t>> pages;
+    if (!nds_ram_pages(core, pages, error)) return false;
+    ram.assign(0x400000, 0);
+    for (auto & p : pages) memcpy(ram.data() + p.second * PAGE, core.data() + p.first, PAGE);
+    return true;
+}
+
+// The core image with the main RAM `ram` written back into the saved
+// pages; an edit in a page the state does not hold is refused.
+bool nds_state_write_ram(std::vector<uint8_t> & core, const std::vector<uint8_t> & ram,
+                         const std::vector<uint8_t> & loaded, std::string & error) {
+    std::vector<std::pair<size_t, size_t>> pages;
+    if (!nds_ram_pages(core, pages, error)) return false;
+    std::vector<bool> saved(1024, false);
+    for (auto & p : pages) {
+        memcpy(core.data() + p.first, ram.data() + p.second * PAGE, PAGE);
+        saved[p.second] = true;
+    }
+    for (size_t j = 0; j < 1024; ++j)
+        if (!saved[j] && memcmp(ram.data() + j * PAGE, loaded.data() + j * PAGE, PAGE) != 0) {
+            error = "an edit in a RAM page the state does not hold";
+            return false;
+        }
     return true;
 }
 

@@ -246,6 +246,38 @@ int nds_unit_sprite(SDL_Renderer * r, int set, int palette, int frame, bool flip
     return handle;
 }
 
+int nds_item_icon(SDL_Renderer * r, int icon) {
+    check_rom();
+    auto key = std::make_tuple(3, (uint32_t)icon, 0u, 0u, 0);
+    auto it = g_cache.find(key);
+    if (it != g_cache.end()) return it->second;
+    int handle = -1;
+    char name[64];
+    SDL_snprintf(name, sizeof name, "menu/icon_rom/itemicon%02d.pak", icon / 256);
+    int pak = nds_file(name);
+    SDL_snprintf(name, sizeof name, "menu/icon_rom/itemicon%02d.bhd", icon / 256);
+    int bhd = nds_file(name);
+    int plt = nds_file("menu/icon_rom/itemicon.plt");
+    int i = icon % 256;
+    if (r && icon >= 0 && nds_buf_size(pak) >= (i + 1) * 128 && nds_buf_size(bhd) >= 4 + i / 2 + 1 &&
+        nds_buf_size(plt) >= 96) {
+        int k = SDL_min((int)(nds_buf_read8(bhd, 4 + i / 2) >> (4 * (i & 1))) & 15, 2);
+        std::vector<uint32_t> px(16 * 16, 0);
+        for (int y = 0; y < 16; ++y)
+            for (int x = 0; x < 16; ++x) {
+                int c = (nds_buf_read8(pak, i * 128 + y * 8 + x / 2) >> (4 * (x & 1))) & 15;
+                if (!c) continue;
+                uint32_t v = nds_buf_read16(plt, k * 32 + c * 2);
+                uint32_t cr = v & 31, cg = (v >> 5) & 31, cb = (v >> 10) & 31;
+                cr = cr << 3 | cr >> 2; cg = cg << 3 | cg >> 2; cb = cb << 3 | cb >> 2;
+                px[y * 16 + x] = 0xFF000000u | cb << 16 | cg << 8 | cr;
+            }
+        handle = make(r, px, 16, 16, 0, 0);
+    }
+    g_cache[key] = handle;
+    return handle;
+}
+
 static const Gfx * gfx(int handle) {
     check_rom();
     return handle >= 0 && handle < (int)g_gfx.size() ? &g_gfx[handle] : nullptr;

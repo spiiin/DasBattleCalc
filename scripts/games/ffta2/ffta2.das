@@ -45,6 +45,8 @@ def private bonus2_text(it : Item2) : string {
 }
 
 // equipment kinds (equipment +0), by their items
+let private GBA_ICON_BASE2 = 65536       // GBA_GFX_ICON_BASE: icon ids drawn by gba_gfx
+
 let private KIND2_NAMES = fixed_array<string>("", "Knife", "Sword", "Blade", "Saber", "Knightsword", "Rapier",
     "Greatsword", "Broadsword", "Katana", "Spear", "Rod", "Staff", "Pole", "Knuckles", "Bow", "Greatbow", "Gun",
     "Instrument", "Hand-cannon", "-", "Axe", "Hammer", "Mace", "Card", "Book", "Shield", "Helm", "Ribbon", "Hat",
@@ -133,12 +135,14 @@ class Ffta2Game : GameModule {
     pick_slot : int = 0
     item_filter = ImGuiInputTextBuffer("", 64)
     item_all : bool = false           // the item list: every item, not only what the job can wear
+    known_only : bool = true          // the Attack tab's actions: only what the attacker knows (unit_knows)
     rom_sprites2 : bool = true        // the units' sprites from the ROM on the field (View menu, local.cfg)
+    rom_icons2 : bool = true          // item icons from the ROM
     state_path : string
     rom_path : string
     loaded_state : string
     loaded_rom : string
-    no_export : string                // the roster's export field (not used: NDS states are not written)
+    export_path : string              // Export: the state with the edits
     from_args : bool
     message : string = "Load a BizHawk state (melonDS core) and the FFTA2 (USA) ROM"
     // Explore: the script, its table and chart
@@ -156,6 +160,7 @@ class Ffta2Game : GameModule {
     def Ffta2Game {
         state_path = config_get("ffta2_state")
         rom_sprites2 = config_get("ffta2_rom_sprites", "1") == "1"
+        rom_icons2 = config_get("ffta2_rom_icons", "1") == "1"
         rom_path = config_get("ffta2_rom")
         // the command line names the files of the game it starts with
         if (gui_arg("--game", "") == "ffta2") {
@@ -171,13 +176,25 @@ class Ffta2Game : GameModule {
 
     // the units' sprites from the ROM, remembered in local.cfg
     def override view_items() : array<string> {
-        return <- ["ROM sprites: {rom_sprites2 ? "on" : "off"}"]
+        return <- ["ROM sprites: {rom_sprites2 ? "on" : "off"}", "ROM icons: {rom_icons2 ? "on" : "off"}"]
+    }
+
+    // an item's icon for bl_tool_button / bl_menu_item, -1 when off
+    def item_icon2(it : Item2) : int {
+        if (!rom_icons2 || it.id == 0) {
+            return -1
+        }
+        let h = nds_item_icon(shell_renderer(), it.icon)
+        return h >= 0 ? GBA_ICON_BASE2 + h : -1
     }
 
     def override view_pick(i : int) : void {
         if (i == 0) {
             rom_sprites2 = !rom_sprites2
             config_set("ffta2_rom_sprites", rom_sprites2 ? "1" : "0")
+        } elif (i == 1) {
+            rom_icons2 = !rom_icons2
+            config_set("ffta2_rom_icons", rom_icons2 ? "1" : "0")
         }
     }
 
@@ -234,6 +251,8 @@ class Ffta2Game : GameModule {
         selected = length(units) > 0 ? length(units) - 1 : -1
         target = -1
         message = "{length(units)} units in battle"
+        let dot = find(state_path, ".", max(0, length(state_path) - 6))
+        export_path = dot >= 0 ? "{slice(state_path, 0, dot)}.edited{slice(state_path, dot)}" : "{state_path}.edited"
         log_line("loaded {state_path}: {message}")
         if (remember) {
             config_set("ffta2_state", state_path)
@@ -243,6 +262,18 @@ class Ffta2Game : GameModule {
 
     // the battle map (heights shown as the game shows them); a flat field
     // around the units when the state has none
+    // the loaded state with the edited units as a new file
+    def export_state() : void {
+        var err = ""
+        if (export_path == "" || export_path == state_path) {
+            err = "choose a path other than the loaded state"
+        } else {
+            err = export_battle2(units, export_path)
+        }
+        message = err != "" ? "Export: {err}" : "exported to {export_path}"
+        log_line(message)
+    }
+
     def make_map() : void {
         if (read_map2(map2)) {
             field_map = FieldMap(w = map2.w, h = map2.h, shown_shift = -1)
@@ -264,9 +295,11 @@ class Ffta2Game : GameModule {
 
     def override draw_roster(x, y, w, h : float) : void {
         var pressed = 0
-        var ry = source_fields(state_path, rom_path, no_export, false, x, y, w, pressed)
+        var ry = source_fields(state_path, rom_path, export_path, length(units) > 0, x, y, w, pressed)
         if (pressed == ROSTER_LOAD) {
             self->load()
+        } elif (pressed == ROSTER_EXPORT) {
+            self->export_state()
         }
         for (i in range(length(units))) {
             let un = units[i]
@@ -454,7 +487,7 @@ class Ffta2Game : GameModule {
             let it = un.equip[slot]
             SetCursorScreenPos(ImVec2(x, ry))
             let caption = it.id != 0 ? it.name : "(empty)"
-            if (bl_tool_button("equip2_slot{slot}", caption, -1, w - bw - kw - u(4.0))) {
+            if (bl_tool_button("equip2_slot{slot}", caption, self->item_icon2(it), w - bw - kw - u(4.0))) {
                 OpenPopup("##item2_pick")
                 pick_slot = slot
                 item_filter = ImGuiInputTextBuffer("", 64)
@@ -512,7 +545,7 @@ class Ffta2Game : GameModule {
                     if (filter != "" && find(to_lower(it.name), filter) < 0) {
                         continue
                     }
-                    if (bl_menu_item("{it.name}   {kind2_name(it.kind)}   {bonus2_text(it)}")) {
+                    if (bl_menu_item("{it.name}   {kind2_name(it.kind)}   {bonus2_text(it)}", self->item_icon2(it))) {
                         un.equip[pick_slot] = it
                         un.items[pick_slot] = it.id
                         CloseCurrentPopup()
@@ -911,7 +944,7 @@ class Ffta2Game : GameModule {
         let flt = to_lower(action_filter)
         for (k in range(length(actions))) {
             let name = action_names[k]
-            if (k == action || flt == "" || find(to_lower(name), flt) >= 0) {
+            if (k == action || ((flt == "" || find(to_lower(name), flt) >= 0) && (!known_only || unit_knows(att, actions[k])))) {
                 if (k == action) {
                     cur = length(names)
                 }
@@ -923,6 +956,8 @@ class Ffta2Game : GameModule {
         if (bl_choice("action2_choice", names, cur, u(200.0))) {
             action = ids[cur]
         }
+        SetCursorScreenPos(ImVec2(lx + u(320.0), y))
+        bl_option("action2_known", "Learned only", known_only)
         // second row: the side and the clan privilege
         let ry2 = y + u(26.0)
         SetCursorScreenPos(ImVec2(x + u(22.0), ry2))
