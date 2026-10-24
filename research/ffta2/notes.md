@@ -327,3 +327,28 @@ Cure 21 11 09 01 (+ 25 01 01 13: damage to flying targets); Sidewinder
 conditions or amounts not translated. The first battle's clan members
 have no learned abilities (record +0x60.. zero): the Attack tab offers
 every ability the model computes.
+
+## The VM in the calculator (2026-10-24)
+
+`scripts/games/ffta2/ffta2_vm.das` runs the game's scripts as they are,
+read from the ROM (`nds_arc_entry(hash, char)`: pc.bin entries by name
+hash; condition 332 'b', hit 784, amount 598 'c'). Cells: type + 32-bit
+value (0 int, 1 float, 2 frame variable, 3 global, 4 / 5 via a pointer:
+s16 index, s16 type; 0x36 / 0x37 an address); frame words, arguments
+below the frame base (a2 = the first; a native's i-th argument is word
+sp - i); assignment converts to the variable's type (0x01FF90F4); binary
+operators turn float if either side is (0x01FF8FBC).
+
+`ffta2_forecast.das`: the host's natives read the unit model (handles 1
+attacker, 2 target; items as the units carry them, else the ROM) and
+vm_forecast runs an ability as 0x02070ACC: per effect the condition,
+then the hit and the amount of the first damaging / healing effect. Hit
+0 means "no effect" (the game shows 10001). Natives added on the way:
+1543 level (unit parameter 0x0E, +0x1A), 1581 flags +0x0A bit 10, 1717
+a game flag (0 here). Assumed: 1699 (status immunities) allows all,
+native 18 (5, ..) battle flags and game variables but 369 are 0.
+
+All 245 abilities of `abil1.txt` and the 195 edited cases of
+`tests/test_ffta2_attack.das` agree (`tests/test_ffta2_vm.das`). The
+Attack tab shows the VM's forecast; the translated formula stays as the
+step-by-step explanation (a difference is shown).

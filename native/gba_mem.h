@@ -28,6 +28,9 @@ const uint8_t * gba_state_frame(size_t & size);
 bool gba_state_is_nds();
 int nds_file(const char * name);
 int nds_pak_file(const char * idx_name, const char * pak_name, int index);
+// an entry of the pc.bin archive by its name hash (the names of the
+// scripts are not known); ch: the distinguishing character of a list, 0 first
+int nds_arc_entry(int hash, int ch);
 int nds_buf_size(int handle);
 uint32_t nds_buf_read8(int handle, int off);
 uint32_t nds_buf_read16(int handle, int off);

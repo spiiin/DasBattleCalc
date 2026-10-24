@@ -41,6 +41,7 @@ public:
         GUI_BIND(gba_state_is_nds);
         GUI_BIND(nds_file);
         GUI_BIND(nds_pak_file);
+        GUI_BIND(nds_arc_entry);
         GUI_BIND(nds_buf_size);
         GUI_BIND(nds_buf_read8);
         GUI_BIND(nds_buf_read16);

@@ -27,6 +27,7 @@ require ../../core/result_try.das
 require ../../app/shell.das
 require ffta2_battle
 require ffta2_attack
+require ffta2_forecast
 
 let private STAT2_SHORT = fixed_array<string>("Atk", "Def", "Mag", "Res", "Spd", "Eva", "Move", "Jump")
 
@@ -390,7 +391,24 @@ class Ffta2Game : GameModule {
             self->make_actions()
         }
         let ab = read_ability2(actions[clamp(action, 0, length(actions) - 1)])
-        let f <- action2(att, tgt, ab, side, privilege)
+        var f <- action2(att, tgt, ab, side, privilege)
+        // the forecast by the game's own scripts (the VM); the translated
+        // formula above explains it and is checked against it
+        let vt = side_choice == 0 ? tgt : face_for_side(att, tgt, side)
+        let v = vm_forecast(att, vt, ab, privilege)
+        var vm_note = ""
+        if (v.ok) {
+            if (!f.unsupported && (f.hit != v.hit || f.damage != v.amount) && !v.no_effect) {
+                vm_note = "the step-by-step formula gives {f.damage} / {f.hit}%; the game's scripts win"
+            }
+            f.hit = v.hit
+            f.damage = v.amount
+            f.healing = v.healing
+            f.unsupported = false
+            fill_real(f, att, privilege)
+        } else {
+            vm_note = "the game's scripts could not run: {v.problem}"
+        }
         let fg = bt.regular.text | 0xffu
         let dim = offset_color(fg, 60)
         // the action: a name filter, then the matching actions
@@ -434,13 +452,17 @@ class Ffta2Game : GameModule {
         var ry = y + u(54.0)
         let col = x + u(150.0)
         let what = f.healing ? "healing" : "damage"
-        let big = f.unsupported ? "Not translated: {join(f.mods, ", ")}" : "Forecast: {f.damage} {what}, {f.hit}% hit   ({ab.name}{magick_text(ab)})"
+        let big = v.ok && v.no_effect ? "No effect on {tgt.name}   ({ab.name})" : (f.unsupported ? "Not computed: {v.problem}" : "Forecast: {f.damage} {what}, {f.hit}% hit   ({ab.name}{magick_text(ab)})")
         text_at_baseline(x + u(8.0), ry + u(15.0), big, fg)
         ry += u(21.0)
         let crit = f.crit_prob > 0.0 ? ", critical {fmt(":.2f", f.crit_prob * 100.0)}% (x2)" : ""
         let real = "Real: hit {fmt(":.1f", f.hit_prob * 100.0)}%{crit}, {what} {f.dmg_min}..{f.dmg_max}, ~{fmt(":.1f", f.expected)} per use"
         text_at_baseline(x + u(8.0), ry + u(15.0), real, fg)
         ry += u(21.0)
+        if (vm_note != "") {
+            text_at_baseline(x + u(8.0), ry + u(15.0), vm_note, 0xe0a060ffu)
+            ry += u(21.0)
+        }
         if (battle_rng != 0u && tgt.rng_seed != 0u) {
             let r = roll_attack(f, battle_rng, tgt.rng_seed)
             let next = r.hit ? "{r.damage} {what}{r.crit ? " (critical)" : ""}" : "miss"
@@ -475,7 +497,8 @@ class Ffta2Game : GameModule {
         }
     }
 
-    // Attack and every ability whose damage or healing the model computes
+    // Attack and every ability with a damage or healing effect (the VM
+    // computes them; the step-by-step formula covers most)
     def make_actions() : void {
         actions |> clear()
         action_names |> clear()
@@ -483,7 +506,7 @@ class Ffta2Game : GameModule {
         action_names |> push("Attack")
         for (aid in range(1, ability_count())) {
             let ab = read_ability2(aid)
-            if (aid != ATTACK_ABILITY && translated_ability(ab)) {
+            if (aid != ATTACK_ABILITY && damages_or_heals(ab)) {
                 actions |> push(aid)
                 action_names |> push(ab.name)
             }

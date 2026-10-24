@@ -20,6 +20,7 @@ require strings
 require daslib/strings_boost
 require ../scripts/games/ffta2/ffta2_battle.das
 require ../scripts/games/ffta2/ffta2_attack.das
+require ../scripts/games/ffta2/ffta2_forecast.das
 
 let CASES = fixed_array<string>(
     "ab=63 | 99 21",
@@ -300,7 +301,13 @@ def apply_edit(var att, tgt : Unit2; var game_facing : int&; var ability : int&;
     } elif (key == "t") {
         tgt.equip[0] = read_item2(v)
     } elif (key == "e") {
+        // the game's item table was edited: every copy of the item
         tgt.equip[0].bonus[5] = v
+        for (it in att.equip) {
+            if (it.id == tgt.equip[0].id) {
+                it.bonus[5] = v
+            }
+        }
     } elif (key == "f") {
         game_facing = v
     } elif (key == "b") {
@@ -349,6 +356,13 @@ def main() : int {
         recompute_unit(tgt)
         let want <- split(parts[1], " ")
         let f <- action2(att, tgt, read_ability2(ability), side_of2(att, tgt))
+        // the same case by the game's own scripts (the VM)
+        let v = vm_forecast(att, tgt, read_ability2(ability))
+        total++
+        if (!v.ok || v.hit != to_int(want[0]) || (v.amount & 0xFFFF) != to_int(want[1])) {
+            failed++
+            print("FAIL vm {parts[0]}: game {want[0]} / {want[1]}, vm {v.hit} / {v.amount} {v.problem}\n")
+        }
         total++
         if (f.hit != to_int(want[0]) || (f.damage & 0xFFFF) != to_int(want[1])) {
             failed++

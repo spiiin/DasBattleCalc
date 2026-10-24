@@ -78,6 +78,7 @@ struct Unit2 {
     @caption = "Team byte" @readonly team_byte : int     // record +0x0A: 0x88 clan, 0x99 / 0x9B enemies, 0x9C guest
     @caption = "Position" @readonly position : string
     @hide team : int                // TEAM_*
+    @hide flags : int               // record +0x0A u16 (bit 0 enemy, 2 guest, 10 ...)
     @hide raw : int[4]              // record +0x3C: Attack, Defense, Magick, Resistance x 4
     @hide base_speed : int          // record +0x1C
     @hide x : int                   // object +0x0C / +0x0D
@@ -287,6 +288,7 @@ def read_unit2(rec, obj : uint) : Unit2 {
     u.job_id = int(gba_read8(rec + 0x06u))
     u.race_id = int(gba_read8(rec + 0x07u))
     u.team_byte = int(gba_read8(rec + 0x0Au))
+    u.flags = int(gba_read16(rec + 0x0Au))
     u.team = team_of(u.team_byte)
     u.name_id = int(gba_read16(rec + 0x0Cu))
     u.name = ffta2_message(NAMES, u.name_id & 0x7FFF)

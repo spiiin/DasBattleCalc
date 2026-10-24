@@ -270,6 +270,19 @@ def effect_applies(t : int; ab : Ability2; att, tgt : Unit2) : int {
     return -1
 }
 
+// an effect of it damages or heals (apply function 1 / 17)
+def damages_or_heals(ab : Ability2) : bool {
+    if (ab.name == "" || ab.name == "-") {
+        return false
+    }
+    for (fx in ab.fx) {
+        if (fx.x != 0 && (fx.y == 1 || fx.y == 17)) {
+            return true
+        }
+    }
+    return false
+}
+
 // the model computes it: an effect damages or heals with an amount
 // function 1..4 and a translated condition and hit
 def translated_ability(ab : Ability2) : bool {
@@ -576,8 +589,18 @@ def action2(att, tgt : Unit2; ab : Ability2; side : Side2; privilege : int = 0) 
         f.hit_mods |> push("target Elusion: out of reach")
     }
     f.hit = h
+    fill_real(f, att, privilege)
+    return <- f
+}
+
+// the real use from the forecast (f.hit, f.damage): the hit roll, the
+// critical (Attack only: sub_92A0 rolls it for ability 799 alone) and
+// the spread
+def fill_real(var f : Fight2; att : Unit2; privilege : int) {
+    let attack = f.ability.id == ATTACK_ABILITY
+    let h = f.hit
+    f.spread |> clear()
     f.hit_prob = h >= 100 ? 1.0 : (h <= 0 ? 0.0 : mod10000_le(h * 100))
-    // only Attack has criticals (sub_92A0: a4 == 799; no roll otherwise)
     f.crit = attack ? crit_chance(privilege, att) : 0
     f.crit_prob = attack ? mod10000_le(f.crit * 100 - 1) : 0.0
     if (f.damage == 0) {
@@ -596,7 +619,18 @@ def action2(att, tgt : Unit2; ab : Ability2; side : Side2; privilege : int = 0) 
         mean += e.x * e.y
     }
     f.expected = mean * f.hit_prob
-    return <- f
+}
+
+// a copy of the target facing so that att hits it from `side`
+def face_for_side(att, tgt : Unit2; side : Side2) : Unit2 {
+    var t = tgt
+    for (fc in range(4)) {
+        t.facing = fc
+        if (side_of2(att, t) == side) {
+            return t
+        }
+    }
+    return tgt
 }
 
 // sub_84B0: Elusion lets only close attacks hit

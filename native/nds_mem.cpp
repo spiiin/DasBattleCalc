@@ -152,6 +152,10 @@ int name_hash(const std::string & s) {
     return c & 0x3FF;
 }
 
+// the archive's entry by its name hash; a hash shared by several names:
+// the one whose distinguishing character is ch (0: the first)
+bool archive_entry(int h, int ch, std::vector<uint8_t> & out);
+
 bool archive_file(const std::string & name, std::vector<uint8_t> & out) {
     if (!g_archive.ok) {
         g_archive.ok = nitro_file("master/pc.idx", g_archive.idx) &&
@@ -185,6 +189,46 @@ bool archive_file(const std::string & name, std::vector<uint8_t> & out) {
         uint8_t chr = idx[q], pos = idx[q + 1];
         q += 3;
         if (pos < name.size() && uint8_t(name[pos]) == chr) {
+            size_t len = s ? s : size;
+            if (o + len > bin_size) return false;
+            out.assign(bin + o, bin + o + len);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool archive_entry(int h, int ch, std::vector<uint8_t> & out) {
+    if (!g_archive.ok) {
+        g_archive.ok = nitro_file("master/pc.idx", g_archive.idx) &&
+            nitro_range("master/pc.bin", g_archive.bin_off, g_archive.bin_size);
+        if (!g_archive.ok) return false;
+    }
+    const auto & idx = g_archive.idx;
+    const uint8_t * bin = rom().data() + g_archive.bin_off;
+    const size_t bin_size = g_archive.bin_size;
+    uint32_t count = rd32(&idx[0]);
+    if (h < 0 || uint32_t(h) >= count) return false;
+    uint32_t a = rd32(&idx[8 + h * 9]), b = rd32(&idx[8 + h * 9 + 4]);
+    if (a == 0 && b == 0) return false;
+    size_t off = size_t(a & 0x3FFFFFF) * 2;
+    size_t size = size_t((a >> 26) + (b & 0xFFFF) * 64) * 4;
+    if (!(a & 1)) {
+        if (off + size > bin_size) return false;
+        out.assign(bin + off, bin + off + size);
+        return true;
+    }
+    size_t q = off / 4;
+    if (q >= idx.size()) return false;
+    uint8_t n = idx[q++];
+    for (int i = 0; i < n; ++i) {
+        uint32_t o = rd32(&idx[q]) * 4;
+        q += 4;
+        uint32_t s = 0;
+        if (i) { s = rd32(&idx[q]) * 4; q += 8; }
+        uint8_t chr = idx[q];
+        q += 3;
+        if (ch == 0 || chr == ch) {
             size_t len = s ? s : size;
             if (o + len > bin_size) return false;
             out.assign(bin + o, bin + o + len);
@@ -250,6 +294,15 @@ int nds_file(const char * name) {
     if (it != g_files.by_key.end()) return it->second;
     std::vector<uint8_t> data;
     return keep(key, archive_file(name, data), data);
+}
+
+int nds_arc_entry(int hash, int ch) {
+    check_rom();
+    std::string key = "h:" + std::to_string(hash) + ":" + std::to_string(ch);
+    auto it = g_files.by_key.find(key);
+    if (it != g_files.by_key.end()) return it->second;
+    std::vector<uint8_t> data;
+    return keep(key, archive_entry(hash, ch, data), data);
 }
 
 int nds_pak_file(const char * idx_name, const char * pak_name, int index) {
