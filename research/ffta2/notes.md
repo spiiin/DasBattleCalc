@@ -164,3 +164,105 @@ goes back (B). 148 forecasts (`grid1.txt`, `weapons1.txt`, `hit1.txt`,
 Not checked yet: Attack of non-weapon equipment (none in the tests has
 any), statuses, supports and laws, height, criticals, the real hit roll;
 reach (weapon range +6, heights).
+
+## Script VM (2026-10-24)
+
+The formulas live in compiled scripts (whole files of pc.bin, loaded to
+the heap; per call 0x02070478: 0x0203A788 sets the script, 0x0203A838
+pushes the arguments by a "%d%d.." format, 0x0203A9C4 finds the function
+by id - a binary tree of 8-byte entries from +0x10: u16 id, u16 code
+offset / 16, u16 / u16 links - and runs 0x0203AAB4).
+
+Context: +0x2C4 script, +0x2CC value stack (u32), +0x200 its index, +0x202
+frame base, +0x216 expression stack index (8-byte cells at +0: type byte,
+value at +4), +0x204 loop counter, +0x208 / +0x20C int / float return,
++0x210 pc, +0x21C the game's native handler (0x02070224 here).
+
+Instruction: i8 opcode, u8 length, operands (0x22 switch: (n - 1) x 8 + 12).
+Jump table 0x0203AAE4 (opcode + 1). 0..5 push a literal (the type is the
+opcode: 0 int, 1 float, 2..5 variable references: 2 with high half 1 =
+frame slot, negative = argument), 6..25 binary ops through ITCM helpers
+(0x01FF8678..: 6 + 7 - 8 * 9 / 10 | 11 & 12 ^ 13 << 14 >> 15 float op
+(pow?) 16 % 17 == 18 >= 19 > 20 <= 21 < 22 != 24 && 25 ||; 23 !), 26
+assign, 27 end of statement, 28 frame += n, 29 / 30 save / restore frame,
+31 jz, 32 jnz, 33 jmp, 34 switch, 35..38 loop counter, 39 / 40 call frame
+enter / leave, 41 / 42 return value int / float, 43 / 44 push it, 45
+return, 46 / 47 to int / float, 48 call (relative), 49 native call #id,
+50 store argument, 51 / 52 references, 53 string literal.
+
+Tools: `vmdis.py` (listing), `vmdec.py` (C-like text with gotos:
+`python vmdec.py plan_420.bin 0x02269400 1 @67E0`). The decompiled scripts
+are not kept in the repository (game code): regenerate from a dump.
+
+Fight (forecast, ability 0 / "Fight" = a4): damage script hash 598, F1 ->
+sub_67E0; hit script hash 784, F1; F1 of hash 897 applies the damage (HP,
+KO). sub_67E0, physical branch:
+- v0 = native_1561(attacker) x 10 (raw Attack), x1.2 / x1.5 / x0.8 / x1.8
+  by supports (native_1570: 851, 869 at full HP, 855 ...) and statuses
+  (native_1568: 10, 16, 36, 37 ...), at least 1;
+- v3 = native_1562(target) x 10 (raw Defense), modifiers alike;
+- v1 = (weapon power native_2317, bare hands native_2858) + sub_9B30
+  (equipment), x 10; v4 = target's sub_9B30(.., 1) x 10;
+- v6 = v0 x 25 / 100 + v1 - (v3 x 25 / 100 + v4) / 2, then x (100 + law
+  bonus) / 100 (native_50(369) = the law: +-5..25 %), / 10, / 2;
+- then a support (855) x1.5, x2 vs some targets, the side (sub_A2B0:
+  front x1, side x1.5, back x2), element (sub_AA10: weak x1.5, half / 2,
+  immune 0, absorb), clamp 1..999 (-999..-1 when absorbed).
+The same rational as the fitted (2 Atk4 - Def4) / 16, but rounded at each
+step: the fitted formula can be 1 off. Next: the natives' meanings
+(handler 0x02070224), sub_9B30 / sub_A2B0 / sub_AA10, the hit script.
+
+## Natives and the exact Attack (2026-10-24)
+
+`natives.py` runs the game's native switch (0x020CCEB8, then 0x020CBC98,
+0x0203C0E4 for other ranges) for an id and prints its case. The getters:
+
+- unit (character record) 0x020B4E18(unit, k): 5 +0x07 race, 6 +0x06 job,
+  8 +0x0A flags (natives 1571 = bit 0 enemy, 1572 = bit 2 guest; neither:
+  clan member), 0x1D / 0x1E HP / max HP (+0x34 / +0x36), 0x21..0x24 raw
+  Attack, Defense, Magick, Resistance, 0x25 equipment (+0x44), 0x28 +0x4E
+  reaction, 0x29 +0x50 support ability. Natives 1539, 1540, 1557, 1558,
+  1561..1564, 1566 (item in slot), 1569, 1570.
+- status (1568): bit n & 7 of record +0x28 + (n >> 3); names: JD_message
+  12 (KO 1, Stone 9, Berserk 10, Blind 13, Shield 15, Focus 16, Evasion 0
+  17, Stop 24, Shell 25, Protect 26, Sleep 27, Bulwark 34, Attack up / down
+  36 / 37, Defense up / down 40 / 41, Oil 46, Combustion 49, Precision 52,
+  Accuracy up 54, Evasion up 57, ...).
+- job 0x020B59A8 (k - 0x4C = job byte; story characters read some other
+  bytes from their own table): 2843..2850 affinities (job +33..+40), 2851
+  hit base (+41, 100), 2858 bare hands (+48), 2860 (+50: 2 - hit from the
+  side always).
+- item 0x020CB3BC (sysdata 16, 40 bytes): 2304 kind, 2306 element (+4),
+  2316 property code (+0x12), 2317..2322 Attack .. Evasion (+0x13..+0x18),
+  2330 +0x24 bit 2.
+- ability 0x020CB068 (sysdata 4, 0x34 bytes, 822; names JD_message 3):
+  2561 element (+2), 2562 (+3), 2564 power (+6), 2579 magick (+0x20 bit 3),
+  2594 (bit 18), 2599 by side (bit 28). Attack = ability 799.
+- support abilities: 851 Attack up, 852 Defense up, 855 Turbo MP, 856
+  Geomancy, 859 Doublehand, 865 Concentration, 869 Unscarred, 876
+  Vigilance, 877 Pugilist, 879 Destroyer, 881 Elusion.
+
+Translated into `ffta2_attack.das` (physical Attack; the forecast,
+a5 = 1): Attack x10 (Attack up / Pugilist / Destroyer x1.2, Unscarred at
+full HP x1.5, Berserk / Attack up x1.2, Attack down x0.8, Focus or
+Combustion with a hand cannon x1.8); target Defense x10 (Defense up /
+Pugilist / Destroyer x1.2, Unscarred x1.5, Shield x1.2, Protect x1.3,
+Defense up x1.2, down x0.8); weapon power (+ other items' Attack, ids >
+288; Doublehand x1.2 with one two-handed weapon) x10; armour (all items'
+Defense) x10; base = A x 25/100 + P - (D x 25/100 + E) / 2; x (100 +
+privilege) / 100 / 10 / 2; side (job +50 == 2, jobs 137 / 138: always
+side; Vigilance: front); element (job affinity, the equipment's code
+if not normal - the stronger -, Oil + Fire weak, Geomancy one step
+weaker), absorb / immune; 1..999; target Bulwark -> 0.
+Hit: job +41 - equipment Evasion (+ privilege, Concentration +5, Blind
+-30, Accuracy up +30, target Evasion up -20), 1..99; target 0 HP / Stone /
+Sleep / Stop / Evasion 0 / Bulwark -> 100; Elusion: 0 beyond reach.
+
+The real hit (a5 = 0, sub_92A0, not in the model yet): a critical with
+5 % (privilege 16..20: 6..8 %, target Critical up / Death Strike +3)
+doubles the damage, then damage + (rand(3) - 1) x rand(damage / 5 + 1).
+
+Checked: 175 forecasts (`status1.txt`..`status3.txt` added: statuses,
+supports, Flame Shield / Blaze Robe absorb, Dragon Mail half, Geomancy,
+Vigilance, Elusion, Crushatrice). Berserk on the acting unit breaks the
+probe's menu (cases after it are wrong).

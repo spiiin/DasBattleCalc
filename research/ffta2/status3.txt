@@ -1,0 +1,3 @@
+base 99 17
+st_atkup 99 20
+base2 99 17

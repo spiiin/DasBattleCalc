@@ -133,10 +133,19 @@ def dis(w, pc):
 
 
 class Ram:
+    """Main RAM (0x02000000); the ITCM (0x01FF8000, 32 KB) from
+    <dump>_itcm.bin next to it when present."""
+
     def __init__(self, path):
         self.b = open(path, 'rb').read()
+        try:
+            self.itcm = open(path[:-4] + '_itcm.bin', 'rb').read()
+        except OSError:
+            self.itcm = b''
 
     def u32(self, a):
+        if 0x01FF8000 <= a < 0x02000000 and self.itcm:
+            return struct.unpack_from('<I', self.itcm, (a - 0x01FF8000) & 0x7FFF)[0]
         return struct.unpack_from('<I', self.b, a - 0x02000000)[0]
 
 

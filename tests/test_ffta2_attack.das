@@ -5,11 +5,13 @@ options indenting = 4
 // forecasts: Luso (moved to 9, 8) attacks Sasarr (10, 8) in the first
 // battle, with edited stats, equipment, facing and affinity
 // (research/ffta2/vary_probe.lua; logs grid1, weapons1, hit1, hit2,
-// elem1, elem2, min1). A case: edits | hit damage.
+// elem1, elem2, min1, status1..3). A case: edits | hit damage.
 //   a / d        Luso raw Attack / Sasarr raw Defense
 //   w / s2 / s4  Luso's item in slot 1 / 3 / 5 (0: none); t Sasarr's slot 1
 //   e            Evasion of Sasarr's item in slot 1; f Sasarr's facing (game's)
 //   b            Luso's bare-hand power; af Sasarr's Fire affinity
+//   sa / st      a status of Luso / Sasarr (record +0x28 bits, status1..3.txt)
+//   sup / tsup   Luso's / Sasarr's support ability; tj Sasarr's job
 //   battlecalc tests/test_ffta2_attack.das --state <ffta2_test_battle1.State> --rom <FFTA2 (USA)>.zip
 require gba_mem
 require gui_common
@@ -19,6 +21,33 @@ require ../scripts/games/ffta2/ffta2_battle.das
 require ../scripts/games/ffta2/ffta2_attack.das
 
 let CASES = fixed_array<string>(
+    "sa=10 | 99 20",
+    "sa=36 | 99 20",
+    "sa=37 | 99 15",
+    "sa=16 | 99 26",
+    "sa=13 | 70 17",
+    "sa=54 | 99 17",
+    "st=26 | 99 16",
+    "st=15 | 99 17",
+    "st=40 | 99 17",
+    "st=41 | 99 18",
+    "st=57 | 80 17",
+    "st=27 | 100 17",
+    "st=34 | 100 0",
+    "st=46 w=30 | 99 40",
+    "sup=851 | 99 20",
+    "sup=869 | 99 23",
+    "sup=865 | 99 17",
+    "sup=856 w=30 | 99 40",
+    "sup=856 | 99 17",
+    "tsup=852 | 99 17",
+    "tsup=876 f=2 | 99 17",
+    "tsup=881 | 99 17",
+    "t=293 w=30 | 90 65509",
+    "t=333 w=30 | 99 8",
+    "t=363 w=30 | 99 65514",
+    "tj=135 | 99 25",
+    "tj=135 f=2 | 99 25",
     "a=0 d=0 | 99 11",
     "a=0 d=32 | 99 9",
     "a=0 d=66 | 99 6",
@@ -201,6 +230,16 @@ def apply_edit(var att, tgt : Unit2; var game_facing : int&; key : string; v : i
         att.bare_power = v
     } elif (key == "af") {
         tgt.affinity[0] = v
+    } elif (key == "sa") {
+        att.status[v >> 3] = uint8(uint(att.status[v >> 3]) | (1u << uint(v & 7)))
+    } elif (key == "st") {
+        tgt.status[v >> 3] = uint8(uint(tgt.status[v >> 3]) | (1u << uint(v & 7)))
+    } elif (key == "sup") {
+        att.support = v
+    } elif (key == "tsup") {
+        tgt.support = v
+    } elif (key == "tj") {
+        set_job2(tgt, v)
     }
 }
 
@@ -231,7 +270,7 @@ def main() : int {
         recompute_unit(att)
         recompute_unit(tgt)
         let want <- split(parts[1], " ")
-        let f = fight2(att, tgt, side_of2(att, tgt))
+        let f <- fight2(att, tgt, side_of2(att, tgt))
         total++
         if (f.hit != to_int(want[0]) || (f.damage & 0xFFFF) != to_int(want[1])) {
             failed++

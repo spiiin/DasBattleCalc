@@ -38,6 +38,8 @@ let private EQUIP_SIZE = 40
 let private NAMES = 0                   // JD_message tables
 let private JOB_NAMES = 1
 let private ITEM_NAMES = 11
+let private ABILITY_NAMES = 3
+let private STATUS_NAMES = 12
 let private MENU_TEXT = 9               // menu words: races at 92..98
 let private RACE_TEXT = 91
 
@@ -51,6 +53,8 @@ struct Item2 {
     name : string
     kind : int                      // equipment +0 u16: 1..25 weapons, 26 shields, ...
     element : int                   // +4: ELEMENT2_NAMES
+    code : int                      // +0x12: special property; 1..40 by element, 5 each: 1 absorb, 2 immune, 3 half, 4 weak
+    two_hand : bool                 // +0x24 bit 2 (Doublehand counts such weapons)
     bonus : int[8]                  // by STAT2_LABELS
 }
 
@@ -79,6 +83,12 @@ struct Unit2 {
     @hide facing : int              // FACING_FROM_GAME[object +0x0E]: 0 +y, 1 -x, 2 -y, 3 +x
     @hide affinity : int[8]         // job +33.., by element 1..8: 0 weak, 1 normal, 2 half, 3 immune, 4 absorb
     @hide bare_power : int          // job +48: Fight power without a weapon
+    @hide job_hit : int             // job +41: the base of a hit on this unit (100)
+    @hide job_50 : int              // job +50: 2 - never hit from the back
+    @caption = "Support" @readonly support_name : string
+    @hide support : int             // record +0x50: ability id (851 Attack+ .. 881 Elusion), 0 none
+    @hide reaction : int            // record +0x4E
+    @hide status : uint8[9]         // record +0x28: status n = bit n & 7 of byte n >> 3 (JD_message 12)
     @hide items : int[5]            // record +0x44, item ids (0 empty)
     @hide equip : Item2[5]
     @hide stat_base : int[8]        // raw / 4, Speed, job Move / Jump
@@ -127,6 +137,14 @@ def ffta2_message(tab, index : int) : string {
     return ffta2_text(buf, off, len)
 }
 
+def status_name(n : int) : string {
+    return ffta2_message(STATUS_NAMES, n)
+}
+
+def has_status2(u : Unit2; n : int) : bool {
+    return n >= 0 && n < 72 && (uint(u.status[n >> 3]) & (1u << uint(n & 7))) != 0u
+}
+
 def race_name(race : int) : string {
     return race >= 1 && race <= 7 ? ffta2_message(MENU_TEXT, RACE_TEXT + race) : "Monster"
 }
@@ -156,6 +174,8 @@ def read_item2(id : int) : Item2 {
     it.name = ffta2_message(ITEM_NAMES, id)
     it.kind = int(nds_buf_read16(buf, base))
     it.element = int(nds_buf_read8(buf, base + 4))
+    it.code = int(nds_buf_read8(buf, base + 0x12))
+    it.two_hand = (nds_buf_read8(buf, base + 0x24) & 4u) != 0u
     for (s in range(STAT2_COUNT)) {
         it.bonus[s] = int(int8(nds_buf_read8(buf, base + 19 + s)))
     }
@@ -176,6 +196,18 @@ def team_of(team_byte : int) : int {
         return TEAM_PLAYER
     }
     return team_byte == 0x9C ? TEAM_GUEST : TEAM_ENEMY
+}
+
+// the job and what comes from its table (affinities, bare hands, ...)
+def set_job2(var u : Unit2; job : int) {
+    u.job_id = job
+    u.job = job_name(job)
+    for (e in range(8)) {
+        u.affinity[e] = job_byte(job, 33 + e)
+    }
+    u.bare_power = job_byte(job, 48)
+    u.job_hit = job_byte(job, 41)
+    u.job_50 = job_byte(job, 50)
 }
 
 // base, items and total of each stat (after an edit of the equipment)
@@ -224,10 +256,13 @@ def read_unit2(rec, obj : uint) : Unit2 {
     u.x = int(gba_read8(obj + 0x0Cu))
     u.y = int(gba_read8(obj + 0x0Du))
     u.facing = FACING_FROM_GAME[int(gba_read8(obj + 0x0Eu)) & 3]
-    for (e in range(8)) {
-        u.affinity[e] = job_byte(u.job_id, 33 + e)
+    set_job2(u, u.job_id)
+    u.support = int(gba_read16(rec + 0x50u))
+    u.reaction = int(gba_read16(rec + 0x4Eu))
+    u.support_name = u.support != 0 ? ffta2_message(ABILITY_NAMES, u.support) : "none"
+    for (k in range(9)) {
+        u.status[k] = uint8(gba_read8(rec + 0x28u + uint(k)))
     }
-    u.bare_power = job_byte(u.job_id, 48)
     u.ct = int(gba_read16(obj + 0x16u))
     recompute_unit(u)
     return u

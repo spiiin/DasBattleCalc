@@ -1,0 +1,4 @@
+base 99 17
+st_berserk 99 20
+st_atkup 0 0
+base2 1 0

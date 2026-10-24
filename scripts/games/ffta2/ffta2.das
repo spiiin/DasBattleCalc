@@ -53,6 +53,7 @@ class Ffta2Game : GameModule {
     scene_tab : int = 0               // 0 field, 1 the game screen
     calc_tab : int = 0                // 0 units, 1 attack
     side_choice : int = 0             // 0 auto, 1 + Side2
+    privilege : int = 0               // the clan privilege (game variable 369), 0 none
     stats_open : bool = true
     equip_open : bool = true
     state_path : string
@@ -180,7 +181,15 @@ class Ffta2Game : GameModule {
         var bottom = inspect("unit2_{selected}", units[selected], saved[selected], x, by, w)
         bottom = self->stat_rows(units[selected], x, bottom + u(6.0), w)
         bottom = self->equip_rows(units[selected], x, bottom + u(6.0), w)
-        return bottom
+        var names : array<string>
+        for (n in range(1, 72)) {
+            if (has_status2(units[selected], n)) {
+                names |> push(status_name(n))
+            }
+        }
+        SetCursorScreenPos(ImVec2(x, bottom + u(6.0)))
+        bl_label("Status: {length(names) > 0 ? join(names, ", ") : "none"}")
+        return bottom + u(30.0)
     }
 
     // Unit Info stats: base (raw / 4, Speed, job Move / Jump) + equipment
@@ -364,32 +373,45 @@ class Ffta2Game : GameModule {
         let tgt = units[target]
         let auto_side = side_of2(att, tgt)
         let side = side_choice == 1 ? Side2.Front : (side_choice == 2 ? Side2.Side : (side_choice == 3 ? Side2.Back : auto_side))
-        let f = fight2(att, tgt, side)
+        let f <- fight2(att, tgt, side, privilege)
         let fg = bt.regular.text | 0xffu
         let dim = offset_color(fg, 60)
         SetCursorScreenPos(ImVec2(x, y))
-        bl_label("{att.name} -> {tgt.name}: Fight with {f.weapon}", ICON_ATTACK)
+        bl_label("{att.name} -> {tgt.name}: Attack with {f.weapon}", ICON_ATTACK)
         SetCursorScreenPos(ImVec2(x + w - u(250.0), y))
         bl_label("Side:", -1, u(50.0))
         SetCursorScreenPos(ImVec2(x + w - u(200.0), y))
         var sides <- ["Auto ({SIDE2_NAMES[int(auto_side)]})", "Front", "Side", "Back"]
         bl_choice("side2_choice", sides, side_choice, u(200.0))
+        SetCursorScreenPos(ImVec2(x + w - u(250.0), y + u(26.0)))
+        bl_label("Privilege:", -1, u(80.0))
+        SetCursorScreenPos(ImVec2(x + w - u(170.0), y + u(26.0)))
+        var pv = float(privilege)
+        if (bl_number("privilege2", "", pv, 1.0, 0, u(170.0))) {
+            privilege = clamp(int(round(pv)), 0, 99)
+        }
         var ry = y + u(30.0)
-        let col = x + u(220.0)
+        let col = x + u(150.0)
         let big = "{f.damage} damage   {f.hit}% hit   ~{fmt(":.1f", float(f.damage) * float(f.hit) / 100.0)} expected"
         text_at_baseline(x + u(8.0), ry + u(15.0), big, fg)
         ry += u(28.0)
         var rows : array<tuple<string; string>>
         let ws = weapon_slot2(att)
         let power = ws >= 0 ? "{f.weapon} {att.equip[ws].bonus[0]}" : "bare hands {att.bare_power} (job)"
-        rows |> push(("Attack, raw x4", "{f.atk4} = raw {att.raw[0]} + 4 x items ({power}, others)"))
-        rows |> push(("Defense, raw x4", "{f.def4} = raw {tgt.raw[1]} + 4 x {tgt.name}'s items"))
-        rows |> push(("Base", "{f.base} = (2 x {f.atk4} - {f.def4}) / 16"))
-        let side_k = side == Side2.Back ? "x2" : (side == Side2.Side ? "x1.5" : "x1")
-        rows |> push(("Side", "{SIDE2_NAMES[int(side)]} {side_k} -> {f.after_side}"))
+        rows |> push(("Attack x10", "{f.atk10} (raw {att.raw[0]})"))
+        rows |> push(("Weapon x10", "{f.power10} ({power} + Attack of other items)"))
+        rows |> push(("Defense x10", "{f.def10} (raw {tgt.raw[1]}), armour x10 {f.armor10}"))
+        rows |> push(("Base", "{f.base} = {f.atk10} x 25/100 + {f.power10} - ({f.def10} x 25/100 + {f.armor10}) / 2"))
+        rows |> push(("Scaled", "{f.scaled} = base x (100 + privilege {f.privilege}) / 100 / 10 / 2"))
+        let side_k = f.side == Side2.Back ? "x2" : (f.side == Side2.Side ? "x1.5" : "x1")
+        rows |> push(("Side", "{SIDE2_NAMES[int(f.side)]} {side_k} -> {f.after_side}"))
         let aff = f.affinity >= 0 && f.affinity < 5 ? AFFINITY_NAMES[f.affinity] : "{f.affinity}"
-        rows |> push(("Element", "{ELEMENT2_NAMES[f.element]}: target {aff} -> {f.damage}"))
-        rows |> push(("Hit", "100 - Evasion {f.evasion} = {f.hit}% (1..99)"))
+        rows |> push(("Element", "{ELEMENT2_NAMES[f.element]}: target {aff} -> {f.damage} (1..999)"))
+        if (length(f.mods) > 0) {
+            rows |> push(("Modifiers", join(f.mods, ", ")))
+        }
+        let hit_mods = length(f.hit_mods) > 0 ? ", {join(f.hit_mods, ", ")}" : ""
+        rows |> push(("Hit", "{tgt.job_hit} (job) - Evasion {f.evasion}{hit_mods} = {f.hit}% (1..99)"))
         rows |> push(("Distance", "{abs(att.x - tgt.x) + abs(att.y - tgt.y)} tiles (reach is not checked yet)"))
         for (r in rows) {
             text_at_baseline(x + u(8.0), ry + u(15.0), r._0, dim)

@@ -4,7 +4,8 @@
 --   PROBE_PLAN   "frame:Button,..." (a button is held 2 frames; Button+Button
 --                presses both)
 --   PROBE_SHOTS  frames to screenshot: shots/plan_<frame>.png
---   PROBE_DUMPS  frames to dump Main RAM: plan_<frame>.bin
+--   PROBE_DUMPS  frames to dump Main RAM: plan_<frame>.bin (and the ITCM,
+--                0x01FF8000 for the VM helpers: plan_<frame>_itcm.bin)
 --   PROBE_FRAMES the last frame
 --   PROBE_SAVE   "frame:path": save a state at that frame
 --   PROBE_WATCH  ARM9 addresses (hex, comma separated): every write is
@@ -60,7 +61,15 @@ speed.fast(800)
 for f = 0, FRAMES do
   frame = f
   if plan[f] then joypad.set(plan[f]) end
-  if dumps[f] then dump(string.format("plan_%03d.bin", f)) end
+  if dumps[f] then
+    dump(string.format("plan_%03d.bin", f))
+    local t = io.open(string.format("%splan_%03d_itcm.bin", OUT, f), "wb")
+    local bytes = memory.read_bytes_as_array(0, 0x8000, "Instruction TCM")
+    local parts = {}
+    for i = 1, #bytes do parts[i] = string.char(bytes[i]) end
+    t:write(table.concat(parts))
+    t:close()
+  end
   if shots[f] then client.screenshot(string.format("%sshots/plan_%03d.png", OUT, f)) end
   if save_frame == f then savestate.save(save_path) end
   emu.frameadvance()

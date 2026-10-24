@@ -29,8 +29,8 @@ and Dear ImGui (Blender 2.7-style widgets). Runs on the desktop (Windows) and in
   points, log scales) and CSV export.
 - **Final Fantasy Tactics A2** (NDS, USA; Game menu), early stage: the units of a battle from a BizHawk melonDS save
   (names, jobs, races, HP / MP, CT, position, team), their stats as on the Unit Info screen, equipment, a flat field
-  (map heights are not known yet) and the Fight forecast (damage by side and element, hit chance), checked against
-  148 forecasts of the game. See [research/ffta2/notes.md](research/ffta2/notes.md).
+  (map heights are not known yet) and the Attack forecast (damage and hit chance with sides, elements, statuses and support
+  abilities), translated from the game's own formula scripts and checked against 175 forecasts of the game. See [research/ffta2/notes.md](research/ffta2/notes.md).
 
 ![Attack calculator: damage breakdown, hit and critical chances](docs/images/attack.png)
 
