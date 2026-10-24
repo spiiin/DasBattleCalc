@@ -271,7 +271,7 @@ def effect_applies(t : int; ab : Ability2; att, tgt : Unit2) : int {
 }
 
 // How far an action reaches (ability +0x0B / +0x0C, the weapon's +5):
-// tiles by |dx| + |dy|; the height is not checked yet. min / max.
+// tiles by |dx| + |dy|, min / max (heights: in_reach_on).
 def reach_range(att : Unit2; ab : Ability2) : int2 {
     if (ab.range_kind == 7) {
         let ws = weapon_slot2(att)
@@ -283,9 +283,69 @@ def reach_range(att : Unit2; ab : Ability2) : int2 {
 }
 
 def in_reach(att : Unit2; ab : Ability2; x, y : int) : bool {
+    var none : Map2
+    return in_reach_on(att, ab, none, x, y)
+}
+
+// weapons that shoot (0x02048BB4: kinds 15..17, 19, 20, 24 - bows, guns,
+// hand cannons, cards): no height limit
+def shooting_weapon(it : Item2) : bool {
+    return (it.kind >= 15 && it.kind <= 17) || it.kind == 19 || it.kind == 20 || it.kind == 24
+}
+
+// The reach builder 0x02045F50 (research/ffta2/notes.md, "Reach"). A
+// weapon's reach (+0x0B = 7): shooting weapons - every tile at 1..range;
+// others along the four axes only (0x02044748): d tiles away, a target
+// tile at most R - d + 2 higher (higher: the ray stops there) or R - d + 3
+// lower (else skipped). Other abilities: 0..+0x0C, the own tile only with
+// +0x0D bit 2. An empty map: no heights, every tile exists.
+def in_reach_on(att : Unit2; ab : Ability2; m : Map2; x, y : int) : bool {
+    let dx = x - att.x
+    let dy = y - att.y
+    let d = abs(dx) + abs(dy)
+    let has_map = m.w > 0
+    if (has_map && !map_targetable(m, x, y)) {
+        return false
+    }
     let r = reach_range(att, ab)
-    let d = abs(x - att.x) + abs(y - att.y)
-    return d >= r.x && d <= r.y
+    if (d < r.x || d > r.y) {
+        return false
+    }
+    if (ab.range_kind == 8) {
+        return d == 0
+    }
+    if (ab.range_kind != 7) {
+        return d > 0 || (ab.range_flags & 4) != 0
+    }
+    let ws = weapon_slot2(att)
+    if (ws >= 0 && shooting_weapon(att.equip[ws])) {
+        return true
+    }
+    if (dx != 0 && dy != 0) {
+        return false
+    }
+    if (!has_map) {
+        return true
+    }
+    // the ray from the attacker: a tile too high stops it
+    let h0 = map_height(m, att.x, att.y)
+    let sx = dx > 0 ? 1 : (dx < 0 ? -1 : 0)
+    let sy = dy > 0 ? 1 : (dy < 0 ? -1 : 0)
+    for (k in range(1, d + 1)) {
+        let h = map_height(m, att.x + sx * k, att.y + sy * k)
+        if (h < 0) {
+            continue
+        }
+        let up = h >= h0
+        let ok = up ? h - h0 <= r.y - k + 2 : h0 - h <= r.y - k + 3
+        if (k == d) {
+            return ok
+        }
+        if (up && !ok) {
+            return false
+        }
+    }
+    return false
 }
 
 // an effect of it damages or heals (apply function 1 / 17)

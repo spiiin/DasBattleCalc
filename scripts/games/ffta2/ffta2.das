@@ -375,7 +375,7 @@ class Ffta2Game : GameModule {
             for (ty in range(field_map.h)) {
                 for (tx in range(field_map.w)) {
                     reach[ty * field_map.w + tx] = (field_map.height[ty * field_map.w + tx] > 0 &&
-                        in_reach(units[selected], ab, tx + field_map.x0, ty + field_map.y0))
+                        in_reach_on(units[selected], ab, map2, tx + field_map.x0, ty + field_map.y0))
                 }
             }
         }
@@ -509,6 +509,7 @@ class Ffta2Game : GameModule {
             }
         }
         sc = Scene2(att = units[att], tgt = units[tgt], ability = ability, side = side, privilege = privilege)
+        sc.map := map2
         return ""
     }
 
@@ -798,8 +799,9 @@ class Ffta2Game : GameModule {
         rows |> push(("Hit", "{tgt.job_hit} (job) - Evasion {f.evasion}{hit_mods} = {f.hit}% (1..99)"))
         let rr = reach_range(att, ab)
         let dist = abs(att.x - tgt.x) + abs(att.y - tgt.y)
-        let reach_text = in_reach(att, ab, tgt.x, tgt.y) ? "in reach" : "OUT OF REACH"
-        rows |> push(("Reach", "{dist} tiles: {reach_text} ({rr.x}..{rr.y}; heights not checked yet)"))
+        let reach_text = in_reach_on(att, ab, map2, tgt.x, tgt.y) ? "in reach" : "OUT OF REACH"
+        let dh = map2.w > 0 ? ", height {map_height(map2, tgt.x, tgt.y) - map_height(map2, att.x, att.y)}" : ""
+        rows |> push(("Reach", "{dist} tiles{dh}: {reach_text} ({rr.x}..{rr.y})"))
         for (r in rows) {
             text_at_baseline(x + u(8.0), ry + u(15.0), r._0, dim)
             text_at_baseline(col, ry + u(15.0), r._1, fg)

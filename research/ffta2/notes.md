@@ -396,7 +396,29 @@ Reach (the records; the targeting highlight is not in PANL and was not
 found yet): ability +0x0B = 7 - the weapon's range (equipment +5: swords
 1, spears 2, bows 5..7, guns 7..8, cards 8), 8 - the user only; else
 +0x0C tiles (Fire 4, Holy 3, Air Render 3); +0x0E the area's radius.
-Distance |dx| + |dy|; heights not checked yet.
+Distance |dx| + |dy|; heights: "Reach" below.
+
+## Reach (2026-10-25)
+
+The reach builder 0x02045F50 (r0 a list of (x, y) bytes or 0 to count,
+r1 the unit, r3 the ability; called twice from 0x02072564 / 0x020725B4)
+switches on ability +0x0B. `reach_probe.lua` edits PANL heights, Luso's
+weapon and the ability (r3) and logs the list: `reach1.txt`, 91 cases.
+
+- +0x0B = 7 (the weapon): shooting weapons (0x02048BB4: kinds 15..17,
+  19, 20, 24 - bows, guns, hand cannons, cards) take every tile at
+  1..range (0x020444C0, vertical 0xFF0: none). Others (0x020448FC): the
+  four axes only, each a ray (0x02044748): d tiles away a tile at most
+  R - d + 2 higher (higher than that: the ray stops) or R - d + 3 lower
+  (else skipped), heights x 16 (0x020428E0: the unit's tile, minus half
+  the water depth, byte +8, with flag 0x40 - not modelled).
+- Other kinds: 0..+0x0C; the own tile only with +0x0D bit 2 (Fire 5,
+  Unicorn 13 - yes; Charm 1 - no). Spells ignore heights.
+- Tiles with PANL flag bit 29 (the map's border rows) or bit 0 (an
+  obstacle) are never in reach.
+
+Luso's tile raised to 7+ made the game skip the target menu (no list):
+not in the data. `tests/test_ffta2_reach.das`: all 91 lists.
 
 ## Statuses (2026-10-24)
 
@@ -429,3 +451,21 @@ not in the log).
   bytes per apply function 0..179), bits 2s and 2s + 1.
 
 `tests/test_ffta2_status.das`: the 70 forecasts by the VM.
+
+## Unit graphics (2026-10-25, in progress)
+
+Paths in the code (0x0211C078..): `char/rom/rom_idx/UnitCg.rom_idx` +
+`char/rom/pak/UnitCg.pak`, `UnitSst.rom_idx` + `UnitSst.pak` (idx / pak
+like sysdata; 324 sets each), `char/NaUnitAnimTable.bin`; the async
+loader at 0x0203D5xx (a request: u16 +2 the set). `unit_gfx.py`:
+
+- UnitCg: a set is a chain of NDS LZ77 (0x10) blocks, 4-aligned; set 0:
+  32 blocks of 1536 bytes = frames of 32 x 48 texels, 1 byte each, NDS
+  texture format A3I5 (top 3 bits alpha: 7 opaque, 0 clear; 5 bits a
+  palette index, 1..27 used). Set 155 (in RAM in the first battle): 10240
+  -byte blocks (a bigger monster).
+- UnitSst: 8-byte animation records, then packed sequences (not decoded).
+- Not found yet: the palettes (not in sysdata, UnitCg or UnitSst as
+  plain BGR555; the game uploads them to texture palette memory, which
+  BizHawk's melonDS core does not expose), which set a unit uses, which
+  frame is standing per facing.

@@ -57,6 +57,7 @@ struct Scene2 {
     ability : int = 799
     side : int                      // 0 auto, 1 front, 2 side, 3 back
     privilege : int
+    map : Map2                      // heights for the reach column (empty: flat)
 }
 
 // one action as the Attack tab computes it: the step-by-step formula, or
@@ -469,7 +470,7 @@ def run_experiment2(sc : Scene2; var s : Script; var t : ETable) : string {
         // an ability for the user only targets the attacker
         let on = ab.range_kind == 8 ? att : tgt
         let f <- compute_action2(att, on, ab, side, privilege)
-        metric_values2(f, in_reach(att, ab, on.x, on.y), abs(att.x - on.x) + abs(att.y - on.y), ab.mp, row)
+        metric_values2(f, in_reach_on(att, ab, sc.map, on.x, on.y), abs(att.x - on.x) + abs(att.y - on.y), ab.mp, row)
         for (p in extra) {
             var v : Value
             point_param2(att, tgt, ability, side, privilege, p, v)

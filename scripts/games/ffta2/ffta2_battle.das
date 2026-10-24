@@ -215,6 +215,7 @@ struct Ability2 {
     flags : uint                    // +0x20: bit 3 magick, 18 x2 vs counters, 28 by side
     range_kind : int                // +0x0B: 7 the weapon's range, 8 the user only
     reach : int                     // +0x0C: tiles (else)
+    range_flags : int               // +0x0D: bit 2 - the user's own tile is in reach
     area : int                      // +0x0E: the area's radius
     fx : int4[4]                    // +0x10: effects (type = condition, apply, hit, amount functions)
 }
@@ -251,6 +252,7 @@ def read_ability2(id : int) : Ability2 {
     a.flags = nds_buf_read32(buf, base + 0x20)
     a.range_kind = int(nds_buf_read8(buf, base + 0x0B))
     a.reach = int(nds_buf_read8(buf, base + 0x0C))
+    a.range_flags = int(nds_buf_read8(buf, base + 0x0D))
     a.area = int(nds_buf_read8(buf, base + 0x0E))
     for (k in range(4)) {
         let o = base + 0x10 + 4 * k
@@ -419,6 +421,15 @@ def read_map2(var m : Map2) : bool {
 
 def map_height(m : Map2; x, y : int) : int {
     return x >= 0 && y >= 0 && x < m.w && y < m.h ? m.height[y * m.w + x] : -1
+}
+
+// a tile an action can target: it exists, no flag bit 29 (the map's
+// border, seen as never in reach) or bit 0 (an obstacle)
+def map_targetable(m : Map2; x, y : int) : bool {
+    if (map_height(m, x, y) < 0) {
+        return false
+    }
+    return (m.flags[y * m.w + x] & 0x20000001u) == 0u
 }
 
 // The game's generators (0x0206F264 the battle's, 0x0205E950 a unit's):

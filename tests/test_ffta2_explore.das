@@ -116,7 +116,7 @@ def main() : int {
     for (k in range(length(EXPLORE2_EXAMPLES))) {
         var s = Script()
         var e = parse_script(EXPLORE2_EXAMPLES[k], s)
-        var esc = sc
+        var esc := sc
         for (a in s.scene) {
             let v = eval_const(a.exprs[0], a.exprs[0].root)
             for (aid in explore_actions2()) {
