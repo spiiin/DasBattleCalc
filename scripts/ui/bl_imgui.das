@@ -162,9 +162,11 @@ def icon_label_value(x, y, w, h : float; icon : int; color : uint; center : bool
         pleft += u(16.0)
     }
     var s = value == "" ? caption : (caption == "" ? value : "{caption}: {value}")
-    // longer than the widget: cut with "..." (it would overflow the frame)
+    // longer than the widget: cut with "..." (it would overflow the frame);
+    // widgets sized to their text (bl_option) give room == the text width
+    // up to float rounding - not a reason to cut
     let room = w - pleft - u(BND_PAD_RIGHT)
-    if (w > 0.0 && text_width(s) > room) {
+    if (w > 0.0 && text_width(s) > room + 0.5) {
         while (length(s) > 0 && text_width("{s}...") > room) {
             s = slice(s, 0, length(s) - 1)
         }
