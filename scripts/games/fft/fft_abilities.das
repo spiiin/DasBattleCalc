@@ -95,6 +95,11 @@ def read_ability(id : int) : FftAbility {
     return ab
 }
 
+// Blade Grasp answers it (action flags 4 bit 4; Charge as Attack)
+def grasped(ab : FftAbility) : bool {
+    return ab.kind == 5 || (uint(ab.flags[3]) & 0x10u) != 0u
+}
+
 def evadable(ab : FftAbility) : bool {
     return (uint(ab.flags[3]) & 0x02u) != 0u
 }
@@ -289,7 +294,7 @@ def ability_forecast(a, t : FftUnit; ab : FftAbility) : AbilityForecast {
             f.amount_max = f.amount_min
             f.formula = "PA + {ab.y}"
         }
-        f.hit = physical_hit(a, t, min(base, 100), ev)
+        f.hit = physical_hit(a, t, min(base, 100), ev, grasped(ab))
         f.notes |> push("evades, {ev}")
     } elif (fo == 0x2D) {
         let w = unit_weapon(a)
@@ -331,7 +336,7 @@ def ability_forecast(a, t : FftUnit; ab : FftAbility) : AbilityForecast {
         f.amount_max = min(pa * max(ab.y, 1), 999)
         f.formula = "PA x rand(1..{ab.y})"
         if (evadable(ab)) {
-            f.hit = physical_hit(a, t, 100, ev)
+            f.hit = physical_hit(a, t, 100, ev, grasped(ab))
             f.notes |> push("evades, {ev}")
         }
     } elif (fo == 0x38) {

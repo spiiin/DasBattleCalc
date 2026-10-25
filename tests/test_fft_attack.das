@@ -14,6 +14,8 @@ require math
 require daslib/strings_boost
 require ../scripts/games/fft/fft_battle.das
 require ../scripts/games/fft/fft_attack.das
+require ../scripts/games/fft/fft_abilities.das
+require ../scripts/games/fft/fft_reactions.das
 
 var failed = 0
 var total = 0
@@ -133,6 +135,36 @@ def main() : int {
         let g = attack_forecast(a, t)
         check("{what}: {g.damage_min} {g.hit}%, the game: {mc._1} {mc._2}%", g.damage_min == mc._1 && g.hit == mc._2)
     }
+    // reactions set in Lezales' bits (+0x8B..): Blade Grasp with Weapon
+    // Guard 26%, without 28%, at Brave 90 7%; Abandon (no Weapon Guard) 44%
+    for (rc in fixed_array<tuple<string; int>>(("BG + WG", 26), ("BG", 28), ("BG Brave 90", 7), ("Abandon", 44))) {
+        var t = units[li]
+        let what = rc._0
+        if (what != "BG + WG") {
+            set_skill(t, int(0x1BF), false)
+        }
+        set_skill(t, what == "Abandon" ? int(0x1C1) : int(0x1C3), true)
+        if (what == "BG Brave 90") {
+            t.brave = 90
+        }
+        let g = attack_forecast(ramza, t)
+        check("{what}: {g.hit}%, the game: {rc._1}%", g.hit == rc._1)
+    }
+    // Counter (the bit, Brave 100): the game struck back - and missed:
+    // Ramza had turned to Lezales, so his front (Squire's class evade 10)
+    var counter = units[li]
+    set_skill(counter, int(0x1BF), false)
+    set_skill(counter, int(0x1BA), true)
+    counter.brave = 100
+    let rc = reaction_to(ramza, counter, FftAbility(), 42)
+    check("Counter: {reaction_text(rc)}", rc.triggers && rc.counter && rc.chance == 100 && rc.counter_min == 42
+        && rc.counter_hit == 90)
+    // A Save (Brave 100): PA +1 after the hit, seen
+    var asave = units[li]
+    set_skill(asave, int(0x1BF), false)
+    set_skill(asave, int(0x1A6), true)
+    let ra = reaction_to(ramza, asave, FftAbility(), 42)
+    check("A Save: {reaction_text(ra)}", ra.triggers && ra.id == 0x1A6)
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
     return failed == 0 ? 0 : 1
 }

@@ -27,6 +27,9 @@ let JOB_CLASS_EV = 0x800610D1u      // the job table, 48 B a job: Move, Jump, C-
 let JOB_SIZE = 48u
 
 let AB_WEAPON_GUARD = int(0x1BF)
+let AB_ABANDON = int(0x1C1)
+let AB_BLADE_GRASP = int(0x1C3)
+let AB_ARROW_GUARD = int(0x1C4)
 let AB_ATTACK_UP = int(0x1D1)
 let AB_DEFENSE_UP = int(0x1D2)
 let AB_CONCENTRATE = int(0x1D5)
@@ -221,7 +224,8 @@ def private hand_evade(t : FftUnit; weapon_slot, shield_slot : int; guard : bool
 // The share of hits past the target's evades (%), as the game takes it:
 // the slots accessory, right hand, left hand, class in turn from 100,
 // each step floored; by the side a stands at (side: no class; back: the
-// accessory only); Darkness on a / Defending on t double each evade.
+// accessory only); Darkness on a / Defending on t / t's Abandon double
+// each evade (Abandon: 100 -> 56 -> 44 in the game).
 // The game's forecasts against a Knight (Iron Sword with Weapon Guard 5,
 // Mythril Shield 22, class 10): 100 -> 95 -> 74 -> 66; with Darkness or
 // Defending 100 -> 90 -> 50 -> 40.
@@ -243,7 +247,8 @@ def physical_pass(a, t : FftUnit; var evades : string&) : int {
         evs <- [aev]
         evades = "back: accessory {aev}%"
     }
-    let k = (has_status(a, ST_DARKNESS) ? 2 : 1) * (has_status(t, ST_DEFENDING) ? 2 : 1)
+    let k = ((has_status(a, ST_DARKNESS) ? 2 : 1) * (has_status(t, ST_DEFENDING) ? 2 : 1)
+        * (has_ability(t, AB_ABANDON) ? 2 : 1))
     if (k > 1) {
         evades += " (x {k})"
     }
@@ -257,15 +262,26 @@ def physical_pass(a, t : FftUnit; var evades : string&) : int {
 // the hit chance of a physical action with the base hit base (%): base x
 // the pass share / 100 - Power Break 56 x 66 / 100 = 36, Head Break 58 ->
 // 38, Shield Break 68 -> 44, Weapon Break 43 -> 28, Armor Break 53 -> 34;
-// evades: the text
-def physical_hit(a, t : FftUnit; base : int; var evades : string&) : int {
+// grasp: a blow the target's Blade Grasp answers (Attack, Charge, the
+// abilities flagged so), its Arrow Guard too with a bow or crossbow - x
+// (100 - its Brave) / 100 after the evades (the game: 66 -> 26 at Brave
+// 60, 70 -> 28 without Weapon Guard, 70 -> 7 at Brave 90); evades: the
+// text
+def physical_hit(a, t : FftUnit; base : int; var evades : string&; grasp : bool = false) : int {
     let no_evade = (has_ability(a, AB_CONCENTRATE) || has_status(t, ST_CHARGING) || has_status(t, ST_PERFORMING)
         || has_status(t, ST_SLEEP) || has_status(t, ST_STOP) || has_status(t, ST_DONT_ACT) || has_status(t, ST_PETRIFY))
     if (no_evade) {
         evades = "evades ignored (Concentrate or the target's status)"
         return clamp(base, 0, 100)
     }
-    return clamp(base, 0, 100) * physical_pass(a, t, evades) / 100
+    var hit = clamp(base, 0, 100) * physical_pass(a, t, evades) / 100
+    let w = unit_weapon(a)
+    let arrow = w.kind == IT_BOW || w.kind == IT_CROSSBOW
+    if (grasp && (has_ability(t, AB_BLADE_GRASP) || (arrow && has_ability(t, AB_ARROW_GUARD)))) {
+        hit = hit * (100 - clamp(t.brave, 0, 100)) / 100
+        evades += ", Blade Grasp / Arrow Guard x (100 - Brave {t.brave}) / 100"
+    }
+    return hit
 }
 
 // k: Charge's power, added to XA
@@ -319,7 +335,7 @@ def attack_forecast(a, t : FftUnit; k : int = 0) : AttackForecast {
     f.damage_max = physical_xa(f.xa_max, a, t, bare) * ya
     f.crit_max = physical_xa(f.xa_max * 2 - 1, a, t, bare) * ya
     f.side = attack_side(a, t)
-    f.hit = physical_hit(a, t, 100, f.evades)
+    f.hit = physical_hit(a, t, 100, f.evades, true)
     f.notes |> push("zodiac: {ZODIAC_TEXT[zodiac_compat(a, t) + 2]}")
     if (has_ability(a, AB_ATTACK_UP)) {
         f.notes |> push("Attack UP: XA x 4 / 3")

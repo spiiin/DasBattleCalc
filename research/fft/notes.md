@@ -318,3 +318,23 @@ Haste / Slow (fft_test_haste.State: +0x5B 0x08 / 0x04 with the timers
 check): Lezales 40 -> 67 in 3 ticks (Speed 6 x 3 / 2 = 9), Agrias 40 ->
 49 -> 61 -> 67 -> 70 (6 / 2 = 3). Timers from +0x5D: Poison, Regen,
 Protect, Shell, Haste, Slow, Stop (+0x63), ...
+
+## Reactions (the game)
+
+The reaction bits (+0x8B: 0x1A6 A Save .. 0x1C5 Hamedo, 0x80 first) work
+when set in RAM, at the target Lezales (Brave 60):
+
+| bits | game | |
+|---|---|---|
+| Blade Grasp + Weapon Guard | 26% | 66 x (100 - 60) / 100 |
+| Blade Grasp | 28% | 70 (no weapon evade) x 40 / 100 |
+| Blade Grasp, Brave 90 | 7% | 70 x 10 / 100 |
+| Abandon | 44% | each evade x 2: 100 -> 56 -> 44 |
+| A Save, Brave 100 | "A Save", PA 7 -> 8 | after the hit |
+| Counter, Brave 100 | he struck back, "Missed!" | Ramza had turned to him: front, Squire's class evade 10 -> 90% |
+
+So the attacker faces its target after acting; a counter meets its front.
+`fft_reactions.das` (reaction_to) ports War of the Lions' reaction_w with
+the PSX ids; the other reactions (Hamedo, Counter Tackle, Dragon Spirit,
+HP Restore, Meatbone Slash, Counter Magic, ...) follow the reference and
+are not checked.

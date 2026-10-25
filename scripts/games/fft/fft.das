@@ -33,6 +33,7 @@ require fft_attack
 require fft_map
 require fft_reach
 require fft_abilities
+require fft_reactions
 
 def private turn_end_text(how : TurnEnd) : string {
     return how == TurnEnd.MoveAndAct ? "Move + Act" : (how == TurnEnd.ActOnly ? "Act" : (how == TurnEnd.MoveOnly ? "Move" : "Wait"))
@@ -56,6 +57,7 @@ class FftGame : GameModule {
     rom_path : string                 // the disc (.cue / .bin): the graphics
     export_path : string
     disc_path : string                // the disc opened
+    disc_serial : uint                // psx_disc_serial() when we opened it
     from_args : bool
     equip_open : bool = true
     message : string = "Load a BizHawk state (Nymashock core) of Final Fantasy Tactics (USA)"
@@ -96,21 +98,37 @@ class FftGame : GameModule {
             if (stat(state_path).is_valid) {
                 self->load(!from_args)
             }
-        } elif (!gba_state_is_psx()) {
+            return
+        }
+        if (!gba_state_is_psx()) {
             gba_load_state(state_path)
         }
+        // another game (War of the Lions) may have opened its disc in the
+        // shared reader meanwhile: ours again, and the map's textures
+        if (self->open_disc()) {
+            self->make_map()
+        }
+    }
+
+    // our disc in the shared reader (psx_mem.cpp); true when (re)opened -
+    // the cached textures are gone then
+    def open_disc() : bool {
+        if (rom_path == "" || (psx_has_disc() && disc_path == rom_path && disc_serial == psx_disc_serial())) {
+            return false
+        }
+        disc_path = rom_path
+        let err = psx_open_disc(rom_path)
+        if (err != "") {
+            log_line("Disc: {err} (no graphics)")
+        }
+        disc_serial = psx_disc_serial()
+        return true
     }
 
     def load_files() : string {
         try_ok(gba_load_state(state_path), "State: ")
         try_ok(read_battle(units))
-        if (rom_path != "" && (!psx_has_disc() || disc_path != rom_path)) {
-            disc_path = rom_path
-            let err = psx_open_disc(rom_path)
-            if (err != "") {
-                log_line("Disc: {err} (no graphics)")
-            }
-        }
+        self->open_disc()
         return ""
     }
 
@@ -497,6 +515,7 @@ class FftGame : GameModule {
             lines |> push("{units[attack_target].name}: {f.formula}, XA {xa}, YA {f.ya}")
             lines |> push("critical (5%): XA + rand(0..XA - 1)")
             lines |> push("evades, {f.evades}")
+            lines |> push("reaction: {reaction_text(reaction_to(a, units[attack_target], FftAbility(), f.damage_max))}")
             for (n in f.notes) {
                 lines |> push(n)
             }
@@ -581,6 +600,8 @@ class FftGame : GameModule {
             var lines : array<string>
             let how = f.known ? f.formula : "this formula is not modelled yet"
             lines |> push("{units[attack_target].name}: {how}")
+            let dealt = f.heal ? 0 : f.amount_max
+            lines |> push("reaction: {reaction_text(reaction_to(a, units[attack_target], ab, dealt))}")
             for (n in f.notes) {
                 lines |> push(n)
             }
