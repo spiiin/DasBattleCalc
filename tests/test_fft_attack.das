@@ -7,7 +7,7 @@ options indenting = 4
 // Guard). The game showed 42 HP 66% (Lezales facing Ramza); by edits in
 // the state (research/fft/plan_probe.lua): facing +y / -y 74%, -x 100%;
 // Lezales' zodiac Taurus 49, Aries 35, Cancer 21 (male + male, opposite).
-//   battlecalc tests/test_fft_attack.das --state <fft_test_ramza2.State>
+//   battlecalc tests/test_fft_attack.das --state <fft_test_ramza2.State> [--battle2 <fft_test_battle2.State>]
 require gba_mem
 require gui_common
 require math
@@ -194,6 +194,36 @@ def main() : int {
         t.facing = facing
         let g = attack_forecast(archer, t)
         check("bow from +y, facing {facing}: {g.hit}%, the game: {from_y[facing]}%", g.hit == from_y[facing])
+    }
+    // --battle2 (Gariland, Barney's turn): Barney (Dagger, PA 4, Sp 6,
+    // Scorpio, male) at Candy (Taurus, female: the best pair, XA 5 -> 7)
+    // next to him; the game: front 21 95%, back / side 21 100% (no
+    // shield), Broad Sword 24, bare hands 12 = PA 4 -> 6 x (4 x 55 / 100);
+    // Dash 18 = one roll of PA 6 x rand(1..4)
+    let b2 = gui_arg("--battle2", "")
+    if (b2 != "") {
+        check("battle 2 loads", gba_load_state(b2) == "")
+        var bu : array<FftUnit>
+        read_battle(bu)
+        let bi = find_unit(bu, "Barney")
+        let ci = find_unit(bu, "Candy")
+        check("Barney and Candy", bi >= 0 && ci >= 0)
+        if (bi >= 0 && ci >= 0) {
+            let cases = fixed_array<tuple<string; int; int; int; int>>(("front", 0, 1, 21, 95), ("back", 2, 1, 21, 100),
+                ("side", 1, 1, 21, 100), ("Broad Sword", 0, 19, 24, 95), ("bare hands", 0, 255, 12, 95))
+            for (c in cases) {
+                var a = bu[bi]
+                var t = bu[ci]
+                t.facing = c._1
+                a.equip[3] = c._2
+                let g = attack_forecast(a, t)
+                check("Barney at Candy, {c._0}: {g.damage_min}-{g.damage_max} {g.hit}%, the game: {c._3} {c._4}%",
+                    g.damage_min == c._3 && g.damage_max == c._3 && g.hit == c._4)
+            }
+            let d = ability_forecast(bu[bi], bu[ci], read_ability(147))
+            check("Dash: {d.amount_min}-{d.amount_max} {d.hit}%, the game: 18 (a roll) 100%",
+                d.amount_min <= 18 && d.amount_max >= 18 && (18 % 6) == 0 && d.amount_min == 6 && d.hit == 100)
+        }
     }
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
     return failed == 0 ? 0 : 1

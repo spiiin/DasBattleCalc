@@ -433,3 +433,21 @@ Lv1 and Delita with cadets against thieves, Barney's turn. 11 units in
 records 0..5 and 16..20; the map, its textures and the sprites read as in
 the first battle. Barney acting shows CT 100 in the game; Delita and
 Santos (record CT 2) have acted this round.
+
+Forecasts on `fft_test_battle2` (2026-10-26). Gariland is the tutorial
+battle: a "Check" hint pops up when targeting starts (○ closes it). The
+cursor here: Up x + 1, Down x - 1, Left y + 1. Thieves moved next to
+Barney by edits of +0x47 / +0x48 are not targetable (the game finds the
+unit on a tile elsewhere) and no enemy is in Barney's reach, so the
+forecasts are at Candy (an ally next to him). Barney (Dagger, PA 4, Sp 6,
+Scorpio, male) at Candy (Taurus, female: the best pair, XA 5 -> 7):
+
+| edit | game | model |
+|---|---|---|
+| none (front) | 21 95% | (4 + 6) / 2 = 5 -> 7, x WP 3 |
+| Candy facing +y / -x (back / side) | 21 100% | no class evade, no shield |
+| Barney's right hand Broad Sword (19) | 24 95% | PA 4 -> 6 x WP 4 |
+| bare hands (255) | 12 95% | PA 4 -> 6 x (4 x 55 / 100 = 2) |
+| Dash | 18 100% | one roll of PA 6 x rand(1..4) |
+
+The probe's edit values are decimal (`1924E9:1:19`, not `13`).
