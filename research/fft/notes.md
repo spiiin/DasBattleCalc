@@ -361,3 +361,21 @@ So the element comes after XA x YA (MA x Y) and before Faith (weak Fire:
 56 x 2 = 112 -> 35, not 17 x 2 = 34); Strengthen is x 5 / 4 on XA / MA.
 The critical is not in the forecast; the model adds XA + rand(0..XA - 1)
 to the modified XA (the code's order, research/fftwotl/formulas.md 2.2).
+
+## Facing and the camera (correction)
+
+**The record's facing: 0 -y, 1 -x, 2 +y, 3 +x** - not 0 +y as first
+written. A Long Bow shot by Ramza moved to (5, 6), +y of Lezales at (5, 3)
+(fft_test_moved.State), his facing edited: 0 -> 100% (his back), 2 -> 66%
+(his front), 1 / 3 -> 74%. The earlier checks attacked along x only,
+where 0 and 2 are both "side".
+
+**The game's camera sees the mirror image of the field's view** (the
+War of the Lions session found it on the same map): in the game +x goes
+up-right and +y up-left (the cursor: Down x - 1 is down-left; Ramza's
+walk to (5, 6) went up-left), the field draws +x down-right and +y
+down-left - a mirror, no rotation of the camera gives it. FieldMap.mirror
+(battle_field.das) draws tile (x, y) at (h - 1 - y, w - 1 - x); the
+monastery's tower now stands top-left with its door to the right, as in
+the game. The units' frames follow the facing as drawn
+(field_view_facing).

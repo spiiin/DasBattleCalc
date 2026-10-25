@@ -181,6 +181,20 @@ def main() : int {
         let g = attack_forecast(a, t)
         check("Ice Brand, {ec._0}: {g.damage_min} {g.hit}%, the game: {ec._1} 66%", g.damage_min == ec._1 && g.hit == 66)
     }
+    // a Long Bow shot from +y: Ramza moved in the game to (5, 6), Lezales
+    // at (5, 3) with his facing edited: 0 -> 100% (his back: 0 is -y),
+    // 2 -> 66% (his front), 1 / 3 -> 74% (his side)
+    let from_y = fixed_array<int>(100, 74, 66, 74)
+    for (facing in range(4)) {
+        var archer = ramza
+        archer.equip[3] = 0x53
+        archer.x = 5
+        archer.y = 6
+        var t = units[li]
+        t.facing = facing
+        let g = attack_forecast(archer, t)
+        check("bow from +y, facing {facing}: {g.hit}%, the game: {from_y[facing]}%", g.hit == from_y[facing])
+    }
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
     return failed == 0 ? 0 : 1
 }

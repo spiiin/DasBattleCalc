@@ -26,7 +26,16 @@ let EQUIP_LABELS = fixed_array<string>("Head", "Body", "Accessory", "Right hand"
 // the map's header in the code's data: u32 width, u32 length, ...,
 // +0x18 the terrain (8 bytes per tile, 256 tiles per floor)
 let MAP_HEADER = 0x800F6860u
-let FACING_NAMES = fixed_array<string>("+y", "-x", "-y", "+x")
+// the record's facing (+0x49 & 3): 0 -y, 1 -x, 2 +y, 3 +x - a bow shot
+// from +y of Lezales: facing 0 100% (his back), 2 66% (his front), 1 / 3
+// 74%; the field numbers them 0 +y, 1 -x, 2 -y, 3 +x (facing_to_field)
+let FACING_NAMES = fixed_array<string>("-y", "-x", "+y", "+x")
+let private FACING_FIELD = fixed_array<int>(2, 1, 0, 3)
+
+// the record's facing <-> the field's (the same swap both ways)
+def facing_to_field(f : int) : int {
+    return FACING_FIELD[f & 3]
+}
 // the unit taking its turn: a pointer to its record (also at 0x8016C5E8;
 // 0x80192D94 is the last unit that acted)
 let ACTIVE_UNIT = 0x8016D004u
@@ -111,7 +120,7 @@ struct FftUnit {
     @caption = "Position" @readonly position : string
     @hide x : int                   // +0x47
     @hide y : int                   // +0x48
-    @hide facing : int              // +0x49 bits 0..1 (the field's numbering); bit 7 the upper floor
+    @hide facing : int              // +0x49 bits 0..1: 0 -y, 1 -x, 2 +y, 3 +x; bit 7 the upper floor
     @hide upper : bool
     @hide team : int                // TEAM_*: +0x05 bit 4 an enemy
     @hide flags : int               // +0x05

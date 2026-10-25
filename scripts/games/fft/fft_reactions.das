@@ -64,7 +64,7 @@ def unit_reaction(t : FftUnit) : int {
     return 0
 }
 
-// the facing from a toward t (0 +y, 1 -x, 2 -y, 3 +x): a unit turns to
+// the facing from a toward t (0 -y, 1 -x, 2 +y, 3 +x): a unit turns to
 // its target when it acts
 def facing_toward(a, t : FftUnit) : int {
     let dx = t.x - a.x
@@ -72,7 +72,7 @@ def facing_toward(a, t : FftUnit) : int {
     if (abs(dx) >= abs(dy)) {
         return dx > 0 ? 3 : 1
     }
-    return dy > 0 ? 0 : 2
+    return dy > 0 ? 2 : 0
 }
 
 // The target t's reaction to a's action: ab (ab.id 0: Attack) dealing

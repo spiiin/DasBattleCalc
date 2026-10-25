@@ -128,8 +128,8 @@ def attack_side(a, t : FftUnit) : int {
     if (abs(dx) == abs(dy)) {
         return dx == 0 ? 0 : 1
     }
-    // facing: 0 +y, 1 -x, 2 -y, 3 +x
-    let dir = abs(dx) > abs(dy) ? (dx > 0 ? 3 : 1) : (dy > 0 ? 0 : 2)
+    // facing: 0 -y, 1 -x, 2 +y, 3 +x
+    let dir = abs(dx) > abs(dy) ? (dx > 0 ? 3 : 1) : (dy > 0 ? 2 : 0)
     let rel = (dir - t.facing) & 3
     return rel == 0 ? 0 : (rel == 2 ? 2 : 1)
 }

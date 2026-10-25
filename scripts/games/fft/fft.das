@@ -167,7 +167,9 @@ class FftGame : GameModule {
     // the field: the shown height (half units rounded down) + 1, 0 no tile
     def make_map() : void {
         if (read_map(map)) {
-            field_map = FieldMap(w = map.w, h = map.h, shown_shift = -1)
+            // the game's camera sees the mirror image of the field's view
+            // (+x up-right, +y up-left): research/fftwotl/graphics.md
+            field_map = FieldMap(w = map.w, h = map.h, shown_shift = -1, mirror = true)
             field_map.height |> resize(map.w * map.h)
             field_map.water |> resize(map.w * map.h)
             for (i in range(map.w * map.h)) {
@@ -266,12 +268,13 @@ class FftGame : GameModule {
         }
         var fu : array<FieldUnit>
         for (un in units) {
-            // standing: frame 2 (three quarters, facing +y) and 6 (facing
-            // -x); +x and -y mirrored
-            let f = un.facing & 3
-            let spr = psx_has_disc() ? psx_unit_sprite(shell_renderer(), unit_sprite(un), un.palette, f == 0 || f == 3 ? 2 : 6,
-                f >= 2) : -1
-            fu |> push(FieldUnit(name = un.name, x = un.x, y = un.y, facing = un.facing, team = un.team, alive = un.hp > 0,
+            // standing: frame 2 (three quarters, facing down-left on the
+            // screen) and 6 (up-left); the right ones mirrored
+            let f = facing_to_field(un.facing)
+            let vf = field_view_facing(field_map, f)
+            let spr = (psx_has_disc() ? psx_unit_sprite(shell_renderer(), unit_sprite(un), un.palette,
+                vf == 1 || vf == 2 ? 6 : 2, vf >= 2) : -1)
+            fu |> push(FieldUnit(name = un.name, x = un.x, y = un.y, facing = f, team = un.team, alive = un.hp > 0,
                 sprite = spr, sprite_scale = 0.75))
         }
         let bar = u(28.0)
@@ -300,7 +303,9 @@ class FftGame : GameModule {
             tr = bt_turn
         }
         if (tr != 0 && selected >= 0) {
-            units[selected].facing = (units[selected].facing + (tr > 0 ? 1 : 3)) & 3
+            // turned in the field's numbering
+            let f = (facing_to_field(units[selected].facing) + (tr > 0 ? 1 : 3)) & 3
+            units[selected].facing = facing_to_field(f)
             update_unit(units[selected])
         }
     }
