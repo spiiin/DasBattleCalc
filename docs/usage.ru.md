@@ -44,7 +44,36 @@ build\bin\battlecalc.exe tests\test_ffta2_reaction.das --state <сейв FFTA2: 
 build\bin\battlecalc.exe tests\test_ffta2_reach.das --state <сейв FFTA2: Luso рядом с Sasarr> --rom <FFTA2 (USA).zip>
 build\bin\battlecalc.exe tests\test_ffta2_status.das --state <сейв FFTA2: Luso рядом с Sasarr> --rom <FFTA2 (USA).zip>
 build\bin\battlecalc.exe tests\test_ffta2_explore.das --state <сейв FFTA2: Luso рядом с Sasarr> --rom <FFTA2 (USA).zip>
+build\bin\battlecalc.exe tests\test_psp_mem.das --state <fftwotl_test_battle1.ppst> --out <new.ppst>
+build\bin\battlecalc.exe tests\test_fftwotl_battle.das --state <fftwotl_test_battle1.ppst> --print 1
+build\bin\battlecalc.exe tests\test_fftwotl_attack.das --state <fftwotl_test_battle1.ppst>
+build\bin\battlecalc.exe tests\test_fftwotl_forecast.das --state <fftwotl_test_battle1.ppst>
+build\bin\battlecalc.exe tests\test_fftwotl_explore.das --state <fftwotl_test_battle1.ppst>
+build\bin\battlecalc.exe tests\test_fftwotl_export.das --state <fftwotl_test_battle1.ppst> --out <new.ppst>
 ```
+
+### FFT: The War of the Lions (PSP)
+
+`battlecalc --game fftwotl --state <сейв .ppst>`; сейв — save state PPSSPP (`memstick/PSP/PPSSPP_STATE/
+ULUS10297_1.00_N.ppst`, в меню PPSSPP это слот N + 1), игра — The War of the Lions (USA, ULUS10297). ISO не нужен:
+код игры (BOOT.BIN) уже лежит в памяти сейва, таблицы предметов, способностей, профессий и все имена читаются оттуда.
+Поле ROM для этой игры пустое. В вебе так же: выбрать только `.ppst`.
+
+- **Roster**: юниты боя (у кого сейчас ход — «(turn)»), гости (союзники под управлением ИИ) — зелёным.
+- **Inspector**: профессия, основной и второй набор умений, Reaction / Support / Movement (в бою действуют по
+  битовым маскам записи — при правке маски пересобираются), уровень, Exp, Brave, Faith, HP / MP / CT, PA / MA /
+  Speed (база + снаряжение), 7 слотов снаряжения (список того, что может носить профессия; «All items» — всё),
+  статусы, выученные способности по профессиям. **Export state with edits** пишет новый `.ppst` (PPSSPP: File → Load
+  State…); RAM в нём — правленая, остальное — как в загруженном сейве.
+- **Battle → Field**: карта боя с высотами и водой (из памяти игры), юниты, клетки дальности действия (без учёта высот).
+- **Calculation**: Turn order (тики CT, Haste / Slow / Stop; ход стоит 100 / 80 / 60 CT, у ходящего сейчас 100 уже
+  снято), Attack (прогноз урона и шанса по шагам, реакция цели и ответный удар), Explore, Units, Items и Abilities
+  (таблицы игры).
+- Формулы сверены с прогнозами самой игры (`tests/test_fftwotl_forecast.das`, 190 случаев): Attack всеми видами
+  оружия, зодиак, статусы, уклонения и стороны, элементы, поддержки и реакции (Shirahadori, Parry, Reflexes …),
+  Fire, Cure, Arts of War, Umbra, Potion, Rush, Stone; Counter — по настоящему удару. Остальное — по
+  `research/fftwotl/formulas.md` (не сверено).
+- Как это исследовалось (PPSSPP WebSocket-отладчик, зонды): [research/fftwotl/notes.md](../research/fftwotl/notes.md).
 
 ### Веб-версия (standalone AOT)
 
@@ -190,6 +219,20 @@ Chart, сцена — с вкладки Attack (атакующий, цель, д
   Способность «на себя» (диапазон 8) применяется к атакующему.
 - `scene A vs B with Fire from back` — как в FFTA.
 
+#### Explore в FFT: WotL
+
+Параметры — `scripts/games/fftwotl/fftwotl_explore.das`; сцена — с вкладки Attack (атакующий, цель, действие,
+сторона).
+
+- **Параметры** `atk.*` / `tgt.*`: `pa ma sp` (текущие, со снаряжением), `pa_raw ma_raw sp_raw` (без него), `brave
+  faith hp max_hp mp max_mp ct level`, `move jump c_ev` (только чтение), `job`, `weapon` (правая рука), `support`,
+  `zodiac` (0 Aries … 11 Pisces, 12 Serpentarius), `status.<имя>` (0 / 1: `status.protect`, `status.shell`,
+  `status.atheist` …). Сцена: `action` (способность, Attack = 0), `side` (1 спереди, 2 сбоку, 3 сзади, 0 — по
+  позициям).
+- **Генераторы**: `jobs`, `weapons`, `supports`, `actions` (действия наборов умений атакующего), `sides`.
+- **Столбцы**: `damage healing dmg_min dmg_max hit crit expected reach distance mp_cost xa ya zodiac_rel`.
+- Пример: `vary atk.pa 3..20`, `vary atk.brave 40, 60, 80, 97`, `plot expected by atk.pa per atk.brave`.
+
 ## Как устроено
 
 ```
@@ -213,6 +256,8 @@ scripts/
                      распаковка и текстуры — native/gba_gfx.cpp)
   games/ffta2/       FFTA2: ffta2_battle / _attack / _vm / _forecast / _turns (модель), ffta2.das (панели),
                      ffta2_explore.das (Explore)
+  games/fftwotl/     FFT: WotL: fftwotl_data (таблицы и тексты из RAM), _battle (юниты, карта, экспорт), _attack
+                     (прогноз, реакции), _turns, _explore, fftwotl.das (панели); сейв PPSSPP — native/psp_mem.cpp
   ui/explore_view    таблица (сортировка, только видимые строки) и график (линии, столбики, точки, лог-шкалы)
 research/          исследование FFTA: notes.md (результаты), Lua-скрипты BizHawk, дизассемблер Thumb, симулятор
 tests/             тесты на daslang

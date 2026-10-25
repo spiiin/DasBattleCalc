@@ -5,7 +5,10 @@ import struct, time
 from ppdbg import Dbg
 import ppkeys
 REC, SZ = 0x092E5CB4, 0x1E8
-d = Dbg()
+try:
+    d = Dbg()
+except RuntimeError:
+    d = None                            # restart() starts PPSSPP
 def rec(k): return REC + k * SZ
 def w8(a, v): d.write(a, bytes([v & 255]))
 def w16(a, v): d.write(a, struct.pack('<H', v & 0xFFFF))

@@ -23,6 +23,29 @@ enum SideW {
 }
 
 let SIDE_W_NAMES = fixed_array<string>("front", "side", "back")
+
+// reaction abilities (0x1A6 + the bit of the record's mask)
+let ID_VANISH = 425
+let ID_DRAGONHEART = 427
+let ID_BRAVERY_BOOST = 429
+let ID_FAITH_BOOST = 430
+let ID_CRIT_HP = 431
+let ID_CRIT_QUICK = 433
+let ID_BONECRUSHER = 434
+let ID_MAGICK_COUNTER = 435
+let ID_COUNTER_TACKLE = 436
+let ID_NATURES_WRATH = 437
+let ID_ABSORB_MP = 438
+let ID_REFLECT_R = 440
+let ID_COUNTER = 442
+let ID_CUP_OF_LIFE = 444
+let ID_PARRY = 447
+let ID_EARPLUG = 448
+let ID_REFLEXES = 449
+let ID_STICKY_FINGERS = 450
+let ID_SHIRAHADORI = 451
+let ID_ARCHERS_BANE = 452
+let ID_FIRST_STRIKE = 453
 let ATTACK_W = 0                    // the Attack command (no ability id of its own)
 let CRIT_PERCENT = 5                // formulas.md 2.3: 4 or 5 (open)
 
@@ -187,7 +210,7 @@ def private apply_elements(var dmg : int&; elem : int; tgt : UnitW; var miss : b
 
 // physical evasion (formulas.md 3.1): the target's evades that apply from
 // this side, multiplied
-def physical_hit(att, tgt : UnitW; side : SideW; base : int; var mods : array<string>) : int {
+def physical_hit(att, tgt : UnitW; side : SideW; base : int; var mods : array<string>; grasp : bool = true) : int {
     let w = weapon_of(att)
     if (w.kind == 10 || has_status_w(att, ST_TRANSPARENT)) {
         mods |> push(w.kind == 10 ? "a gun: not evaded" : "attacker invisible: not evaded")
@@ -205,7 +228,7 @@ def physical_hit(att, tgt : UnitW; side : SideW; base : int; var mods : array<st
     }
     var evs : array<int2>           // (evade %, 0 class / 1 shield / 2 weapon / 3 accessory)
     evs |> push(int2(tgt.a_ev, 3))
-    let parry = has_named(tgt, "Parry")
+    let parry = has_ability_w(tgt, ID_PARRY)
     for (h in range(2)) {
         // slot order: right hand, left hand (weapon parry or shield)
         let ws = tgt.equip[h == 0 ? SLOT_RIGHT : SLOT_LEFT]
@@ -227,7 +250,7 @@ def physical_hit(att, tgt : UnitW; side : SideW; base : int; var mods : array<st
         times *= 2
         mods |> push("target defending: evades x2")
     }
-    if (has_named(tgt, "Reflexes")) {
+    if (has_ability_w(tgt, ID_REFLEXES)) {
         times *= 2
         mods |> push("Reflexes: evades x2")
     }
@@ -252,6 +275,16 @@ def physical_hit(att, tgt : UnitW; side : SideW; base : int; var mods : array<st
         }
         factor = factor * (100 - ev) / 100
         mods |> push("{names[e.y]} evade {ev}%")
+    }
+    // checked: Shirahadori (any physical blow it grasps, bows too) and
+    // Archer's Bane (bows, crossbows) block with the target's Brave %, from
+    // any side: Brave 58 -> 70% x 42 / 100 = 29
+    let shooting = w.kind == 11 || w.kind == 12
+    let grasps = has_ability_w(tgt, ID_SHIRAHADORI)
+    if (grasp && (grasps || (shooting && has_ability_w(tgt, ID_ARCHERS_BANE)))) {
+        factor = factor * (100 - tgt.brave) / 100
+        let who = grasps ? "Shirahadori" : "Archer's Bane"
+        mods |> push("{who}: x (100 - Brave {tgt.brave}) / 100")
     }
     return hit * factor / 100
 }
@@ -590,7 +623,7 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
         let base = min(pa + wp + x_z, 100)
         let wp_text = fo == 0x25 ? " + WP {wp}" : ""
         f.hit_mods |> push("PA {pa}{wp_text} + {x_z} = {base}")
-        f.hit = physical_hit(att, tgt, side, min(base, 100), f.hit_mods)
+        f.hit = physical_hit(att, tgt, side, min(base, 100), f.hit_mods, (ab.f4 & 0x10) != 0)
         f.physical = true
         if (fo == 0x2C) {
             f.mp_effect = true
@@ -636,7 +669,7 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
         f.dmg_min = f.damage
         f.dmg_max = f.damage
         f.physical = true
-        f.hit = physical_hit(att, tgt, side, 100, f.hit_mods)
+        f.hit = physical_hit(att, tgt, side, 100, f.hit_mods, (ab.f4 & 0x10) != 0)
     } elif (fo == 0x37) {
         // Rush / Stone: PA' x random 1..Y; the forecast shows PA' x [(Y + 2) / 2]
         // (checked: Rush PA 6 -> 7 x 3 = 21, Stone 7 x 2)
@@ -649,7 +682,7 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
         f.dmg_max = min(xa * y, 999)
         f.damage = min(xa * f.ya, 999)
         f.mods |> push("PA' x random 1..{y}: the forecast {xa} x {f.ya} = {f.damage}")
-        f.hit = (ab.f4 & 0x02) != 0 ? physical_hit(att, tgt, side, 100, f.hit_mods) : 100
+        f.hit = (ab.f4 & 0x02) != 0 ? physical_hit(att, tgt, side, 100, f.hit_mods, (ab.f4 & 0x10) != 0) : 100
     } elif (fo == 0x36 || fo == 0x39 || fo == 0x3A || fo == 0x3B) {
         let what = fo == 0x36 ? "PA" : (fo == 0x39 ? "Speed" : "Brave")
         let more = fo == 0x3B ? ", PA / MA / Speed +{y}" : ""
@@ -736,4 +769,118 @@ def unit_actions(u : UnitW; all_known : bool) : array<int> {
         }
     }
     return <- res
+}
+
+// ------------------------------------------------------------ reactions
+
+struct ReactionW {
+    id : int                        // the reaction ability in effect (the record's mask), 0 none
+    name : string
+    triggers : bool                 // the action calls it (before the Brave roll)
+    chance : int                    // %, the Brave roll (100: no roll)
+    why : string
+    effect : string
+    counter : bool                  // it strikes back (Counter, First Strike, Bonecrusher)
+    counter_fight : FightW
+}
+
+// a blow the reactions of grasp answer: Attack, Aim, Jump, Throw and the
+// physical abilities flagged for Shirahadori
+def private countergrasp(f : FightW) : bool {
+    return (f.ability.id == 0 || f.ability.kind == AB_CHARGE || f.ability.kind == AB_JUMP ||
+        f.ability.kind == AB_THROW || (f.ability.f4 & 0x10) != 0)
+}
+
+// The target's reaction to the action f of att (formulas.md 5). The
+// reactions that change the hit chance (Shirahadori, Archer's Bane, Parry,
+// Reflexes) are in the forecast already and checked; the others are the
+// reference's rules, their Brave rolls are not checked.
+def reaction_w(att, tgt : UnitW; f : FightW) : ReactionW {
+    var r = ReactionW()
+    // the equipped reaction if its bit is on, else the first bit of the mask
+    if (tgt.reaction != 0 && has_ability_w(tgt, tgt.reaction)) {
+        r.id = tgt.reaction
+    } else {
+        for (rid in range(422, 454)) {      // 0x1A6 .. 0x1C5
+            if (r.id == 0 && has_ability_w(tgt, rid)) {
+                r.id = rid
+            }
+        }
+    }
+    if (r.id == 0) {
+        return <- r
+    }
+    r.name = ability_name_w(r.id)
+    r.chance = tgt.brave
+    if (has_status_w(tgt, ST_BERSERK) || has_status_w(tgt, ST_DONT_ACT) || has_status_w(tgt, ST_SLEEP) ||
+            has_status_w(tgt, ST_CONFUSION) || has_status_w(tgt, ST_STOP) || has_status_w(tgt, 13) ||
+            has_status_w(tgt, ST_DEAD) || has_status_w(tgt, ST_PETRIFY)) {
+        r.why = "the target can not react (status)"
+        return <- r
+    }
+    let hp_dmg = f.damage > 0 && !f.mp_effect && !f.healing
+    let left = tgt.hp - f.damage
+    let critical_after = hp_dmg && left > 0 && left * 5 < tgt.max_hp
+    let dist = abs(att.x - tgt.x) + abs(att.y - tgt.y)
+    let reach = max(weapon_of(tgt).reach, 1)
+    let rid = r.id
+    if (rid == ID_PARRY || rid == ID_REFLEXES || rid == ID_SHIRAHADORI || rid == ID_ARCHERS_BANE) {
+        r.triggers = f.physical
+        r.chance = 100
+        r.effect = "in the hit chance"
+    } elif (rid == ID_COUNTER || rid == ID_FIRST_STRIKE) {
+        let first = rid == ID_FIRST_STRIKE
+        r.triggers = first ? f.ability.id == 0 : countergrasp(f)
+        if (!r.triggers) {
+            r.why = first ? "only the Attack command" : "not a physical blow"
+        } elif (dist > reach) {
+            r.triggers = false
+            r.why = "the attacker is out of its weapon's range ({dist} > {reach})"
+        } else {
+            r.counter = true
+            r.counter_fight <- action_w(tgt, att, ATTACK_W, side_of_w(tgt, att))
+            r.effect = first ? "attacks first, the action is cancelled" : "attacks back"
+        }
+    } elif (rid == ID_COUNTER_TACKLE) {
+        r.triggers = f.formula == 0x37
+        r.effect = "Rush back"
+        r.why = r.triggers ? "" : "only Rush / Stone"
+    } elif (rid == ID_DRAGONHEART || rid == ID_BRAVERY_BOOST || rid == ID_VANISH) {
+        r.triggers = countergrasp(f)
+        r.effect = rid == ID_DRAGONHEART ? "Reraise" : (rid == ID_VANISH ? "Invisible" : "Brave +3")
+        r.why = r.triggers ? "" : "not a physical blow"
+    } elif (rid >= ID_CRIT_HP && rid <= ID_BONECRUSHER) {
+        r.triggers = critical_after
+        r.why = r.triggers ? "" : "the target is not left in Critical (HP < 1/5)"
+        if (rid == ID_BONECRUSHER && r.triggers && dist <= reach) {
+            r.counter = true
+            var cf = FightW(name = "Bonecrusher", physical = true, hit = 100)
+            cf.damage = min(tgt.max_hp, 999)
+            cf.dmg_min = cf.damage
+            cf.dmg_max = cf.damage
+            cf.mods |> push("damage = the reactor's max HP (unverified)")
+            cf.expected = float(cf.damage)
+            r.counter_fight <- cf
+        }
+        r.effect = (rid == ID_CRIT_HP ? "full HP" : (rid == ID_CRIT_QUICK ? "an immediate turn" :
+            (rid == ID_BONECRUSHER ? "strikes back for its max HP" : "full MP")))
+    } elif (rid == ID_MAGICK_COUNTER || rid == ID_NATURES_WRATH || rid == ID_ABSORB_MP || rid == ID_FAITH_BOOST ||
+            rid == ID_REFLECT_R) {
+        let magick = f.ability.id != 0 && f.ability.kind == AB_NORMAL && (f.ability.f3 & 0x20) != 0
+        r.triggers = (rid == ID_MAGICK_COUNTER ? (f.ability.f4 & 0x40) != 0 : (rid == ID_NATURES_WRATH ?
+            (f.ability.f4 & 0x80) != 0 : magick))
+        r.effect = (rid == ID_MAGICK_COUNTER ? "casts it back" : (rid == ID_ABSORB_MP ? "gains the MP spent" :
+            (rid == ID_FAITH_BOOST ? "Faith +3" : "the reaction's effect")))
+        r.why = r.triggers ? "" : "not a magick it answers"
+    } elif (rid == ID_STICKY_FINGERS || rid == ID_EARPLUG || rid == ID_CUP_OF_LIFE) {
+        r.triggers = false
+        r.why = "not modelled (throws, Speechcraft, healing)"
+    } else {
+        // Fury, Magick Boost, Adrenaline Rush, Vigilance, Regenerate,
+        // Auto-Potion, Gil Snapper, Mana Shield, Soulbind: on HP damage
+        r.triggers = hp_dmg
+        r.effect = "after the damage"
+        r.why = r.triggers ? "" : "no HP damage"
+    }
+    return <- r
 }

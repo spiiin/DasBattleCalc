@@ -15,7 +15,9 @@ async function put(input, path, key) {
   runtime.FS.writeFile(path, new Uint8Array(await file.arrayBuffer()));
   have[key] = file.name;
   $('files').textContent = [have.state, have.rom].filter(x => x).join(' · ');
-  if (have.state && have.rom) runtime._web_reload();
+  // a PPSSPP save state (FFT: WotL) needs no ROM: the game is in its RAM
+  const ppst = typeof have.state === 'string' && /\.ppst$/i.test(have.state);
+  if (have.state && (have.rom || ppst)) runtime._web_reload();
 }
 
 createBattleCalc({

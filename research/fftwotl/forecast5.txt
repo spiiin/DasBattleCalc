@@ -1,0 +1,10 @@
+t_shirahadori | 5:98=4 | 49 29
+t_shirahadori_br100 | 5:98=4 5:2b=64 | 49 0
+t_shirahadori_br20 | 5:98=4 5:2b=14 | 49 56
+t_shirahadori_back | 5:98=4 5:51=3 | 49 42
+t_counter | 5:97=8 | 49 70
+t_firststrike | 5:98=1 | 49 70
+t_archersbane_bow | 5:98=2 0:20=5a/2 | 84 29
+bow | 0:20=5a/2 | 84 70
+t_shirahadori_bow | 5:98=4 0:20=5a/2 | 84 29
+t_parry_back | 5:98=40 5:51=3 | 49 100

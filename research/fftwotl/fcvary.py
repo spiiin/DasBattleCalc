@@ -49,6 +49,15 @@ if '--supports' in sys.argv:
              ('a_concentration', [(A, 0x9A, 0x01, 1)]), ('a_brawler_bare', [(A, 0x9B, 0x20, 1), (A, 0x20, 0xFF, 2)]),
              ('a_doublehand', [(A, 0x9B, 0x02, 1)]), ('t_parry', [(T, 0x98, 0x40, 1)]),
              ('t_reflexes', [(T, 0x98, 0x10, 1)]), ('a_attackboost_id_only', [(A, 0x16, 0x1D1, 2)])]
+if '--reactions' in sys.argv:
+    # reactions of the target by its mask (+0x95..): do they change the forecast?
+    cases = [('t_shirahadori', [(T, 0x98, 0x04, 1)]), ('t_shirahadori_br100', [(T, 0x98, 0x04, 1), (T, 0x2B, 100, 1)]),
+             ('t_shirahadori_br20', [(T, 0x98, 0x04, 1), (T, 0x2B, 20, 1)]),
+             ('t_shirahadori_back', [(T, 0x98, 0x04, 1), (T, 0x51, 3, 1)]),
+             ('t_counter', [(T, 0x97, 0x08, 1)]), ('t_firststrike', [(T, 0x98, 0x01, 1)]),
+             ('t_archersbane_bow', [(T, 0x98, 0x02, 1), (A, 0x20, 0x5A, 2)]), ('bow', [(A, 0x20, 0x5A, 2)]),
+             ('t_shirahadori_bow', [(T, 0x98, 0x04, 1), (A, 0x20, 0x5A, 2)]),
+             ('t_parry_back', [(T, 0x98, 0x40, 1), (T, 0x51, 3, 1)])]
 only = [a for a in sys.argv[1:] if not a.startswith('--')]
 if MAGIC:
     # Ramza casts Fire on Lezalas: Black Magicks as the secondary skillset, every spell learned
@@ -72,7 +81,7 @@ if MAGIC:
     cases.append(('t_absorb_fire', [(T, 0x77, 0x80, 1)]))
     cases.append(('t_cancel_fire', [(T, 0x78, 0x80, 1)]))
     cases.append(('cev50', [(T, 0x4B, 50, 1)]))
-out = open('fc2.txt' if MAGIC else ('fc4.txt' if '--supports' in sys.argv else 'fc1.txt'), 'a' if only else 'w')
+out = open('fc2.txt' if MAGIC else ('fc4.txt' if '--supports' in sys.argv else ('fc5.txt' if '--reactions' in sys.argv else 'fc1.txt')), 'a' if only else 'w')
 P.restart()
 for name, writes in cases:
     if only and name not in only:

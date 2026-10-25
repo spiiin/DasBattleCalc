@@ -72,6 +72,19 @@ def main() : int {
         }
     }
     check("Agrias has Holy Sword abilities", length(acts) > 3)
+    // a real battle (PPSSPP): Lezalas with Counter (mask bit) and Brave 100,
+    // Ramza's class evade 0 - Ramza hits for 49, the counter takes 48 of his HP
+    var lc = lez
+    lc.rsm_mask[2] = uint8(uint(lc.rsm_mask[2]) | 0x08u)
+    lc.brave = 100
+    var rc = ramza
+    rc.c_ev = 0
+    let hitf = action_w(rc, lc, ATTACK_W, side_of_w(rc, lc))
+    let re = reaction_w(rc, lc, hitf)
+    check("Counter: triggers, chance 100, counter 48 (got {re.name} {re.triggers} {re.chance} {re.counter_fight.damage})",
+        re.name == "Counter" && re.triggers && re.chance == 100 && re.counter && re.counter_fight.damage == 48)
+    let spell = action_w(rc, lc, 16, side_of_w(rc, lc))
+    check("Counter does not answer Fire", !reaction_w(rc, lc, spell).triggers)
     print("test_fftwotl_attack: {total - failed} / {total} passed\n")
     return failed == 0 ? 0 : 1
 }
