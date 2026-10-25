@@ -10,7 +10,9 @@ options indenting = 4
 // (fcgroups.py): abilities (Cure, Rend Power, Rend MP, Umbra, Potion, Rush,
 // Stone) with their id; the forecast is damage, healing (+0x1B8), MP
 // damage (+0x1BA) and hit. forecast4.txt (fcvary.py --supports): Attack
-// with support / reaction bits of the record's masks (+0x95..). The same
+// with support / reaction bits of the record's masks (+0x95..);
+// forecast5.txt (--reactions): Shirahadori, Archer's Bane, Counter, First
+// Strike, Parry from the back. The same
 // edits go into the model's units.
 //   battlecalc tests/test_fftwotl_forecast.das --state <fftwotl_test_battle1.ppst> [--print 1]
 require gba_mem
@@ -219,6 +221,8 @@ def main() : int {
     let attacks = check_file(units, "forecast1.txt", ATTACK_W)
     let fires = check_file(units, "forecast2.txt", 16)
     let supports = check_file(units, "forecast4.txt", ATTACK_W)
+    let reactions = check_file(units, "forecast5.txt", ATTACK_W)
+    check("{reactions} reaction forecasts", reactions >= 10)
     check("{supports} support forecasts", supports >= 8)
     check("{attacks} Attack forecasts", attacks >= 80)
     check("{fires} Fire forecasts", fires >= 30)

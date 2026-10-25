@@ -207,6 +207,20 @@ class WotlGame : GameModule {
         return "WotL: {message}"
     }
 
+    // the web page's files: a PPSSPP state (its header: version "v1." at
+    // +0x10) is this game's - there is no ROM
+    def override accepts_rom(code : string) : bool {
+        var ok = false
+        fopen(gui_arg("--state", ""), "rb") $(f) {
+            if (f != null) {
+                fload(f, 20l) $(data) {
+                    ok = length(data) == 20 && data[16] == uint8(0x76) && data[17] == uint8(0x31) && data[18] == uint8(0x2E)
+                }
+            }
+        }
+        return ok
+    }
+
     def override reload() : void {
         state_path = gui_arg("--state", state_path)
         self->load(false)
@@ -922,7 +936,7 @@ class WotlGame : GameModule {
             ry += u(21.0)
         }
         text_at_baseline(x + u(8.0), ry + u(15.0),
-            "Attack and Fire: checked against 112 forecasts of the game; other formulas: by research/fftwotl/formulas.md", 0xe0a060ffu)
+            "Checked against 190 forecasts of the game (Attack, Fire, Cure, Arts of War, Umbra, ...); the rest: formulas.md", 0xe0a060ffu)
         ry += u(28.0)
         var rows : array<tuple<string; string>>
         if (f.formula != 0) {
@@ -942,11 +956,31 @@ class WotlGame : GameModule {
         if (f.mp_cost != 0 || f.ct != 0) {
             rows |> push(("Cost", "MP {f.mp_cost}, charge {f.ct} ticks"))
         }
-        for (r in rows) {
-            text_at_baseline(x + u(8.0), ry + u(15.0), r._0, dim)
-            text_at_baseline(col, ry + u(15.0), r._1, fg)
-            ry += u(21.0)
+        // the target's reaction and its counter-attack
+        let re <- reaction_w(att, tgt, f)
+        if (re.id != 0) {
+            let when = re.why != "" ? " ({re.why})" : ""
+            let roll = re.chance < 100 ? " on Brave {re.chance}%" : ""
+            rows |> push(("Reaction", re.triggers ? "{re.name}: {re.effect}{roll}{when}" : "{re.name}: does not trigger{when}"))
+            if (re.counter) {
+                let cf & = unsafe(re.counter_fight)
+                rows |> push(("Counter", "{tgt.name} -> {att.name}: {cf.damage} damage, {cf.hit}% hit ({join(cf.mods, "; ")})"))
+            }
+        } else {
+            rows |> push(("Reaction", "none"))
         }
+        // the rows scroll when the panel is low
+        SetCursorScreenPos(ImVec2(x, ry))
+        BeginChild("wotl_attack_rows", ImVec2(w, max(u(40.0), y + h - ry)), ImGuiChildFlags.None, ImGuiWindowFlags.None)
+        var yy = GetCursorScreenPos().y
+        for (r in rows) {
+            text_at_baseline(x + u(8.0), yy + u(15.0), r._0, dim)
+            text_at_baseline(col, yy + u(15.0), r._1, fg)
+            yy += u(21.0)
+        }
+        SetCursorScreenPos(ImVec2(x, yy))
+        Dummy(ImVec2(1.0, u(4.0)))
+        EndChild()
     }
 
     def turn_view(x, y, w, h : float) : void {

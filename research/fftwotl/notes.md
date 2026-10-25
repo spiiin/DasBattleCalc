@@ -93,6 +93,16 @@ ability masks: `forecast4.txt`. Settled:
   x 2/3, Concentration 100%, Brawler (bare) PA x 3/2, **Doublehand doubles the stat** (not WP), Parry adds the
   weapon's evade, Reflexes doubles the evades.
 
+## Reactions (checked)
+
+`fcvary.py --reactions` (`forecast5.txt`): reaction bits of the target's mask (+0x95 .. +0x98, 0x1A6 + n) and the
+forecast. **Shirahadori** multiplies the hit by (100 - Brave) / 100 after the evades, from any side, bows too (Brave 58:
+70% -> 29%, Brave 100 -> 0, Brave 20 -> 56); **Archer's Bane** the same against a bow; Counter and First Strike do
+not change the forecast; Parry from the back adds nothing (only the accessory counts there). A real attack (Lezalas
+with Counter, Brave 100; Ramza's class evade 0): Ramza hits for 49 (104 -> 55), the counter takes 48 (111 -> 63) - the
+model's Attack of Lezalas (PA 7, zodiac good 8, x WP 6). The rest of the reactions (when they trigger, their Brave
+roll) follows formulas.md 5 unchecked.
+
 ## Not found yet
 
 - (found, see "Battle map")

@@ -45,8 +45,9 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   PPSSPP (`native/psp_mem.cpp`: заголовок 0xB0, тело zstd, RAM 32 МБ из секции Memory; запись — несжатые блоки zstd).
   ISO не нужен: BOOT.BIN лежит в RAM (RAM = смещение + 0x08803FAC), таблицы и тексты читаются оттуда
   (`fftwotl_data.das`; раскладки — `research/fftwotl/layouts.md`). Юниты — `fftwotl_battle.das` (21 запись по 0x1E8 с
-  0x092E5CB4), формулы — `fftwotl_attack.das` по `research/fftwotl/formulas.md` (Attack и Fire сверены с прогнозами игры:
-  `tests/test_fftwotl_forecast.das`, данные `research/fftwotl/forecast1.txt` / `forecast2.txt` от `fcvary.py [--magic]`), ходы —
+  0x092E5CB4), формулы — `fftwotl_attack.das` по `research/fftwotl/formulas.md` (сверены с прогнозами игры:
+  `tests/test_fftwotl_forecast.das`, данные `research/fftwotl/forecast1..5.txt` от `fcvary.py [--magic|--supports|--reactions]`
+  и `fcgroups.py`; зонды управляют PPSSPP только через отладчик, окно свёрнуто), реакции — `reaction_w`, ходы —
   `fftwotl_turns.das`, Explore — `fftwotl_explore.das`. Тесты: `tests/test_psp_mem.das` (`--out`), `test_fftwotl_battle.das`
   (`--print 1`), `test_fftwotl_attack.das`, `test_fftwotl_explore.das` (+ порядок ходов), `test_fftwotl_export.das`.
   Пробы: PPSSPP WebSocket-отладчик (`research/fftwotl/pprun.py`, `ppdbg.py`, `mips.py`; заметки — `research/fftwotl/notes.md`).
