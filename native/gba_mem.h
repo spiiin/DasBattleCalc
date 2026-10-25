@@ -16,6 +16,14 @@ bool psx_state_ram(const std::vector<uint8_t> & core, std::vector<uint8_t> & ram
 const std::vector<uint8_t> * psx_buf(int h);
 bool nds_state_write_ram(std::vector<uint8_t> & core, const std::vector<uint8_t> & ram,
                          const std::vector<uint8_t> & loaded, std::string & error);
+// between gba_mem.cpp and psp_mem.cpp: a PPSSPP save state (.ppst)
+bool psp_is_state(const std::vector<uint8_t> & file);
+bool psp_state_ram(const std::vector<uint8_t> & file, std::vector<uint8_t> & raw, size_t & ram_off,
+                   size_t & ram_size, std::string & error);
+bool psp_state_write(const std::vector<uint8_t> & file, std::vector<uint8_t> raw, size_t ram_off,
+                     const std::vector<uint8_t> & ram, std::vector<uint8_t> & out, std::string & error);
+// a zstd frame of raw (stored) blocks: no compressor needed
+std::vector<uint8_t> zstd_store(const std::vector<uint8_t> & data);
 
 // "" on success, else the error text
 const char * gba_load_state(const char * path);
@@ -34,6 +42,10 @@ const uint8_t * gba_state_frame(size_t & size);
 // (nds_mem.cpp, FFTA2's archive): a handle >= 0 or -1, read by offset.
 bool gba_state_is_nds();
 bool gba_state_is_psx();
+// The loaded state is a PPSSPP one (PSP): 0x08000000.. is the user RAM
+// (32 MB; 0x08000000 + size reads as 0 beyond it). Reads of 0x08xxxxxx
+// and 0x09xxxxxx then go to this RAM, not to a ROM.
+bool gba_state_is_psp();
 int nds_file(const char * name);
 int nds_pak_file(const char * idx_name, const char * pak_name, int index);
 // an entry of the pc.bin archive by its name hash (the names of the

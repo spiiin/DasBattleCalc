@@ -3,8 +3,8 @@
 **Try it in the browser: https://spiiin.github.io/DasBattleCalc/** (you load your own save and ROM; the files stay in
 the browser).
 
-A battle calculator for **Final Fantasy Tactics Advance** (GBA, USA) and **Final Fantasy Tactics A2: Grimoire of the
-Rift** (NDS, USA). It reads a BizHawk save state from the middle of a battle and shows what the game is about to do:
+A battle calculator for **Final Fantasy Tactics Advance** (GBA, USA), **Final Fantasy Tactics A2: Grimoire of the
+Rift** (NDS, USA) and **Final Fantasy Tactics: The War of the Lions** (PSP, USA). It reads a BizHawk save state from the middle of a battle and shows what the game is about to do:
 turn order, damage, hit and critical chances, abilities and reactions. The formulas were taken from the ROM and
 checked against the game itself. You can edit units and write the changes back into a new save, or run parameter
 experiments and plot the results.
@@ -66,6 +66,28 @@ Choose it in the **Game** menu (or `--game ffta2`); the save is a BizHawk quick 
 
 Not yet: area effects, effects other than damage, healing and statuses (Rend, steals, ...), the big monsters' sprites.
 The formulas, RAM layout and ROM files: [research/ffta2/notes.md](research/ffta2/notes.md).
+
+## Final Fantasy Tactics: The War of the Lions
+
+Choose it in the **Game** menu (or `--game fftwotl`); the save is a PPSSPP save state (`.ppst`, PSP, USA, ULUS10297).
+No ISO is needed: the game's tables and texts are read from the RAM in the state.
+
+- **Battle from a save**: the units (names, jobs, levels, Brave / Faith, HP / MP, CT, zodiac, positions, teams and
+  guests), their stats, evades, elements, equipment and statuses; whose turn it is.
+- **Turn order** by clock ticks (Speed, Haste / Slow / Stop, the CT a turn costs).
+- **Attack calculator**: Attack with every weapon type, Holy Sword / Fell Sword, magicks (damage, healing, chances of
+  status spells with Faith), Arts of War, Aim, Items, Fundaments; zodiac compatibility, Protect / Shell and the support
+  abilities, elements, evasion by side. The formulas come from the PSX battle code
+  ([research/fftwotl/formulas.md](research/fftwotl/formulas.md)); **Attack (81 forecasts: every weapon kind, zodiac,
+  statuses, evades, sides, elements) and Fire (31: MA, Faith, Shell, elements) match the game's own forecasts**.
+- **Editor**: job, primary / secondary skillsets, reaction / support / movement, PA / MA / Speed, Level, Exp, Brave,
+  Faith, HP / MP / CT, the seven equipment slots (what the job can wear), statuses, learned abilities by job; drag units
+  on the field. **Export state with edits** writes a new `.ppst` (PPSSPP: File > Load State).
+- **Items / Abilities** tabs: the game's item and ability tables.
+- **Explore** with its own parameters (`atk.pa`, `atk.brave`, `tgt.faith`, `tgt.status.protect`, `atk.zodiac`, ...).
+
+Not yet: the map's heights (the field is flat), sprites, reactions, Jump / Throw / Arithmeticks. RAM layout and tables:
+[research/fftwotl/notes.md](research/fftwotl/notes.md), [layouts.md](research/fftwotl/layouts.md).
 
 ## Checked against the game
 

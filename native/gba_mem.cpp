@@ -1,5 +1,5 @@
 // GBA memory images for scripts: the RAM of a BizHawk savestate and a ROM
-// (an NDS state / ROM too: nds_mem.cpp).
+// (an NDS state / ROM too: nds_mem.cpp; a PPSSPP state: psp_mem.cpp).
 // BizHawk .State = zip with Core.bin.zst; for the mGBA core Core.bin is a
 // 4-byte size + mGBA's GBASerializedState (magic 0x010000xx), where IWRAM
 // is at +0x19000 (32 KB) and EWRAM at +0x21000 (256 KB).
@@ -21,6 +21,8 @@ static std::vector<uint8_t> g_ewram, g_iwram, g_rom, g_frame;
 static uint32_t g_rom_serial = 0;
 static bool g_state_nds = false;                  // the state is melonDS (NDS)
 static bool g_state_psx = false;                  // the state is Nymashock (PSX): 2 MB main RAM
+static bool g_state_psp = false;                  // the state is PPSSPP (PSP): g_ewram is its RAM
+static size_t g_psp_ram_off = 0;                  // the RAM in g_core (the state's raw body)
 // for gba_save_state: the loaded file, its core image and the RAM to write
 static std::vector<uint8_t> g_zip, g_core, g_edit_ewram, g_edit_iwram;
 static size_t g_core_base = 0;
@@ -105,6 +107,24 @@ const char * gba_load_state(const char * path) {
     std::vector<uint8_t> zip, zst, core;
     g_error.clear();
     if (!read_file(path, zip)) return (g_error = "can not read file").c_str();
+    // PPSSPP: its own header and a zstd body, not a zip
+    if (psp_is_state(zip)) {
+        std::vector<uint8_t> raw;
+        size_t off = 0, size = 0;
+        if (!psp_state_ram(zip, raw, off, size, g_error)) return g_error.c_str();
+        g_ewram.assign(raw.begin() + off, raw.begin() + off + size);
+        g_iwram.clear();
+        g_zip.swap(zip);
+        g_core.swap(raw);
+        g_psp_ram_off = off;
+        g_state_nds = false;
+        g_state_psx = false;
+        g_state_psp = true;
+        g_frame.clear();
+        g_state_serial++;
+        return "";
+    }
+    g_state_psp = false;
     if (!unzip_entry(zip, "Core.bin.zst", zst)) {
         if (!unzip_entry(zip, "Core.bin", core)) return (g_error = "not a BizHawk state (no Core.bin)").c_str();
     } else if (!unzstd(zst, core)) {
@@ -165,6 +185,7 @@ uint32_t gba_rom_serial() { return g_rom_serial; }
 const std::vector<uint8_t> & gba_rom_bytes() { return g_rom; }
 bool gba_state_is_nds() { return g_state_nds; }
 bool gba_state_is_psx() { return g_state_psx; }
+bool gba_state_is_psp() { return g_state_psp; }
 
 bool gba_has_state() { return !g_ewram.empty(); }
 bool gba_has_rom() { return !g_rom.empty(); }
@@ -178,6 +199,10 @@ const char * gba_rom_code() {
 }
 
 static const uint8_t * at(uint32_t addr, uint32_t n) {
+    if (g_state_psp) {
+        uint32_t off = (addr & 0x3fffffff) - 0x08000000;  // kseg/uncached mirrors too
+        return size_t(off) + n <= g_ewram.size() ? g_ewram.data() + off : nullptr;
+    }
     uint32_t region = addr >> 24, off = addr & 0xffffff;
     if (g_state_psx) {
         // 2 MB main RAM at 0x00000000 / 0x80000000 / 0xA0000000, mirrored
@@ -218,6 +243,10 @@ void gba_edit_begin() {
 }
 
 static uint8_t * edit_at(uint32_t addr, uint32_t n) {
+    if (g_state_psp) {
+        uint32_t off = (addr & 0x3fffffff) - 0x08000000;
+        return size_t(off) + n <= g_edit_ewram.size() ? g_edit_ewram.data() + off : nullptr;
+    }
     uint32_t region = addr >> 24, off = addr & 0xffffff;
     if (g_state_psx) {
         if (region != 0x00 && region != 0x80 && region != 0xA0) return nullptr;
@@ -243,7 +272,7 @@ void gba_edit32(uint32_t addr, uint32_t value) {
 // A zstd frame made of raw (stored) blocks: valid for any zstd decoder,
 // so no compressor is needed. Header: magic, descriptor 0xE0 (8-byte
 // content size, single segment), then blocks of up to 128 KB.
-static std::vector<uint8_t> zstd_store(const std::vector<uint8_t> & data) {
+std::vector<uint8_t> zstd_store(const std::vector<uint8_t> & data) {
     std::vector<uint8_t> out = { 0x28, 0xB5, 0x2F, 0xFD, 0xE0 };
     for (int i = 0; i < 8; ++i) out.push_back(uint8_t(uint64_t(data.size()) >> (8 * i)));
     size_t pos = 0;
@@ -262,8 +291,18 @@ static std::vector<uint8_t> zstd_store(const std::vector<uint8_t> & data) {
 
 // Writes the loaded state with the edited RAM to path: every entry of the
 // original zip is copied, Core.bin(.zst) gets the new core image.
+static bool write_file_out(const char * path, const void * buf, size_t size);
+
 const char * gba_save_state(const char * path) {
     g_error.clear();
+    if (g_state_psp) {
+        if (g_core.empty() || g_edit_ewram.size() != g_ewram.size())
+            return (g_error = "no state loaded or no edit begun").c_str();
+        std::vector<uint8_t> out;
+        if (!psp_state_write(g_zip, g_core, g_psp_ram_off, g_edit_ewram, out, g_error)) return g_error.c_str();
+        if (!write_file_out(path, out.data(), out.size())) g_error = "can not write the file";
+        return g_error.c_str();
+    }
     std::vector<uint8_t> core = g_core;
     if (g_state_psx) {
         // Nymashock: the main RAM lies in the image in one piece
@@ -309,24 +348,29 @@ const char * gba_save_state(const char * path) {
     ok = ok && mz_zip_writer_finalize_heap_archive(&out, &buf, &size);
     mz_zip_reader_end(&in);
     if (ok) {
-        FILE * f = fopen(path, "wb");
-        ok = f && fwrite(buf, 1, size, f) == size;
-        if (f) fclose(f);
-        if (!ok) g_error = "can not write the file";
-#ifdef __EMSCRIPTEN__
-        // in the browser the file is in memory: hand it to the user
-        if (ok)
-            EM_ASM({
-                const p = UTF8ToString($0);
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(new Blob([FS.readFile(p)]));
-                a.download = p.split('/').pop();
-                a.click();
-            }, path);
-#endif
+        if (!write_file_out(path, buf, size)) g_error = "can not write the file";
     } else {
         g_error = "zip: can not build the archive";
     }
     mz_zip_writer_end(&out);
     return g_error.c_str();
+}
+
+// Writes a finished state file; in the browser the file is in memory, so
+// it is also handed to the user as a download.
+static bool write_file_out(const char * path, const void * buf, size_t size) {
+    FILE * f = fopen(path, "wb");
+    bool ok = f && fwrite(buf, 1, size, f) == size;
+    if (f) fclose(f);
+#ifdef __EMSCRIPTEN__
+    if (ok)
+        EM_ASM({
+            const p = UTF8ToString($0);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([FS.readFile(p)]));
+            a.download = p.split('/').pop();
+            a.click();
+        }, path);
+#endif
+    return ok;
 }

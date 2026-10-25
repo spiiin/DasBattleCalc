@@ -79,7 +79,7 @@ endif()
 
 # native code without daScript: used by the generator and by the page
 add_library(native_impl STATIC
-    ${N}/gui_common.cpp ${N}/imgui_ext.cpp ${N}/gba_mem.cpp ${N}/gba_frame.cpp ${N}/gba_gfx.cpp ${N}/nds_mem.cpp ${N}/psx_mem.cpp ${N}/third_party/zstddeclib.c
+    ${N}/gui_common.cpp ${N}/imgui_ext.cpp ${N}/gba_mem.cpp ${N}/gba_frame.cpp ${N}/gba_gfx.cpp ${N}/nds_mem.cpp ${N}/psx_mem.cpp ${N}/psp_mem.cpp ${N}/third_party/zstddeclib.c
     clipboard_web.cpp
     ${IMGUI}/imgui/imgui.cpp ${IMGUI}/imgui/imgui_draw.cpp ${IMGUI}/imgui/imgui_tables.cpp
     ${IMGUI}/imgui/imgui_widgets.cpp ${IMGUI}/imgui/imgui_demo.cpp

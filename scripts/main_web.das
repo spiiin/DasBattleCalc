@@ -20,6 +20,7 @@ require app/shell
 require core/game
 require games/ffta/ffta
 require games/ffta2/ffta2
+require games/fftwotl/fftwotl
 
 var window : SDL_Window?
 var renderer : SDL_Renderer?
@@ -46,6 +47,7 @@ def initialize() : SdlStatus {
     sdl_status(ImGui_SDL3_Init(window, renderer), "ImGui_SDL3_Init") |> sdl_try
     register_game(new FftaGame())
     register_game(new Ffta2Game())
+    register_game(new WotlGame())
     shell_init(renderer, to_float(gui_arg("--ui-scale", "1.0")))
     last = SDL_GetTicks()
     return sdl_ok()

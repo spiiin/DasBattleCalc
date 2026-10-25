@@ -24,3 +24,17 @@ research/ffta2/domains.txt
 research/ffta2/cases.txt
 research/ffta2/script_*.txt
 research/ffta2/gfx/
+research/fftwotl/*.bin
+research/fftwotl/*.raw
+research/fftwotl/*.ppst
+research/fftwotl/*.iso
+research/fftwotl/*.png
+research/fftwotl/*.jpg
+research/fftwotl/*_log.txt
+research/fftwotl/shots/
+research/fftwotl/ext/
+research/fftwotl/*.pkl
+research/fftwotl/BOOT.BIN
+research/fftwotl/fc1.txt
+research/fftwotl/fc2.txt
+research/fftwotl/__pycache__/

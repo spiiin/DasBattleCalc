@@ -56,6 +56,7 @@ public:
         GUI_BIND(psx_find_map);
         GUI_BIND(gba_state_is_nds);
         GUI_BIND(gba_state_is_psx);
+        GUI_BIND(gba_state_is_psp);
         GUI_BIND(nds_file);
         GUI_BIND(nds_pak_file);
         GUI_BIND(nds_arc_entry);
