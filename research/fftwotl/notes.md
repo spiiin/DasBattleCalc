@@ -156,6 +156,15 @@ used to fit them and matches tile for tile (`tests/test_fftwotl_reach.das`).
 - The units in battle: every record with an ENTD slot (+0x01 != 0xFF); +0x2E is not "on the field" (Gariland: only
   the unit at its turn has it).
 
+## The second battle: Gariland (checked)
+
+`fcb2.py` (`forecast10.txt`, `tests/test_fftwotl_battle2.das`), the user's save: Ganelon (Chemist, record 16) at his
+turn on Rosa (record 17, of the party, the tile next to him - a record moved next to him is not a target: the game
+keeps its own map of where the units stand). 25 forecasts, all as the model: Attack (every facing, PA, zodiac,
+Protect, C-EV), Fire, Poison, Toad (62%), Death. **Death shows the target's max HP as the damage** (42) and Toad /
+Death work on her - the 0% of both on Lezalas (the first battle) is his own: not explained. The party stands in
+records 16..20; +0x2E is set only for the unit at its turn.
+
 ## Not found yet
 
 - (found, see "Battle map")

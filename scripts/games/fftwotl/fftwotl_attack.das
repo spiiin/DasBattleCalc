@@ -804,10 +804,11 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
             f.damage = (tgt.max_mp * y + 99) / 100        // checked: 33% of 17 = 6
             f.note = "drains {y}% of max MP"
         } elif (fo == 0x0E) {
-            // KO: the forecast shows no damage (and 0% on Lezalas, as Toad -
-            // the reason is not known); the undead are healed in full
+            // KO: the forecast shows the max HP as the damage (checked on
+            // Rosa, Gariland: 42); the undead are healed in full. Death and
+            // Toad show 0% on Lezalas (the first battle) - his own, not known
             f.healing = is_undead_w(tgt)
-            f.damage = f.healing ? -tgt.max_hp : 0
+            f.damage = f.healing ? -tgt.max_hp : tgt.max_hp
             f.note = f.healing ? "heals the undead in full" : "KO"
         } else {
             f.note = inflict_text(ab.inflict)

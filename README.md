@@ -79,7 +79,7 @@ field) gives the graphics: the units' sprites, the items' icons and the battle m
 - **Attack calculator**: Attack with every weapon type, Holy Sword / Fell Sword, magicks (damage, healing, chances of
   status spells with Faith), Arts of War, Aim, Items, Fundaments; zodiac compatibility, Protect / Shell and the support
   abilities, elements, evasion by side. The formulas come from the PSX battle code
-  ([research/fftwotl/formulas.md](research/fftwotl/formulas.md)); **266 forecasts of the game match** (the damage and hit % the game shows when a target is picked): Attack (every
+  ([research/fftwotl/formulas.md](research/fftwotl/formulas.md)); **291 forecasts of the game match (2 battles)** (the damage and hit % the game shows when a target is picked): Attack (every
   weapon kind, zodiac, statuses, evades, sides, elements, supports and reactions), Fire, Cure, Arts of War, Umbra,
   Potion, Rush, Stone, status magicks (Poison, Stop, Protect, Haste, Quick), Gravity, Empowerment / Invigoration,
   Rend Helm, Aurablast, Throw (every kind of thrown item, from the party's stock) and Jump; Shirahadori and Archer's
