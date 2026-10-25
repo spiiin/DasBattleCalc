@@ -129,8 +129,10 @@ struct FftUnit {
     @hide support : int             // +0x16 u16
     @hide movement : int            // +0x18 u16
     @hide skills : uint8[11]        // +0x8B: the active R/S/M as bits (has_ability)
+    @hide elements : uint8[5]       // +0x6D: absorb, cancel, half, weak, strengthen (element bits)
     @caption = "Zodiac" @readonly zodiac_text : string
     @caption = "Abilities" @readonly ability_text : string
+    @caption = "Elements" @readonly element_info : string
     @hide active : bool             // taking its turn (its record's CT reads 0 meanwhile)
     @caption = "Status" @readonly status_text : string
 }
@@ -162,6 +164,30 @@ def has_ability(u : FftUnit; id : int) : bool {
     return i >= 0 && i < 88 && (uint(u.skills[i >> 3]) & (0x80u >> uint(i & 7))) != 0u
 }
 
+// elements: 0x80 Fire, 0x40 Lightning, 0x20 Ice, 0x10 Wind, 0x08 Earth,
+// 0x04 Water, 0x02 Holy, 0x01 Dark; the unit's affinities (from its
+// equipment and job, as the game keeps them in the record)
+let EL_ABSORB = 0
+let EL_CANCEL = 1
+let EL_HALF = 2
+let EL_WEAK = 3
+let EL_STRENGTHEN = 4
+let ELEMENT_NAMES = fixed_array<string>("Fire", "Lightning", "Ice", "Wind", "Earth", "Water", "Holy", "Dark")
+
+def has_element(u : FftUnit; kind : int; element : int) : bool {
+    return (int(u.elements[kind]) & element) != 0
+}
+
+def element_text(element : int) : string {
+    var names : array<string>
+    for (k in range(8)) {
+        if ((element & (0x80 >> k)) != 0) {
+            names |> push(ELEMENT_NAMES[k])
+        }
+    }
+    return length(names) > 0 ? join(names, ", ") : "none"
+}
+
 def unit_present(rec : uint) : bool {
     return gba_read8(rec + 0x01u) != 0xFFu && gba_read8(rec + 0x12Cu) != 0xFFu
 }
@@ -182,6 +208,9 @@ def read_unit(slot : int) : FftUnit {
     u.movement = int(gba_read16(rec + 0x18u))
     for (k in range(11)) {
         u.skills[k] = uint8(gba_read8(rec + 0x8Bu + uint(k)))
+    }
+    for (k in range(5)) {
+        u.elements[k] = uint8(gba_read8(rec + 0x6Du + uint(k)))
     }
     u.team = (u.flags & 0x10) != 0 ? TEAM_ENEMY : TEAM_PLAYER
     for (k in range(EQUIP_SLOTS)) {
@@ -237,6 +266,14 @@ def update_unit(var u : FftUnit) {
         }
     }
     u.ability_text = length(abil) > 0 ? join(abil, ", ") : "none"
+    let kinds = fixed_array<string>("absorbs", "cancels", "halves", "weak to", "strengthens")
+    var els : array<string>
+    for (k in range(5)) {
+        if (int(u.elements[k]) != 0) {
+            els |> push("{kinds[k]} {element_text(int(u.elements[k]))}")
+        }
+    }
+    u.element_info = length(els) > 0 ? join(els, "; ") : "none"
 }
 
 // the battle's units in slot order; "" or the error

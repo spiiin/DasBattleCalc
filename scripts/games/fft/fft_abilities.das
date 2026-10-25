@@ -195,7 +195,11 @@ def private with_faith(v : int; a, t : FftUnit) : int {
 // magic's MA: Magic AttackUP, the target's Magic DefendUP and Shell
 // (harmful only), the zodiac
 def private magic_ma(a, t : FftUnit; harmful : bool) : int {
-    var ma = a.ma
+    return magic_ma_base(a, t, harmful, a.ma)
+}
+
+def private magic_ma_base(a, t : FftUnit; harmful : bool; ma0 : int) : int {
+    var ma = ma0
     if (has_ability(a, AB_MAGIC_ATTACK_UP)) {
         ma = ma * 4 / 3
     }
@@ -241,12 +245,24 @@ def ability_forecast(a, t : FftUnit; ab : FftAbility) : AbilityForecast {
         f.formula = "Attack, XA + {ab.charge} ({at.formula})"
         f.notes |> push("evades, {at.evades}")
     } elif (fo == 0x08) {
-        let ma = magic_ma(a, t, true)
-        f.effect = "damage"
-        f.amount_min = min(with_faith(ma * ab.y, a, t), 999)
+        // Strengthen x 5 / 4 on MA, the elements before Faith (the game:
+        // Fire 4 x 14 = 56, weak 112 -> 35, Strengthen 5 x 14 -> 22)
+        var ma = magic_ma(a, t, true)
+        if (ab.element != 0 && has_element(a, EL_STRENGTHEN, ab.element)) {
+            ma = magic_ma_base(a, t, true, a.ma * 5 / 4)
+        }
+        var healed = false
+        var cancelled = false
+        let raw = element_damage(ma * ab.y, ab.element, t, healed, cancelled)
+        f.effect = healed ? "absorbed (heal)" : "damage"
+        f.heal = healed
+        f.amount_min = min(with_faith(raw, a, t), 999)
         f.amount_max = f.amount_min
         f.formula = "MA x {ab.y} x Faith x Faith"
-        f.hit = evadable(ab) ? magic_hit(t, 100) : 100
+        f.hit = cancelled ? 0 : (evadable(ab) ? magic_hit(t, 100) : 100)
+        if (ab.element != 0) {
+            f.notes |> push("element {element_text(ab.element)}")
+        }
     } elif (fo == 0x0A || fo == 0x0B) {
         let harmful = fo == 0x0A
         let ma = magic_ma(a, t, harmful)
@@ -298,9 +314,15 @@ def ability_forecast(a, t : FftUnit; ab : FftAbility) : AbilityForecast {
         f.notes |> push("evades, {ev}")
     } elif (fo == 0x2D) {
         let w = unit_weapon(a)
-        let pa = physical_xa(a.pa, a, t, false)
+        let pa = physical_xa(a.pa, a, t, false, w.element)
+        var healed = false
+        var cancelled = false
         f.effect = "damage"
-        f.amount_min = min(pa * (w.wp + ab.y), 999)
+        f.amount_min = min(element_damage(pa * (w.wp + ab.y), w.element, t, healed, cancelled), 999)
+        f.heal = healed
+        if (cancelled) {
+            f.hit = 0
+        }
         f.amount_max = f.amount_min
         f.formula = "PA x (WP + {ab.y})"
         if (st != "") {

@@ -338,3 +338,26 @@ So the attacker faces its target after acting; a counter meets its front.
 the PSX ids; the other reactions (Hamedo, Counter Tackle, Dragon Spirit,
 HP Restore, Meatbone Slash, Counter Magic, ...) follow the reference and
 are not checked.
+
+## Elements (the game)
+
+The record's +0x6D..+0x71: absorb, cancel, half, weak, strengthen (element
+bits 0x80 Fire, 0x40 Lightning, 0x20 Ice, 0x10 Wind, 0x08 Earth, 0x04
+Water, 0x02 Holy, 0x01 Dark), the battle's copy of the equipment's item
+attributes (25 B at 0x800642C4 by the item's +7: PA, MA, Speed, Move,
+Jump bonuses, 3 x 5 status bytes - always, immune, at the start - then
+the 5 element bytes; Battle Boots 0x2A: Move +1) and the job's. Edited
+at Lezales / Ramza:
+
+| | Fire (MA 4 x 14 = 56) | Ice Brand (WP 13: 78) |
+|---|---|---|
+| absorb | +17 | |
+| cancel | 0% | |
+| half | 8 | 39 |
+| weak | 35 | 156 |
+| Ramza's strengthen | 22 (MA 4 -> 5) | 91 (XA 6 -> 7) |
+
+So the element comes after XA x YA (MA x Y) and before Faith (weak Fire:
+56 x 2 = 112 -> 35, not 17 x 2 = 34); Strengthen is x 5 / 4 on XA / MA.
+The critical is not in the forecast; the model adds XA + rand(0..XA - 1)
+to the modified XA (the code's order, research/fftwotl/formulas.md 2.2).

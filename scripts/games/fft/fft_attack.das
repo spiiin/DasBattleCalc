@@ -165,6 +165,7 @@ struct AttackForecast {
     crit_max : int                  // the critical's best (XA + XA - 1)
     hit : int                       // %
     side : int
+    healed : bool                   // the target absorbs the weapon's element
     evades : string
     notes : array<string>
 }
@@ -185,10 +186,14 @@ def zodiac_xa(xa : int; a, t : FftUnit) : int {
     return xa
 }
 
-// XA's physical modifiers after the critical (in the Guide's order);
-// bare: Martial Arts applies (bare hands, or not weapon-elemental)
-def physical_xa(xa0 : int; a, t : FftUnit; bare : bool) : int {
+// XA's physical modifiers (in the Guide's order); bare: Martial Arts
+// applies (bare hands, or not weapon-elemental); element: the attack's -
+// a's Strengthen on it x 5 / 4 (Ice Brand: 6 -> 7, 91 in the game)
+def physical_xa(xa0 : int; a, t : FftUnit; bare : bool; element : int = 0) : int {
     var xa = xa0
+    if (element != 0 && has_element(a, EL_STRENGTHEN, element)) {
+        xa = xa * 5 / 4
+    }
     if (has_ability(a, AB_ATTACK_UP)) {
         xa = xa * 4 / 3
     }
@@ -267,6 +272,31 @@ def physical_pass(a, t : FftUnit; var evades : string&) : int {
 // (100 - its Brave) / 100 after the evades (the game: 66 -> 26 at Brave
 // 60, 70 -> 28 without Weapon Guard, 70 -> 7 at Brave 90); evades: the
 // text
+// the target's affinity to an element on damage dmg (after XA x YA, before
+// Faith): weak x 2, half / 2, absorb heals; cancel - the attack misses
+// (cancelled = true). The game: Ice Brand 78 -> weak 156, half 39; Fire
+// 56 -> weak 112 -> Faith 35, half 8, absorb +17, cancel 0%.
+def element_damage(dmg : int; element : int; t : FftUnit; var healed : bool&; var cancelled : bool&) : int {
+    healed = false
+    cancelled = false
+    if (element == 0) {
+        return dmg
+    }
+    if (has_element(t, EL_CANCEL, element)) {
+        cancelled = true
+        return 0
+    }
+    var d = dmg
+    if (has_element(t, EL_WEAK, element)) {
+        d *= 2
+    }
+    if (has_element(t, EL_HALF, element)) {
+        d /= 2
+    }
+    healed = has_element(t, EL_ABSORB, element)
+    return d
+}
+
 def physical_hit(a, t : FftUnit; base : int; var evades : string&; grasp : bool = false) : int {
     let no_evade = (has_ability(a, AB_CONCENTRATE) || has_status(t, ST_CHARGING) || has_status(t, ST_PERFORMING)
         || has_status(t, ST_SLEEP) || has_status(t, ST_STOP) || has_status(t, ST_DONT_ACT) || has_status(t, ST_PETRIFY))
@@ -331,11 +361,23 @@ def attack_forecast(a, t : FftUnit; k : int = 0) : AttackForecast {
     f.ya = ya
     f.xa_min += k
     f.xa_max += k
-    f.damage_min = physical_xa(f.xa_min, a, t, bare) * ya
-    f.damage_max = physical_xa(f.xa_max, a, t, bare) * ya
-    f.crit_max = physical_xa(f.xa_max * 2 - 1, a, t, bare) * ya
+    let el = w.element
+    let xmin = physical_xa(f.xa_min, a, t, bare, el)
+    let xmax = physical_xa(f.xa_max, a, t, bare, el)
+    var healed = false
+    var cancelled = false
+    f.damage_min = min(element_damage(xmin * ya, el, t, healed, cancelled), 999)
+    f.damage_max = min(element_damage(xmax * ya, el, t, healed, cancelled), 999)
+    // the critical: XA + rand(0..XA - 1) on the modified XA (the code's
+    // order: the modifiers, then the critical; ~4-5%, not seen)
+    f.crit_max = min(element_damage((xmax * 2 - 1) * ya, el, t, healed, cancelled), 999)
+    f.healed = healed
     f.side = attack_side(a, t)
-    f.hit = physical_hit(a, t, 100, f.evades, true)
+    f.hit = cancelled ? 0 : physical_hit(a, t, 100, f.evades, true)
+    if (el != 0) {
+        let how = healed ? ": absorbed" : (cancelled ? ": cancelled" : "")
+        f.notes |> push("element {element_text(el)}{how}")
+    }
     f.notes |> push("zodiac: {ZODIAC_TEXT[zodiac_compat(a, t) + 2]}")
     if (has_ability(a, AB_ATTACK_UP)) {
         f.notes |> push("Attack UP: XA x 4 / 3")

@@ -110,6 +110,21 @@ def main() : int {
     taurus.zodiac = 1
     let fz = ability_forecast(ramza, taurus, read_ability(147))
     check("Dash at Taurus: {fz.amount_min * 3}, the game: 21", fz.amount_min * 3 == 21)
+    // Fire at Lezales with his elements edited (+0x6D absorb, cancel,
+    // half, weak; Ramza's +0x71 strengthen): +17, 0%, 8, 35, 22
+    for (ec in fixed_array<tuple<int; int; int; bool>>((0, 17, 95, true), (1, 0, 0, false), (2, 8, 95, false),
+            (3, 35, 95, false), (4, 22, 95, false))) {
+        var a = ramza
+        var t = lez
+        if (ec._0 == 4) {
+            a.elements[4] = uint8(0x80)
+        } else {
+            t.elements[ec._0] = uint8(0x80)
+        }
+        let f = ability_forecast(a, t, read_ability(16))
+        check("Fire, element field {ec._0}: {f.amount_min} {f.hit}% heal {f.heal}, the game: {ec._1} {ec._2}%",
+            (ec._2 == 0 || f.amount_min == ec._1) && f.hit == ec._2 && f.heal == ec._3)
+    }
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
     return failed == 0 ? 0 : 1
 }

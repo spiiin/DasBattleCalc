@@ -165,6 +165,22 @@ def main() : int {
     set_skill(asave, int(0x1A6), true)
     let ra = reaction_to(ramza, asave, FftAbility(), 42)
     check("A Save: {reaction_text(ra)}", ra.triggers && ra.id == 0x1A6)
+    // elements (the record's +0x6D..+0x71 edited): Ice Brand (WP 13, Ice)
+    // at Lezales 78; Ice weak 156, half 39; Ramza's Ice Strengthen 91
+    for (ec in fixed_array<tuple<string; int>>(("none", 78), ("weak", 156), ("half", 39), ("strengthen", 91))) {
+        var a = ramza
+        var t = units[li]
+        a.equip[3] = 0x1D
+        if (ec._0 == "weak") {
+            t.elements[3] = uint8(0x20)
+        } elif (ec._0 == "half") {
+            t.elements[2] = uint8(0x20)
+        } elif (ec._0 == "strengthen") {
+            a.elements[4] = uint8(0x20)
+        }
+        let g = attack_forecast(a, t)
+        check("Ice Brand, {ec._0}: {g.damage_min} {g.hit}%, the game: {ec._1} 66%", g.damage_min == ec._1 && g.hit == 66)
+    }
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
     return failed == 0 ? 0 : 1
 }
