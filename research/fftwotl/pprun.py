@@ -9,7 +9,11 @@ def kill_all():
             p.kill(); p.wait(10)
 def start(state, settle=6.0):
     kill_all()
-    p = subprocess.Popen([EXE, '--state=' + os.path.abspath(state), ISO])
+    # minimized and not activated: the window does not take the focus
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    si.wShowWindow = 7                  # SW_SHOWMINNOACTIVE
+    p = subprocess.Popen([EXE, '--state=' + os.path.abspath(state), ISO], startupinfo=si)
     proc = psutil.Process(p.pid)
     for _ in range(100):
         ports = [c.laddr.port for c in proc.net_connections(kind='tcp') if c.status == psutil.CONN_LISTEN]

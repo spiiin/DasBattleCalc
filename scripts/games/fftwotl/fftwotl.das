@@ -424,6 +424,7 @@ class WotlGame : GameModule {
             } else {
                 unit.movement = aid
             }
+            rebuild_rsm_mask(unit)
         }
         let old = k == 0 ? saved_u.reaction : (k == 1 ? saved_u.support : saved_u.movement)
         if (cur != old && bl_revert_button("rsmw_revert{k}", x + w - u(22.0), y)) {
@@ -434,6 +435,7 @@ class WotlGame : GameModule {
             } else {
                 unit.movement = old
             }
+            unit.rsm_mask = saved_u.rsm_mask
         }
         return y + u(26.0)
     }

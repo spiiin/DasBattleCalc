@@ -102,6 +102,8 @@ struct UnitW {
     @hide movement : int            // +0x18
     @hide innate : int[4]           // +0x0A abilities always on (the job's)
     @hide learned : uint8[LEARNED_W_SIZE]  // +0xA3, LEARN_JOB_NAMES x 3 bytes
+    @hide rsm_mask : uint8[11]      // +0x95: the abilities in effect - reactions (4 bytes, 0x1A6 + n),
+                                    // supports (4, 0x1C6 + n), movement (3, 0x1E6 + n), 0x80 first
     @hide items : int[7]            // +0x1A, SLOT_* (0xFF none)
     @hide equip : ItemW[7]
 }
@@ -122,9 +124,29 @@ def has_status_w(u : UnitW; n : int) : bool {
     return status_bit(u.status, n) || status_bit(u.innate_st, n)
 }
 
+// a reaction / support / movement ability in effect: the record's bit
+// masks (+0x95), as the game checks them - the ids at +0x14..0x18 alone do
+// not change a forecast (the FFT PSX battle code, same engine)
 def has_ability_w(u : UnitW; id : int) : bool {
-    return (u.reaction == id || u.support == id || u.movement == id || u.innate[0] == id || u.innate[1] == id ||
-        u.innate[2] == id || u.innate[3] == id)
+    let n = id - 0x1A6
+    if (n < 0 || n >= 88) {
+        return false
+    }
+    return (uint(u.rsm_mask[n >> 3]) & (0x80u >> uint(n & 7))) != 0u
+}
+
+// the masks again from the job's innate abilities and the chosen
+// reaction / support / movement (after an edit in the inspector)
+def rebuild_rsm_mask(var u : UnitW) {
+    for (k in range(11)) {
+        u.rsm_mask[k] = uint8(0)
+    }
+    for (id in [u.innate[0], u.innate[1], u.innate[2], u.innate[3], u.reaction, u.support, u.movement]) {
+        let n = id - 0x1A6
+        if (n >= 0 && n < 88) {
+            u.rsm_mask[n >> 3] = uint8(uint(u.rsm_mask[n >> 3]) | (0x80u >> uint(n & 7)))
+        }
+    }
 }
 
 // the stats the game keeps (current PA / MA / Speed, Move, Jump, evades)
@@ -223,6 +245,9 @@ def read_unit_w(slot : int) : UnitW {
     for (k in range(LEARNED_W_SIZE)) {
         u.learned[k] = uint8(gba_read8(r + 0xA3u + uint(k)))
     }
+    for (k in range(11)) {
+        u.rsm_mask[k] = uint8(gba_read8(r + 0x95u + uint(k)))
+    }
     u.active = gba_read8(r + 0x1AAu) != 0u
     u.name = wotl_text(r + 0x14Eu, 16)
     if (u.name == "") {
@@ -316,6 +341,9 @@ def write_unit_w(u : UnitW) {
     }
     for (k in range(LEARNED_W_SIZE)) {
         gba_edit8(r + 0xA3u + uint(k), uint(u.learned[k]))
+    }
+    for (k in range(11)) {
+        gba_edit8(r + 0x95u + uint(k), uint(u.rsm_mask[k]))
     }
 }
 

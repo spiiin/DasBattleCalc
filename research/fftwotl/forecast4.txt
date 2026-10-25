@@ -1,0 +1,8 @@
+a_attackboost | 0:9a=10 | 70 70
+t_defenseboost | 5:9a=8 | 35 70
+a_concentration | 0:9a=1 | 49 100
+a_brawler_bare | 0:9b=20 0:20=ff/2 | 33 70
+a_doublehand | 0:9b=2 | 105 70
+t_parry | 5:98=40 | 49 66
+t_reflexes | 5:98=10 | 49 44
+a_attackboost_id_only | 0:16=1d1/2 | 49 70

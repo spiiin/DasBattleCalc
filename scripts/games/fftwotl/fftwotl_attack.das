@@ -231,8 +231,9 @@ def physical_hit(att, tgt : UnitW; side : SideW; base : int; var mods : array<st
         times *= 2
         mods |> push("Reflexes: evades x2")
     }
-    var num = hit
-    var den = 1
+    // checked in the game: the evades combine into one factor, truncated
+    // at each step (78 x 90 / 100 = 70), then hit x factor / 100
+    var factor = 100
     let names = fixed_array<string>("class", "shield", "weapon", "accessory")
     for (e in evs) {
         if (e.x == 0) {
@@ -249,11 +250,10 @@ def physical_hit(att, tgt : UnitW; side : SideW; base : int; var mods : array<st
             mods |> push("{names[e.y]} evade {ev}% >= hit: 0%")
             return 0
         }
-        num *= 100 - ev
-        den *= 100
+        factor = factor * (100 - ev) / 100
         mods |> push("{names[e.y]} evade {ev}%")
     }
-    return num / den
+    return hit * factor / 100
 }
 
 // magic evasion: shields' and accessory's magic evade, from any side, for
@@ -270,15 +270,15 @@ def magic_hit(att, tgt : UnitW; ab : AbilityW; base : int; var mods : array<stri
         return base
     }
     let times = has_status_w(tgt, ST_DEFENDING) ? 2 : 1
-    var hit = base
+    var factor = 100
     for (ev in [tgt.sm_ev[0], tgt.sm_ev[1], tgt.am_ev]) {
         if (ev > 0) {
             let e = min(ev * times, 100)
-            hit = hit * (100 - e) / 100
+            factor = factor * (100 - e) / 100
             mods |> push("magic evade {e}%")
         }
     }
-    return hit
+    return base * factor / 100
 }
 
 // ------------------------------------------------------------ physical
@@ -408,7 +408,8 @@ def private weapon_strike(att, tgt : UnitW; var f : FightW; charge_k : int) {
     if (has_named(att, "Doublehand") && w.id != ITEM_NONE && (w.wflags & 0x04) != 0 && w.kind != 10 &&
             !is_weapon_w(att.equip[SLOT_LEFT]) && att.items[SLOT_LEFT_SHIELD] == ITEM_NONE &&
             att.items[SLOT_RIGHT_SHIELD] == ITEM_NONE) {
-        scale(ya, 2, 1, "Doublehand: WP", f.mods)
+        // checked: the stat, not WP (Mythril Sword: PA 6 -> 12, zodiac 15, x 7 = 105)
+        scale(xa, 2, 1, "Doublehand", f.mods)
     }
     if (charge_k > 0) {
         let old = xa
@@ -539,9 +540,11 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
                 scale(ma, 2, 3, "target's Shell", f.hit_mods)
             }
         }
+        // zodiac scales both addends (checked: Umbra 5 + 250)
         ma = zodiac_apply(ma, f.zodiac)
-        var h = (ma + x) * fa / 10000
-        f.hit_mods |> push("(MA {ma} + {x}) x Faith {faith_of(att)} x {faith_of(tgt)} / 10000 = {h}")
+        let xz = zodiac_apply(x, f.zodiac)
+        var h = (ma + xz) * fa / 10000
+        f.hit_mods |> push("(MA {ma} + {xz}) x Faith {faith_of(att)} x {faith_of(tgt)} / 10000 = {h}")
         h = magic_hit(att, tgt, ab, min(h, 100), f.hit_mods)
         f.hit = h
         if (fo == 0x0D) {
@@ -567,24 +570,36 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
         f.dmg_min = f.damage
         f.dmg_max = f.damage
     } elif (fo == 0x25 || fo == 0x2B || fo == 0x2C) {
-        // Arts of War: a chance PA' (+ WP) + X; the effect is the break
+        // Arts of War: a chance PA' (+ WP) + Y; X is the effect (a stat
+        // down by X, X% of max MP) - Y is the constant of the chance
+        // (Rend Helm 45 .. Rend Power 50: checked)
         var pa = att.pa
         if (has_named(att, "Attack Boost")) {
             scale(pa, 4, 3, "Attack Boost", f.hit_mods)
         }
+        if (has_named(tgt, "Defense Boost")) {
+            scale(pa, 2, 3, "target's Defense Boost", f.hit_mods)
+        }
+        if (has_status_w(tgt, ST_PROTECT)) {
+            scale(pa, 2, 3, "target's Protect", f.hit_mods)
+        }
+        // zodiac scales PA and X (checked: Rend Power 7 + 62 = 69)
         pa = zodiac_apply(pa, f.zodiac)
         let wp = fo == 0x25 ? weapon_of(att).wp : 0
-        let base = pa + wp + x
+        let x_z = zodiac_apply(y, f.zodiac)
+        let base = min(pa + wp + x_z, 100)
         let wp_text = fo == 0x25 ? " + WP {wp}" : ""
-        f.hit_mods |> push("PA {pa}{wp_text} + {x} = {base}")
+        f.hit_mods |> push("PA {pa}{wp_text} + {x_z} = {base}")
         f.hit = physical_hit(att, tgt, side, min(base, 100), f.hit_mods)
         f.physical = true
         if (fo == 0x2C) {
             f.mp_effect = true
-            f.damage = (tgt.max_mp * y + 99) / 100
-            f.note = "MP damage {y}%"
+            f.damage = (tgt.max_mp * x + 99) / 100
+            f.note = "MP damage {x}%"
+        } elif (fo == 0x2B) {
+            f.note = "a stat -{x}"
         } else {
-            f.note = fo == 0x25 ? "breaks equipment" : inflict_text(ab.inflict)
+            f.note = "breaks equipment"
         }
         f.dmg_min = f.damage
         f.dmg_max = f.damage
@@ -623,12 +638,17 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
         f.physical = true
         f.hit = physical_hit(att, tgt, side, 100, f.hit_mods)
     } elif (fo == 0x37) {
-        // Rush / Stone: PA x random 1..Y
+        // Rush / Stone: PA' x random 1..Y; the forecast shows PA' x [(Y + 2) / 2]
+        // (checked: Rush PA 6 -> 7 x 3 = 21, Stone 7 x 2)
         f.physical = true
-        f.dmg_min = att.pa
-        f.dmg_max = min(att.pa * y, 999)
-        f.damage = att.pa * (1 + y) / 2
-        f.mods |> push("PA x random 1..{y} (the average shown)")
+        var xa = att.pa
+        physical_mods(att, tgt, xa, ab.element, false, false, f.mods)
+        f.xa = xa
+        f.ya = (y + 2) / 2
+        f.dmg_min = xa
+        f.dmg_max = min(xa * y, 999)
+        f.damage = min(xa * f.ya, 999)
+        f.mods |> push("PA' x random 1..{y}: the forecast {xa} x {f.ya} = {f.damage}")
         f.hit = (ab.f4 & 0x02) != 0 ? physical_hit(att, tgt, side, 100, f.hit_mods) : 100
     } elif (fo == 0x36 || fo == 0x39 || fo == 0x3A || fo == 0x3B) {
         let what = fo == 0x36 ? "PA" : (fo == 0x39 ? "Speed" : "Brave")
@@ -636,9 +656,11 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
         f.note = "{what} +{fo == 0x3B ? x : y}{more}"
         f.hit = 100
     } elif (fo == 0x3C) {
+        // [MaxHP / 5] x 2 to the target, [MaxHP / 5] from the user (checked on
+        // the PSX game, same engine: 113 -> 44)
         f.healing = true
-        f.damage = -((att.max_hp * 2 + 4) / 5)
-        f.note = "costs the user {(att.max_hp + 4) / 5} HP"
+        f.damage = -(att.max_hp / 5 * 2)
+        f.note = "costs the user {att.max_hp / 5} HP"
         f.dmg_min = f.damage
         f.dmg_max = f.damage
         f.hit = 100

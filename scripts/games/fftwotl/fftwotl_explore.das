@@ -172,6 +172,7 @@ def set_unit_param_w(var u : UnitW; key : string; v : Value) : string {
         u.items[SLOT_RIGHT] = n
     } elif (key == "support") {
         u.support = n
+        rebuild_rsm_mask(u)
     } elif (starts_with(key, "status.")) {
         let i = status_index_w(slice(key, 7))
         if (i < 0) {
