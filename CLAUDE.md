@@ -27,6 +27,13 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   вкладки; сейв, где Luso стоит рядом с Sasarr — `ffta2_test_attack.State`),
   `tests/test_ffta2_vm.das` (все 245 — интерпретатором VM игры: `ffta2_vm.das` исполняет её скрипты из ROM, `ffta2_forecast.das` — нативные вызовы). Пробы FFTA2: `research/ffta2/plan_probe.lua` (план ввода,
   скриншоты, дампы, лог записей / исполнения), `vary_probe.lua` (прогноз при правках RAM), `exec_probe.lua` (настоящие удары с заданными сидами), `arm.py` (дизассемблер ARM), `vmdis.py` / `vmdec.py` (скрипты VM), `natives.py` (нативные вызовы).
+- FFT (PSX, USA): `battlecalc --game fft --state <BizHawk Nymashock .State> [--rom <FFT (USA).cue>]` — RAM из сейва
+  (`native/psx_mem.cpp`), диск только для графики (спрайты, иконки, текстурированный меш карты на поле —
+  `fft_map.das`). Тесты: `tests/test_psx_mem.das` (`--state <fft_test_battle1.State> [--out <new.State>]`),
+  `tests/test_fft_battle.das` (то же), `tests/test_fft_turns.das` (`fft_test_battle1b.State`: 9 ходов из игры),
+  `tests/test_fft_attack.das` (`fft_test_ramza2.State`: прогнозы Attack игры — урон, стороны, зодиак),
+  `tests/test_fft_graphics.das` (`fft_test_battle1.State --rom <.cue>`). Пробы и форматы — `research/fft/`
+  (`plan_probe.lua`, `ct_probe.lua`, `psx.py`, `notes.md`). В US-версии ○ подтверждает, × отменяет.
   Общие части игр: `scripts/ui/battle_field.das` (изометрическое поле: `FieldMap`, `FieldUnit`, ввод — `FieldInput`),
   `scripts/ui/roster.das`, `scripts/ui/inspector.das`, `scripts/core/teams.das`, `scripts/core/config.das` (local.cfg:
   у FFTA ключи `state` / `rom`, у FFTA2 `ffta2_state` / `ffta2_rom`, у FFT `fft_state` / `fft_rom`). Игры делят один загруженный ROM и сейв:
