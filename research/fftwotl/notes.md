@@ -103,6 +103,24 @@ with Counter, Brave 100; Ramza's class evade 0): Ramza hits for 49 (104 -> 55), 
 model's Attack of Lezalas (PA 7, zodiac good 8, x WP 6). The rest of the reactions (when they trigger, their Brave
 roll) follows formulas.md 5 unchecked.
 
+## Throw and Jump (checked)
+
+`fctj.py` (`forecast7.txt`, `forecast8.txt`): Ramza with the Ninja (skillset 20) / Dragoon (18) set as the secondary,
+every ability learned (+0xA3 + job x 3), at Lezalas.
+
+- **The party's stock in battle: a count per item id at 0x092EABA0** (the first battle: Potion 5, Hi-Potion 2, X-Potion,
+  Ether, Hi-Ether, Elixir, Antidote 1, Eye Drops 2, ..., Phoenix Down 2 - the PSX game has the same stock). The Throw
+  list shows the stocked items of the learned kinds (the ability's item kind: 0x08A778F0 + id - 0x17E); with the stock
+  edited to one item the list has one entry.
+- **Throw = Speed' x WP** of the item, the target's modifiers and the zodiac only (Speed 6 -> 7): Shuriken 28, Fuma 49,
+  Yagyu Darkrood 70, the bombs 56 (Flameburst on a fire-weak target 112, absorbing 0), Mythril Knife 28, Broadsword 28,
+  Mythril Sword 49, Spear 63; Protect 20, Speed 10 -> 48, the target charging 44 (100%); evaded as Attack (70%, C-EV
+  50: 39%).
+- **Jump = PA' x WP** (a polearm: PA x 3 / 2; bare hands PA' x [PA x Brave / 100]), never evaded (100% even with C-EV
+  50): Mythril Sword 49, Spear 99 (PA 6 x 3 / 2 = 9, zodiac 11, x 9), bare 21, Gungnir 319; Protect 35, the
+  target charging 77, PA 10 -> 84, zodiac neutral 42; Gungnir's lightning on a weak target - still 319: **Jump has no
+  element**. The command opens the targeting at once; the learned Jumps (0x18A..0x195) set its reach.
+
 ## Not found yet
 
 - (found, see "Battle map")

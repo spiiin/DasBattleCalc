@@ -79,9 +79,10 @@ field) gives the graphics: the units' sprites, the items' icons and the battle m
 - **Attack calculator**: Attack with every weapon type, Holy Sword / Fell Sword, magicks (damage, healing, chances of
   status spells with Faith), Arts of War, Aim, Items, Fundaments; zodiac compatibility, Protect / Shell and the support
   abilities, elements, evasion by side. The formulas come from the PSX battle code
-  ([research/fftwotl/formulas.md](research/fftwotl/formulas.md)); **209 forecasts of the game match** (the damage and hit % the game shows when a target is picked): Attack (every
+  ([research/fftwotl/formulas.md](research/fftwotl/formulas.md)); **239 forecasts of the game match** (the damage and hit % the game shows when a target is picked): Attack (every
   weapon kind, zodiac, statuses, evades, sides, elements, supports and reactions), Fire, Cure, Arts of War, Umbra,
-  Potion, Rush, Stone; Shirahadori and Archer's Bane in the hit chance, a real Counter.
+  Potion, Rush, Stone, Throw (every kind of thrown item, from the party's stock) and Jump; Shirahadori and Archer's
+  Bane in the hit chance, a real Counter.
 - **The target's reaction**: which reaction it has (the record's ability bits), whether this action calls it, the
   Brave roll, the counter-attack's damage.
 - **Editor**: job, primary / secondary skillsets, reaction / support / movement, PA / MA / Speed, Level, Exp, Brave,
@@ -92,7 +93,7 @@ field) gives the graphics: the units' sprites, the items' icons and the battle m
 
 - **The battle map** with its heights and water; with the ISO, the map's 3D model and the units' sprites.
 
-Not yet: the height limits of reach, Jump / Throw / Arithmeticks. RAM layout and tables:
+Not yet: the height limits of reach, Arithmeticks. RAM layout and tables:
 [research/fftwotl/notes.md](research/fftwotl/notes.md), [layouts.md](research/fftwotl/layouts.md).
 
 ## Final Fantasy Tactics (PSX)

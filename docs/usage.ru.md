@@ -73,9 +73,10 @@ ULUS10297_1.00_N.ppst`, в меню PPSSPP это слот N + 1), игра — 
 - **Calculation**: Turn order (тики CT, Haste / Slow / Stop; ход стоит 100 / 80 / 60 CT, у ходящего сейчас 100 уже
   снято), Attack (прогноз урона и шанса по шагам, реакция цели и ответный удар), Explore, Units, Items и Abilities
   (таблицы игры).
-- Формулы сверены с прогнозами самой игры (`tests/test_fftwotl_forecast.das`, 209 случаев: урон и шанс, которые игра показывает при выборе цели): Attack всеми видами
+- Формулы сверены с прогнозами самой игры (`tests/test_fftwotl_forecast.das`, 239 случаев: урон и шанс, которые игра показывает при выборе цели): Attack всеми видами
   оружия, зодиак, статусы, уклонения и стороны, элементы, поддержки и реакции (Shirahadori, Parry, Reflexes …),
-  Fire, Cure, Arts of War, Umbra, Potion, Rush, Stone; Counter — по настоящему удару. Остальное — по
+  Fire, Cure, Arts of War, Umbra, Potion, Rush, Stone, Throw (лучший по WP предмет нужного вида из запаса партии;
+  без него — «none in stock») и Jump (одно действие; выученные Jump задают дальность); Counter — по настоящему удару. Остальное — по
   `research/fftwotl/formulas.md` (не сверено).
 - Как это исследовалось (PPSSPP WebSocket-отладчик, зонды): [research/fftwotl/notes.md](../research/fftwotl/notes.md).
 

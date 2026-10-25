@@ -1,0 +1,16 @@
+item122 | 5:2d=3f | 28 70
+item122_t_protect | 5:65=20 | 20 70
+item122_sp10 | 0:40=a | 48 70
+item122_cev50 | 5:4b=32 | 28 39
+item122_t_charging | 5:62=8 | 44 100
+item123 | 5:2d=3f | 49 70
+item124 | 5:2d=3f | 70 70
+item125 | 5:2d=3f | 56 70
+item125_t_weak_fire | 5:7a=80 | 112 70
+item125_t_absorb_fire | 5:77=80 | 0 70
+item126 | 5:2d=3f | 56 70
+item127 | 5:2d=3f | 56 70
+item2 | 5:2d=3f | 28 70
+item19 | 5:2d=3f | 28 70
+item22 | 5:2d=3f | 49 70
+item100 | 5:2d=3f | 63 70

@@ -478,6 +478,130 @@ def private weapon_strike(att, tgt : UnitW; var f : FightW; charge_k : int) {
     f.hit = miss ? 0 : physical_hit(att, tgt, f.side, 100, f.hit_mods)
 }
 
+// ------------------------------------------------------------ Throw, Jump
+
+// the party's stock in battle: a count per item id (the first battle:
+// Potion 5, Hi-Potion 2, ... Phoenix Down 2)
+let INVENTORY_W = 0x092EABA0u
+
+def stock_w(item : int) : int {
+    return item > 0 && item < ITEM_COUNT_W ? int(gba_read8(INVENTORY_W + uint(item))) : 0
+}
+
+// the stocked item of an item kind with the best WP (Throw), ITEM_NONE
+def best_thrown_w(kind : int) : int {
+    var best = ITEM_NONE
+    var best_wp = -1
+    for (item in range(1, ITEM_COUNT_W)) {
+        if (item != ITEM_NONE && stock_w(item) > 0) {
+            let it = read_item_w(item)
+            if (it.kind == kind && it.wp > best_wp) {
+                best = item
+                best_wp = it.wp
+            }
+        }
+    }
+    return best
+}
+
+// the unit has learned the ability (the bit of its slot in a job's set)
+def knows_w(u : UnitW; ab_id : int) : bool {
+    for (j in range(length(LEARN_JOB_NAMES))) {
+        let ss = learn_skillset(u, j)
+        if (ss <= 0) {
+            continue
+        }
+        let s = read_skillset_w(ss)
+        for (k in range(22)) {
+            if (s.slots[k] == ab_id && learned_bit(u, j, k)) {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+// Jump's reach: the longest horizontal / vertical Jump learned (0x18A ..
+// 0x195; at least the first of each)
+def jump_reach_w(u : UnitW) : int2 {
+    var r = int2(read_ability_w(394).jump_h, read_ability_w(400).jump_v)
+    for (id in range(394, 406)) {
+        if (knows_w(u, id)) {
+            let a = read_ability_w(id)
+            r = int2(max(r.x, a.jump_h), max(r.y, a.jump_v))
+        }
+    }
+    return r
+}
+
+// Throw (formula 0x63): Speed' x the thrown item's WP - the target's
+// modifiers and the zodiac only, the item's element, evaded as Attack
+def private throw_w(att, tgt : UnitW; kind, item : int; var f : FightW) {
+    f.formula = 0x63
+    f.physical = true
+    f.reach = att.move
+    if (item == ITEM_NONE) {
+        f.note = "none in stock ({KIND_W_NAMES[kind]})"
+        f.mods |> push(f.note)
+        return
+    }
+    let it = read_item_w(item)
+    f.weapon = it.name
+    f.element = it.element
+    var xa = att.sp
+    f.mods |> push("Speed x WP: {att.sp} x {it.wp} ({it.name}, the best of {stock_w(item)} in stock)")
+    physical_mods(att, tgt, xa, it.element, false, true, f.mods)
+    f.xa = xa
+    f.ya = it.wp
+    var dmg = xa * it.wp
+    f.mods |> push("damage = {xa} x {it.wp} = {dmg}")
+    var miss = false
+    apply_elements(dmg, it.element, tgt, miss, f.mods)
+    f.damage = miss ? 0 : clamp(dmg, -999, 999)
+    f.dmg_min = f.damage
+    f.dmg_max = f.damage
+    f.hit = miss ? 0 : physical_hit(att, tgt, f.side, 100, f.hit_mods)
+    f.note = "throws {it.name} (range = Move, unverified)"
+}
+
+// Throw of a given item (the tests: the forecasts were taken with the
+// stock edited)
+def throw_item_w(att, tgt : UnitW; item : int; side : SideW) : FightW {
+    var f = FightW(side = side, zodiac = zodiac_w(att, tgt), name = "Throw")
+    throw_w(att, tgt, read_item_w(item).kind, item, f)
+    f.expected = expected_damage(f)
+    return <- f
+}
+
+// Jump (formula 0x64): PA' (a polearm x 3 / 2) x WP, bare hands PA' x
+// [PA x Brave / 100]; the target's modifiers and the zodiac only, no
+// element, never evaded; charge [50 / Speed]
+def private jump_w(att, tgt : UnitW; var f : FightW) {
+    f.formula = 0x64
+    f.physical = true
+    let r = jump_reach_w(att)
+    f.reach = r.x
+    f.ct = 50 / max(att.raw[2], 1)
+    let w = weapon_of(att)
+    var xa = att.pa
+    if (w.kind == 15) {
+        scale(xa, 3, 2, "a polearm", f.mods)
+    }
+    physical_mods(att, tgt, xa, 0, false, true, f.mods)
+    let ya = w.id == ITEM_NONE ? att.pa * att.brave / 100 : w.wp
+    f.weapon = w.name
+    f.xa = xa
+    f.ya = ya
+    f.damage = min(xa * ya, 999)
+    f.dmg_min = f.damage
+    f.dmg_max = f.damage
+    f.mods |> push(w.id == ITEM_NONE ? "damage = {xa} x [PA x Brave / 100] {ya} = {f.damage}" :
+        "damage = {xa} x WP {ya} = {f.damage}")
+    f.hit = 100
+    f.hit_mods |> push("Jump is never evaded")
+    f.note = "jumps (horizontal {r.x}, vertical {r.y}; charge {f.ct} ticks)"
+}
+
 // ------------------------------------------------------------ the action
 
 def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
@@ -507,6 +631,17 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
     }
     if (ab.kind == AB_ITEM) {
         item_effect(att, tgt, read_item_w(ab.item), f)
+        return <- f
+    }
+    if (ab.kind == AB_THROW) {
+        throw_w(att, tgt, ab.throw_kind, best_thrown_w(ab.throw_kind), f)
+        f.expected = expected_damage(f)
+        return <- f
+    }
+    if (ab.kind == AB_JUMP) {
+        f.name = "Jump"
+        jump_w(att, tgt, f)
+        f.expected = expected_damage(f)
         return <- f
     }
     if ((ab.f3 & 0x08) != 0 || (ab.f1 & 0x20) != 0) {
@@ -752,8 +887,15 @@ def expected_damage(f : FightW) : float {
     return min(d, 999.0) * float(f.hit) / 100.0
 }
 
+// an action's name in the lists: Attack, Jump (the Jumps as one), the
+// ability's
+def action_name_w(id : int) : string {
+    return id == ATTACK_W ? "Attack" : (id == 394 ? "Jump" : ability_name_w(id))
+}
+
 // the actions a unit can use from its skillsets (and Attack, id 0), for
-// the Attack tab: normal abilities, items, Aim
+// the Attack tab: normal abilities, items, Aim, Throw; the Jumps as one
+// action (0x18A: the learned ones only set its reach)
 def unit_actions(u : UnitW; all_known : bool) : array<int> {
     var res : array<int>
     res |> push(ATTACK_W)
@@ -762,7 +904,8 @@ def unit_actions(u : UnitW; all_known : bool) : array<int> {
             continue
         }
         let s <- read_skillset_w(ss)
-        for (a in s.actions) {
+        for (a0 in s.actions) {
+            let a = a0 >= 394 && a0 < 406 ? 394 : a0
             if (find_index(res, a) < 0) {
                 res |> push(a)
             }

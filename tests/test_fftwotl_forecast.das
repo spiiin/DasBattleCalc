@@ -13,7 +13,9 @@ options indenting = 4
 // with support / reaction bits of the record's masks (+0x95..);
 // forecast5.txt (--reactions): Shirahadori, Archer's Bane, Counter, First
 // Strike, Parry from the back; forecast6.txt (fcyside.py): the side
-// along y - Ramza moved to (7, 4) / (7, 2), Lezalas in each facing. The same
+// along y - Ramza moved to (7, 4) / (7, 2), Lezalas in each facing;
+// forecast7.txt / forecast8.txt (fctj.py): Throw (the stock edited to one
+// item: "item<id>") and Jump (the Dragoon set, weapons, statuses). The same
 // edits go into the model's units.
 //   battlecalc tests/test_fftwotl_forecast.das --state <fftwotl_test_battle1.ppst> [--print 1]
 require gba_mem
@@ -52,6 +54,8 @@ def apply_edit(var u : UnitW; off, v : int) {
         u.pa = v
     } elif (off == 0x3F) {
         u.ma = v
+    } elif (off == 0x40) {
+        u.sp = v
     } elif (off == 0x09) {
         u.zodiac_id = v >> 4
     } elif (off == 0x06) {
@@ -100,7 +104,7 @@ def apply_edit(var u : UnitW; off, v : int) {
 
 // the forecasts of one file: action (Attack or an ability) by Ramza
 // (record 0) on Lezalas (record 5); the number of cases
-def check_file(units : array<UnitW>; file : string; action : int) : int {
+def check_file(units : array<UnitW>; file : string; action : int; throws : bool = false) : int {
     let path = "{gui_project_dir()}/research/fftwotl/{file}"
     var text = ""
     fopen(path, "rb") $(f) {
@@ -141,7 +145,21 @@ def check_file(units : array<UnitW>; file : string; action : int) : int {
         let nums <- split(strip(parts[2]), " ")
         let dmg = to_int(nums[0])
         let hit = to_int(nums[1])
-        let f = action_w(att, tgt, action, side_of_w(att, tgt))
+        // Throw (forecast7.txt): "item<id>..." - the stock held that item only
+        var item = 0
+        if (throws && starts_with(name, "item")) {
+            var k = 4
+            while (k < length(name) && character_at(name, k) >= '0' && character_at(name, k) <= '9') {
+                item = item * 10 + character_at(name, k) - '0'
+                k++
+            }
+        }
+        var f : FightW
+        if (item > 0) {
+            f <- throw_item_w(att, tgt, item, side_of_w(att, tgt))
+        } else {
+            f <- action_w(att, tgt, action, side_of_w(att, tgt))
+        }
         let got = max(f.damage, 0)
         if (gui_arg("--print", "") != "") {
             print("{f.name} {name}: game {dmg} {hit}% model {got} {f.hit}%
@@ -228,6 +246,10 @@ def main() : int {
     let supports = check_file(units, "forecast4.txt", ATTACK_W)
     let reactions = check_file(units, "forecast5.txt", ATTACK_W)
     let sides = check_file(units, "forecast6.txt", ATTACK_W)
+    let throws = check_file(units, "forecast7.txt", ATTACK_W, true)
+    let jumps = check_file(units, "forecast8.txt", 394)
+    check("{throws} Throw forecasts", throws >= 15)
+    check("{jumps} Jump forecasts", jumps >= 10)
     check("{reactions} reaction forecasts", reactions >= 10)
     check("{sides} side forecasts", sides >= 12)
     check("{supports} support forecasts", supports >= 8)
