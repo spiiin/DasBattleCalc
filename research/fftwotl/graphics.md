@@ -84,7 +84,7 @@ RAM address = BOOT.BIN offset + 0x08803FAC.
   - The front frame faces **screen lower-left** and the back frame faces **screen upper-left**. Mirror both horizontally
     for lower-right / upper-right. Mapping the record's facing (+0x51 low 2 bits: 0 south +y, 1 west, 2 north, 3 east) to
     these four depends on the calculator's camera: if map +x goes to screen lower-right and +y to screen lower-left,
-    then 0 = front, 3 = front mirrored, 2 = back mirrored, 1 = back (**not checked against the game**).
+    then 0 = front, 3 = front mirrored, 2 = back mirrored, 1 = back (superseded: see "In the calculator").
 
 ✓ `out/units_standing.png`: all 11 units of the dump in 4 poses (front, front mirrored, back, back mirrored) with
 record palettes. Ramza (purple, ch. 2 outfit), Agrias (blue skirt, braid), Gaffgarion (brown), Alicia/Lavian (blue
@@ -130,7 +130,7 @@ green trousers, as in `shots/a0.png`), the Chemist (green cap) and Ladd (Squire)
 - ✓ `out/map056_yaw45.png` (and yaw 135/225/315): a z-buffered orthographic render of the textured mesh. It shows the
   monastery tower with its green roof and spire, the stone bridge, wooden walkways, grass slopes and water, as in the
   game. The untextured polygons (drawn grey) are the map's vertical outer skirt. `out/map056_tex_pal0.png` is the
-  texture sheet. Not checked: whether the render is mirrored relative to the game's camera; lights and per-situation
+  texture sheet. Mirrored relative to the game's camera (see "In the calculator"). Not checked: lights and per-situation
   meshes / palettes; texture animation.
 
 ## In the calculator
@@ -141,7 +141,17 @@ matches - MAP056 = 2995; the first resource file = GNS - 1 - the largest index k
 `psp_sprite_type` / `psp_item_icon` (native/gba_gfx.cpp; the SHP frame assembly is shared with FFT PSX: `shp_frame`,
 lower half at row 288 for WotL), `scripts/games/fftwotl/fftwotl_map.das` (the mesh as FieldPolys, the standing frames).
 Checked: `tests/test_fftwotl_graphics.das` and screenshots (the monastery, the units in their palettes, equipment
-icons).
+icons in the slots, the item list and the Items tab).
+
+**The game's view is the mirror image of the field's** (checked against `shots/a0.png`): on the bridge (row y = 3,
+one height) the feet go *up* the screen with x (Agrias 5 -> Ramza 6 -> Lezalas 7 -> Alicia 8), Gaffgarion (4, 6) is
+up-left: +x goes up-right, +y up-left (the shared field draws +x down-right, +y down-left; no rotation turns one into
+the other). `FieldMap.mirror` draws tile (x, y) at (h - 1 - y, w - 1 - x): the tower's door then faces the viewer as in
+the game. **Facing**: with that view the sprites match the game when 0 = -y, 1 = -x, 2 = +y, 3 = +x - Ramza and Agrias
+(0) look down-right, Lezalas, Alicia and the archer (1) down-left; the party on row 3 faces the archers on row 1, the
+archers (2) face the bridge. The forecasts had only fixed 1 = -x (front) and 3 = +x (back): 0 and 2 both gave "side",
+so the side rule's y direction changed without a test noticing; a forecast with the attacker on the y axis would
+check it (not done).
 
 ## Notes for the calculator
 

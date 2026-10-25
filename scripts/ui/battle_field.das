@@ -31,6 +31,10 @@ struct FieldMap {
     water : array<bool>
     shown_shift : int               // the game's height = height + shown_shift (0 must mean "no tile")
     polys : array<FieldPoly>        // the game's map mesh (FFT): drawn instead of the tiles' blocks
+    // FFT: the game's camera sees the mirror image of this view (+x up-right,
+    // +y up-left): drawn as x' = h - 1 - y, y' = w - 1 - x (field_view_facing)
+    mirror : bool
+    mirrored_from : int4            // on the drawn copy: the game's w, h, x0, y0 (the tooltip)
 }
 
 // a polygon of a map's mesh: corners in map coordinates (x, y as tiles -
@@ -76,6 +80,13 @@ let FIELD_CELL_MAX = 160.0
 let FIELD_DIR_X = fixed_array<int>(0, -1, 0, 1)
 let FIELD_DIR_Y = fixed_array<int>(1, 0, -1, 0)
 let FIELD_FACING_NAMES = fixed_array<string>("+y", "-x", "-y", "+x")
+let private FIELD_MIRROR_FACING = fixed_array<int>(1, 0, 3, 2)
+
+// the facing as drawn (0 down-left, 1 up-left, 2 up-right, 3 down-right):
+// a mirrored map's units turn too
+def field_view_facing(m : FieldMap; facing : int) : int {
+    return m.mirror ? FIELD_MIRROR_FACING[facing & 3] : facing & 3
+}
 
 // by team (TEAM_*): player, enemy, guest, judge
 def side_color(side : int) : uint {
@@ -247,6 +258,55 @@ def private stand_height(m : FieldMap; x, y : int) : float {
 // reach: tiles to highlight (w x h, empty - none)
 def draw_battle_field(m : FieldMap; units : array<FieldUnit>; selected, target : int; reach : array<bool>;
                       var st : FieldState; x, y, w, h : float) : FieldInput {
+    if (!m.mirror) {
+        return draw_field_view(m, units, selected, target, reach, st, x, y, w, h)
+    }
+    // the mirrored copy: tile (tx, ty) at (h - 1 - ty, w - 1 - tx)
+    var mm = FieldMap(w = m.h, h = m.w, shown_shift = m.shown_shift, mirrored_from = int4(m.w, m.h, m.x0, m.y0))
+    mm.height |> resize(m.w * m.h)
+    mm.water |> resize(m.w * m.h)
+    var vr : array<bool>
+    let has_reach = length(reach) == m.w * m.h
+    if (has_reach) {
+        vr |> resize(m.w * m.h)
+    }
+    for (ty in range(m.h)) {
+        for (tx in range(m.w)) {
+            let i = ty * m.w + tx
+            let vi = (m.w - 1 - tx) * mm.w + (m.h - 1 - ty)
+            mm.height[vi] = m.height[i]
+            mm.water[vi] = m.water[i]
+            if (has_reach) {
+                vr[vi] = reach[i]
+            }
+        }
+    }
+    for (pl in m.polys) {
+        var q = pl
+        for (c in range(4)) {
+            q.p[c] = float3(float(m.h - 1) - pl.p[c].y, float(m.w - 1) - pl.p[c].x, pl.p[c].z)
+        }
+        mm.polys |> push(q)
+    }
+    var vu : array<FieldUnit>
+    for (un in units) {
+        var v = un
+        v.x = m.h - 1 - (un.y - m.y0)
+        v.y = m.w - 1 - (un.x - m.x0)
+        v.facing = FIELD_MIRROR_FACING[un.facing & 3]
+        vu |> push(v)
+    }
+    var res = draw_field_view(mm, vu, selected, target, vr, st, x, y, w, h)
+    if (res.moved >= 0) {
+        let vx = res.move_x
+        res.move_x = m.w - 1 - res.move_y + m.x0
+        res.move_y = m.h - 1 - vx + m.y0
+    }
+    return res
+}
+
+def private draw_field_view(m : FieldMap; units : array<FieldUnit>; selected, target : int; reach : array<bool>;
+                            var st : FieldState; x, y, w, h : float) : FieldInput {
     var res = FieldInput()
     if (m.w == 0 || m.h == 0) {
         SetCursorScreenPos(ImVec2(x + u(12.0), y + u(12.0)))
@@ -431,7 +491,10 @@ def draw_battle_field(m : FieldMap; units : array<FieldUnit>; selected, target :
     }
     if (hovered && st.drag < 0 && field_height(m, mx, my) > 0) {
         let who = under >= 0 ? "  {units[under].name}" : ""
-        bl_tooltip("{mx}, {my}  height {field_height(m, mx, my) + m.shown_shift}{who}")
+        let g = m.mirrored_from
+        let gx = g.x > 0 ? g.x - 1 - my + g.z : mx
+        let gy = g.x > 0 ? g.y - 1 - mx + g.w : my
+        bl_tooltip("{gx}, {gy}  height {field_height(m, mx, my) + m.shown_shift}{who}")
     }
     EndChild()
     return res

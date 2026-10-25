@@ -35,7 +35,7 @@ PSX "Battle Stats" (ffhacktics wiki) with these differences:
 | 0x1A..0x27 | 0x1A..0x20 bytes | equipment **u16** (WotL has items >= 256): head, body, accessory, right weapon, right shield, left weapon, left shield (0xFF = none) |
 | 0x28 | 0x21 | experience; 0x29 level; 0x2A / 0x2B Brave (original, current); 0x2C / 0x2D Faith |
 | 0x2E | 0x27 | 1 for the units on the field, 0 for the dead / not deployed (meaning unverified) |
-| 0x51.. | 0x49.. | 0x51 height bit / facing (0 south +y, 1 west -x, 2 north -y, 3 east +x); 0x52..0x57 equippable kinds; 0x58 innate statuses (5), 0x5D immunities, **0x62 current statuses** (KO units: 0x20 in the first byte), 0x67 status clocks (16), 0x77 elements absorb / cancel / half / weak / strengthen |
+| 0x51.. | 0x49.. | 0x51 height bit / facing (0 -y, 1 -x, 2 +y, 3 +x; see graphics.md "In the calculator"); 0x52..0x57 equippable kinds; 0x58 innate statuses (5), 0x5D immunities, **0x62 current statuses** (KO units: 0x20 in the first byte), 0x67 status clocks (16), 0x77 elements absorb / cancel / half / weak / strengthen |
 | 0x7C.. | 0x72.. (+10) | raw HP / MP / SP / PA / MA (3 bytes each), growth constants |
 | 0xA0 | 0x96 | unlocked jobs (3 bytes); **0xA3: learned abilities**, 3 bytes per job (16 action bits, 6 R/S/M bits) for 22 jobs: the base job (Fundaments or a story character's own skillset), Chemist .. Mime (skillsets 6 .. 24), Dark Knight (Darkness), Onion Knight; 0xE5 job levels (nibbles) |
 | 0x14E | 0x12C (+0x22) | the name (FFT text, up to 0xFE; Ramza's: the player's name) |
@@ -122,7 +122,7 @@ What the forecasts settled (formulas.md's open points):
   good / bad / best / worst, opposite signs by sex);
 - **Defending and the attacker's Blindness double the evades** (44% from 70%), they do not halve the hit;
   Charging / Sleep / Stop / Don't Act: 100%; magic evade: doubled by Defending, none on a charging / sleeping target;
-- from the side no class evade, from the back only the accessory; the facing numbering 0 south .. 3 east is right;
+- from the side no class evade, from the back only the accessory; facing 1 = -x and 3 = +x are right (0 and 2 are both "side" here; 0 = -y from the game's picture, graphics.md);
 - the game takes the **shield / accessory evades and strengthen from the equipment**, not from the record (+0x48..0x4A,
   +0x7B); class evade (+0x4B), current PA / MA (+0x3E / +0x3F), Brave, Faith, statuses, elements from the record;
 - the forecast of a random weapon (axe, flail, bag) uses **[(PA + 2) / 2]**; a bomb in hand: WP x WP, no modifiers;

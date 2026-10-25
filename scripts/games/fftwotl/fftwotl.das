@@ -262,6 +262,12 @@ class WotlGame : GameModule {
         }
     }
 
+    // the item's icon for bl_menu_item (GBA_GFX_ICON_BASE + the handle), -1
+    def item_icon_id(iid : int) : int {
+        let h = self->has_iso() ? psp_item_icon(shell_renderer(), iid) : -1
+        return h >= 0 ? 65536 + h : -1
+    }
+
     def has_iso() : bool {
         return iso_path != "" && psx_has_disc() && psx_disc_serial() == disc_serial && psp_pack_count() > 0
     }
@@ -318,7 +324,7 @@ class WotlGame : GameModule {
     // the units when the state has none
     def make_map() : void {
         if (read_map_w(map_w)) {
-            field_map = FieldMap(w = map_w.w, h = map_w.h, shown_shift = -1)
+            field_map = FieldMap(w = map_w.w, h = map_w.h, shown_shift = -1, mirror = true)
             field_map.height |> resize(map_w.w * map_w.h)
             field_map.water |> resize(map_w.w * map_w.h)
             for (i in range(map_w.w * map_w.h)) {
@@ -647,7 +653,7 @@ class WotlGame : GameModule {
                     if (filter != "" && find(to_lower(it.name), filter) < 0) {
                         continue
                     }
-                    if (bl_menu_item("{it.name}   {KIND_W_NAMES[it.kind]}   {item_text_w(it)}")) {
+                    if (bl_menu_item("{it.name}   {KIND_W_NAMES[it.kind]}   {item_text_w(it)}", self->item_icon_id(it.id))) {
                         un.items[pick_slot] = it.id
                         recompute_unit_w(un)
                         CloseCurrentPopup()
@@ -803,11 +809,12 @@ class WotlGame : GameModule {
         var fu : array<FieldUnit>
         let iso = self->has_iso()
         for (un in units) {
-            // standing: the front frame faces +y, the back one -x; +x and
-            // -y mirrored
+            // standing: the front frame faces down-left, the back one
+            // up-left; the right ones mirrored
             let f = facing_to_field(un.facing)
-            let spr = iso ? psp_unit_sprite(shell_renderer(), un.sheet, un.palette, stand_frame_w(un.sheet, f == 1 || f == 2),
-                f >= 2) : -1
+            let vf = field_view_facing(field_map, f)
+            let spr = iso ? psp_unit_sprite(shell_renderer(), un.sheet, un.palette, stand_frame_w(un.sheet, vf == 1 || vf == 2),
+                vf >= 2) : -1
             fu |> push(FieldUnit(name = un.name, x = un.x, y = un.y, facing = f, team = un.team,
                 alive = un.hp > 0, sprite = spr, sprite_scale = 0.75))
         }
@@ -1185,7 +1192,11 @@ class WotlGame : GameModule {
                     ImDrawFlags.None)
             }
             let extra = items ? KIND_W_NAMES[read_item_w(tid).kind] : "0x{fmt(":03x", tid)}"
-            text_at_baseline(x + u(6.0), yy + u(14.0), name, fg)
+            let icon = items && self->has_iso() ? psp_item_icon(shell_renderer(), tid) : -1
+            if (icon >= 0) {
+                gba_gfx_draw(icon, x + u(4.0), yy + u(2.0), u(16.0), u(16.0), 1.0)
+            }
+            text_at_baseline(x + u(icon >= 0 ? 24.0 : 6.0), yy + u(14.0), name, fg)
             right_w(x + lw - u(10.0), yy + u(14.0), extra, dim)
             yy += row_h
         }

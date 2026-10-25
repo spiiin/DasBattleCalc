@@ -19,9 +19,10 @@ let UNIT_SLOTS_W = 21
 
 let ZODIAC_NAMES = fixed_array<string>("Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio",
     "Sagittarius", "Capricorn", "Aquarius", "Pisces", "Serpentarius")
-// facing (record +0x51 low bits): the game's 0 south (+y), 1 west (-x),
-// 2 north (-y), 3 east (+x); the field's numbering: 0 +y, 1 -x, 2 -y, 3 +x
-let FACING_W_NAMES = fixed_array<string>("south", "west", "north", "east")
+// facing (record +0x51 low bits): 0 -y, 1 -x, 2 +y, 3 +x (1 and 3 checked
+// by the forecasts: front / back; 0 / 2 by the game's picture - the party
+// on row 3 faces the archers on row 1 with 0); the field's: 0 +y, 1 -x, ...
+let FACING_W_NAMES = fixed_array<string>("-y", "-x", "+y", "+x")
 
 // learned abilities (record +0xA3): 3 bytes per job - the action
 // abilities of its skillset (16 bits, 0x80 of the first byte = the first
@@ -111,7 +112,7 @@ struct UnitW {
 }
 
 def facing_to_field(f : int) : int {
-    return f & 3                    // the same numbering as the field (0 +y, 1 -x, 2 -y, 3 +x)
+    return (f & 1) != 0 ? f & 3 : 2 - (f & 3)       // the field: 0 +y, 1 -x, 2 -y, 3 +x
 }
 
 def team_of_w(team_byte : int) : int {

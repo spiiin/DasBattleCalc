@@ -106,7 +106,7 @@ def has_named(u : UnitW; name : string) : bool {
 // the side of the target the attacker stands on, by the target's facing:
 // the largest of forward / sideways / behind wins, ties to the front
 def side_of_w(att, tgt : UnitW) : SideW {
-    let dirs = fixed_array<int2>(int2(0, 1), int2(-1, 0), int2(0, -1), int2(1, 0))
+    let dirs = fixed_array<int2>(int2(0, -1), int2(-1, 0), int2(0, 1), int2(1, 0))
     let f = dirs[tgt.facing & 3]
     let dx = att.x - tgt.x
     let dy = att.y - tgt.y
