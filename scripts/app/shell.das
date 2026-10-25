@@ -164,12 +164,18 @@ def shell_init(renderer : SDL_Renderer?; scale : float) {
     }
 }
 
-// New files at --state / --rom (the web page): the game of that ROM
-// becomes the current one and loads them.
+// New files at --state / --rom (the web page): the game becomes the
+// current one and loads them - by the state when it tells (a PSX state:
+// FFT, a PPSSPP one: War of the Lions, neither needs a ROM), else by the
+// ROM's code.
 def shell_reload() {
+    var want = ""
+    if (gba_load_state(gui_arg("--state", "")) == "") {
+        want = gba_state_is_psx() ? "fft" : (gba_state_is_psp() ? "fftwotl" : "")
+    }
     let code = gba_load_rom(gui_arg("--rom", "")) == "" ? gba_rom_code() : ""
     for (i in range(game_count())) {
-        if (game_at(i)->accepts_rom(code)) {
+        if (want != "" ? game_at(i)->id() == want : game_at(i)->accepts_rom(code)) {
             current = i
         }
     }

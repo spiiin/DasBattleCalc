@@ -15,7 +15,9 @@ async function put(input, path, key) {
   runtime.FS.writeFile(path, new Uint8Array(await file.arrayBuffer()));
   have[key] = file.name;
   $('files').textContent = [have.state, have.rom].filter(x => x).join(' · ');
-  if (have.state && have.rom) runtime._web_reload();
+  // FFT (PSX) and War of the Lions need the state only; FFTA / FFTA2 the
+  // ROM too (the app picks the game by the state, else by the ROM)
+  if (have.state) runtime._web_reload();
 }
 
 createBattleCalc({

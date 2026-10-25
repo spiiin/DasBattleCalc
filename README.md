@@ -4,7 +4,7 @@
 the browser).
 
 A battle calculator for **Final Fantasy Tactics Advance** (GBA, USA), **Final Fantasy Tactics A2: Grimoire of the
-Rift** (NDS, USA) and **Final Fantasy Tactics: The War of the Lions** (PSP, USA). It reads a BizHawk save state from the middle of a battle and shows what the game is about to do:
+Rift** (NDS, USA), **Final Fantasy Tactics** (PSX, USA) and **Final Fantasy Tactics: The War of the Lions** (PSP, USA). It reads a BizHawk save state from the middle of a battle and shows what the game is about to do:
 turn order, damage, hit and critical chances, abilities and reactions. The formulas were taken from the ROM and
 checked against the game itself. You can edit units and write the changes back into a new save, or run parameter
 experiments and plot the results.
@@ -91,6 +91,32 @@ No ISO is needed: the game's tables and texts are read from the RAM in the state
 
 Not yet: the height limits of reach, sprites, reactions, Jump / Throw / Arithmeticks. RAM layout and tables:
 [research/fftwotl/notes.md](research/fftwotl/notes.md), [layouts.md](research/fftwotl/layouts.md).
+
+## Final Fantasy Tactics (PSX)
+
+Choose it in the **Game** menu (or `--game fft`); the save is a BizHawk save state made with the Nymashock core
+(SCUS-94221). The units, the terrain and the game's tables are read from the RAM in the state; the disc (`.cue` or
+`.bin` in the ROM field) is optional and only gives the graphics.
+
+![FFT: the battle map's textured mesh from the disc, the units' sprites, the reach of Attack, an ability's forecast](docs/images/fft.png)
+
+- **Battle from a save**: the units (names, jobs, levels, Brave / Faith, HP / MP, PA / MA / Speed, CT, Move / Jump,
+  zodiac, equipment with icons, statuses, the active reactions / supports / movement abilities), the battle map with
+  its heights; with the disc, the map's own textured mesh and the units' sprites.
+- **Turn order** by clock ticks: Speed, Haste / Slow, Stop, the CT a turn costs, dead units, and charged abilities
+  going off (a spell set with CT 4 goes off at the start of the 4th tick, before the turns).
+- **Reach**: Move (Jump up and down, enemies block the way) and Attack by the weapon's kind - striking, spears in
+  lines, bows with the height bonus, guns and crossbows - as the game marks the tiles (12 saves with the game's marks
+  match).
+- **Attack calculator**: Attack with every weapon kind, the zodiac, supports (Attack UP, Defense UP, Martial Arts,
+  Concentrate), statuses (Protect, Berserk, Sleep, Charging, Chicken, Frog, Darkness, Defending), evades by side as
+  the game takes them; the abilities the unit knows (or all): Guts, Battle Skill breaks, Black / White / Time Magic,
+  Holy Sword, Dark Sword, Punch Art, Charge, Items. **51 forecasts of the game match.**
+- **Editor**: Brave, Faith, HP / MP, PA / MA / Speed, CT, Move / Jump; **Export state with edits** writes a new
+  BizHawk state (the tile and facing are not written yet).
+
+Not yet: the critical hit, elements, Throw / Jump, reactions, editing equipment and abilities. Frog and Death showed 0%
+on every unit in the first battle - not explained. RAM layout, tables and formulas: [research/fft/notes.md](research/fft/notes.md).
 
 ## Checked against the game
 
