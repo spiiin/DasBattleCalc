@@ -191,10 +191,10 @@ def private with_faith(v : int; a, t : FftUnit) : int {
 // (harmful only), the zodiac
 def private magic_ma(a, t : FftUnit; harmful : bool) : int {
     var ma = a.ma
-    if (a.support == AB_MAGIC_ATTACK_UP) {
+    if (has_ability(a, AB_MAGIC_ATTACK_UP)) {
         ma = ma * 4 / 3
     }
-    if (harmful && t.support == AB_MAGIC_DEFEND_UP) {
+    if (harmful && has_ability(t, AB_MAGIC_DEFEND_UP)) {
         ma = ma * 2 / 3
     }
     if (harmful && has_status(t, ST_SHELL)) {
@@ -203,21 +203,22 @@ def private magic_ma(a, t : FftUnit; harmful : bool) : int {
     return zodiac_xa(ma, a, t)
 }
 
-// the target's magic evade (shields, accessory: their second byte), from
-// any side, each step floored as the physical ones
+// the target's magic evade (accessory, shields: their second byte), from
+// any side: the pass share from 100 step by step, then base x it / 100
+// (Slow 59 x 95 / 100 = 56, Poison 52 -> 49 against a Mythril Shield 5)
 def magic_hit(t : FftUnit; base : int) : int {
-    var hit = clamp(base, 0, 100)
+    var share = 100
     let acc = t.equip[2]
     if ((item_flags(acc) & 0x08) != 0) {
-        hit = hit * (100 - int(gba_read8(ACCESSORY_TABLE + item_index(acc) * 2u + 1u))) / 100
+        share = share * (100 - int(gba_read8(ACCESSORY_TABLE + item_index(acc) * 2u + 1u))) / 100
     }
     for (slot in [4, 6]) {
         let item = t.equip[slot]
         if ((item_flags(item) & 0x40) != 0) {
-            hit = hit * (100 - int(gba_read8(SHIELD_TABLE + item_index(item) * 2u + 1u))) / 100
+            share = share * (100 - int(gba_read8(SHIELD_TABLE + item_index(item) * 2u + 1u))) / 100
         }
     }
-    return hit
+    return clamp(base, 0, 100) * share / 100
 }
 
 def ability_forecast(a, t : FftUnit; ab : FftAbility) : AbilityForecast {
@@ -252,7 +253,7 @@ def ability_forecast(a, t : FftUnit; ab : FftAbility) : AbilityForecast {
         f.formula = "(MA + {ab.x}) x Faith x Faith"
     } elif (fo == 0x0C) {
         var ma = a.ma
-        if (a.support == AB_MAGIC_ATTACK_UP) {
+        if (has_ability(a, AB_MAGIC_ATTACK_UP)) {
             ma = ma * 4 / 3
         }
         f.effect = has_status(t, ST_UNDEAD) ? "damage (undead)" : "heal"

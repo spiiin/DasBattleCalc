@@ -2,16 +2,15 @@ options gen2
 options indenting = 4
 
 // FFT (PSX) Attack: damage and hit chance (research/fft/notes.md,
-// "Attack"). The damage is XA x YA by the weapon's type (Battle
-// Mechanics Guide); XA's modifiers in order: critical, Attack UP / Martial
-// Arts, Berserk, the target's Defense UP / Protect, the target's Charging
-// / Sleep / Chicken / Frog, the zodiac. The hit chance multiplies the
-// target's evades by the side it is hit from: front - class, shields,
-// accessory, weapon (Weapon Guard); side - no class; back - the
-// accessory. Seen in the game's forecast: sword PA x WP, knife and bow
-// (PA + Speed) / 2 x WP, knight sword PA x Br / 100 x WP, axe rand(1..PA)
-// x WP, Charge's K added to XA, the zodiac's integer steps on PA, the
-// evades by side. The rest (statuses, supports, critical) - the Guide.
+// "Attack", "Modifiers and evades"). The damage is XA x YA by the
+// weapon's type; XA's modifiers: Attack UP / Martial Arts, Berserk, the
+// target's Defense UP / Protect, Charging / Sleep / Chicken / Frog, the
+// zodiac (each step floored). The hit: base x the share past the
+// target's evades (physical_pass). Seen in the game's forecasts: sword PA
+// x WP, knife and bow (PA + Speed) / 2 x WP, knight sword PA x Br / 100 x
+// WP, axe rand(1..PA) x WP, bare hands PA x (PA x Br / 100) with the
+// modifiers on PA, Charge's K added to XA, the zodiac, the supports and
+// statuses above, the evades by side. Not seen: the critical, elements.
 module fft_attack shared public
 
 require gba_mem
@@ -41,6 +40,8 @@ let ST_FROG = 22
 let ST_PROTECT = 26
 let ST_SLEEP = 35
 let ST_DONT_ACT = 37
+let ST_DARKNESS = 10
+let ST_DEFENDING = 6
 
 // item types (+5)
 let IT_KNIFE = 1
@@ -186,16 +187,16 @@ def zodiac_xa(xa : int; a, t : FftUnit) : int {
 // bare: Martial Arts applies (bare hands, or not weapon-elemental)
 def physical_xa(xa0 : int; a, t : FftUnit; bare : bool) : int {
     var xa = xa0
-    if (a.support == AB_ATTACK_UP) {
+    if (has_ability(a, AB_ATTACK_UP)) {
         xa = xa * 4 / 3
     }
-    if (bare && a.support == AB_MARTIAL_ARTS) {
+    if (bare && has_ability(a, AB_MARTIAL_ARTS)) {
         xa = xa * 3 / 2
     }
     if (has_status(a, ST_BERSERK)) {
         xa = xa * 3 / 2
     }
-    if (t.support == AB_DEFENSE_UP) {
+    if (has_ability(t, AB_DEFENSE_UP)) {
         xa = xa * 2 / 3
     }
     if (has_status(t, ST_PROTECT)) {
@@ -207,40 +208,65 @@ def physical_xa(xa0 : int; a, t : FftUnit; bare : bool) : int {
     return zodiac_xa(xa, a, t)
 }
 
-// the target's physical evades by the side a stands at, applied to base
-// (%) one by one, each step floored, in the order accessory, shields,
-// class, weapon (Weapon Guard): the game's forecasts - Power Break 56 ->
-// 43 -> 38 -> 36, Head Break 58 -> 45 -> 40 -> 38, Attack 100 -> 78 -> 70
-// -> 66 against a Knight with a Mythril Shield and Weapon Guard; evades:
-// the text
-def physical_hit(a, t : FftUnit; base : int; var evades : string&) : int {
+// a hand's evade: its weapon's with Weapon Guard, else its shield's
+// (weapon: slot 3 / 5, shield: slot 4 / 6)
+def private hand_evade(t : FftUnit; weapon_slot, shield_slot : int; guard : bool) : int {
+    let wi = t.equip[weapon_slot]
+    if (guard && (item_flags(wi) & 0x80) != 0) {
+        return int(gba_read8(WEAPON_TABLE + item_index(wi) * 8u + 5u))
+    }
+    let si = t.equip[shield_slot]
+    return (item_flags(si) & 0x40) != 0 ? int(gba_read8(SHIELD_TABLE + item_index(si) * 2u)) : 0
+}
+
+// The share of hits past the target's evades (%), as the game takes it:
+// the slots accessory, right hand, left hand, class in turn from 100,
+// each step floored; by the side a stands at (side: no class; back: the
+// accessory only); Darkness on a / Defending on t double each evade.
+// The game's forecasts against a Knight (Iron Sword with Weapon Guard 5,
+// Mythril Shield 22, class 10): 100 -> 95 -> 74 -> 66; with Darkness or
+// Defending 100 -> 90 -> 50 -> 40.
+def physical_pass(a, t : FftUnit; var evades : string&) : int {
     let side = attack_side(a, t)
-    let cev = class_evade(t)
-    let sev = shield_evade(t)
+    let guard = has_ability(t, AB_WEAPON_GUARD)
     let aev = accessory_evade(t)
-    let wev = t.reaction == AB_WEAPON_GUARD ? unit_weapon(t).w_ev : 0
+    let rev = hand_evade(t, 3, 4, guard)
+    let lev = hand_evade(t, 5, 6, guard)
+    let cev = class_evade(t)
     var evs : array<int>
     if (side == 0) {
-        evs <- [aev, sev, cev, wev]
-        evades = "front: class {cev}%, shield {sev}%, accessory {aev}%, weapon {wev}%"
+        evs <- [aev, rev, lev, cev]
+        evades = "front: accessory {aev}%, right hand {rev}%, left hand {lev}%, class {cev}%"
     } elif (side == 1) {
-        evs <- [aev, sev, wev]
-        evades = "side: shield {sev}%, accessory {aev}%, weapon {wev}%"
+        evs <- [aev, rev, lev]
+        evades = "side: accessory {aev}%, right hand {rev}%, left hand {lev}%"
     } else {
         evs <- [aev]
         evades = "back: accessory {aev}%"
     }
-    let no_evade = (a.support == AB_CONCENTRATE || has_status(t, ST_CHARGING) || has_status(t, ST_PERFORMING)
+    let k = (has_status(a, ST_DARKNESS) ? 2 : 1) * (has_status(t, ST_DEFENDING) ? 2 : 1)
+    if (k > 1) {
+        evades += " (x {k})"
+    }
+    var share = 100
+    for (ev in evs) {
+        share = share * (100 - min(ev * k, 100)) / 100
+    }
+    return share
+}
+
+// the hit chance of a physical action with the base hit base (%): base x
+// the pass share / 100 - Power Break 56 x 66 / 100 = 36, Head Break 58 ->
+// 38, Shield Break 68 -> 44, Weapon Break 43 -> 28, Armor Break 53 -> 34;
+// evades: the text
+def physical_hit(a, t : FftUnit; base : int; var evades : string&) : int {
+    let no_evade = (has_ability(a, AB_CONCENTRATE) || has_status(t, ST_CHARGING) || has_status(t, ST_PERFORMING)
         || has_status(t, ST_SLEEP) || has_status(t, ST_STOP) || has_status(t, ST_DONT_ACT) || has_status(t, ST_PETRIFY))
     if (no_evade) {
         evades = "evades ignored (Concentrate or the target's status)"
         return clamp(base, 0, 100)
     }
-    var hit = clamp(base, 0, 100)
-    for (ev in evs) {
-        hit = hit * (100 - min(ev, 100)) / 100
-    }
-    return hit
+    return clamp(base, 0, 100) * physical_pass(a, t, evades) / 100
 }
 
 // k: Charge's power, added to XA
@@ -251,10 +277,12 @@ def attack_forecast(a, t : FftUnit; k : int = 0) : AttackForecast {
     let br = a.pa * a.brave / 100
     var ya = w.wp
     if (bare) {
-        f.formula = "PA x Br / 100 x PA"
-        f.xa_min = br
-        f.xa_max = br
-        ya = a.pa
+        // the modifiers change the PA factor: Martial Arts 6 -> 9, x (6 x
+        // 56 / 100 = 3) = 27 in the game (not 3 -> 4, x 6 = 24)
+        f.formula = "PA x (PA x Br / 100)"
+        f.xa_min = a.pa
+        f.xa_max = a.pa
+        ya = br
     } elif (w.kind == IT_KNIFE || w.kind == IT_NINJA || w.kind == IT_BOW) {
         f.formula = "(PA + Speed) / 2 x WP"
         f.xa_min = (a.pa + a.speed) / 2
@@ -294,16 +322,16 @@ def attack_forecast(a, t : FftUnit; k : int = 0) : AttackForecast {
     f.side = attack_side(a, t)
     f.hit = physical_hit(a, t, 100, f.evades)
     f.notes |> push("zodiac: {ZODIAC_TEXT[zodiac_compat(a, t) + 2]}")
-    if (a.support == AB_ATTACK_UP) {
+    if (has_ability(a, AB_ATTACK_UP)) {
         f.notes |> push("Attack UP: XA x 4 / 3")
     }
-    if (bare && a.support == AB_MARTIAL_ARTS) {
+    if (bare && has_ability(a, AB_MARTIAL_ARTS)) {
         f.notes |> push("Martial Arts: XA x 3 / 2")
     }
     if (has_status(a, ST_BERSERK)) {
         f.notes |> push("Berserk: XA x 3 / 2")
     }
-    if (t.support == AB_DEFENSE_UP) {
+    if (has_ability(t, AB_DEFENSE_UP)) {
         f.notes |> push("target's Defense UP: XA x 2 / 3")
     }
     if (has_status(t, ST_PROTECT)) {

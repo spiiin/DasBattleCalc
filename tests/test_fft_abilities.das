@@ -61,9 +61,11 @@ def main() : int {
     }
     check("Ramza knows:{learned}", learned == " Accumulate Dash Wish")
     // (ability id, the game's amount, the game's hit %)
-    // + Wish (152) 44, Chakra (106) on Ramza himself 30, Potion (368) 30
+    // + Wish (152) 44, Potion (368) 30; Shield / Weapon / Armor Break (140,
+    // 141, 139) 44 / 28 / 34
     let cases = fixed_array<tuple<int; int; int>>((147, 18, 100), (148, 12, 66), (138, 0, 38), (144, 0, 36), (142, 9, 36),
-        (16, 17, 95), (1, 17, 100), (34, 0, 56), (28, 0, 49), (155, 54, 100), (165, 42, 100), (152, 44, 100), (368, 30, 100))
+        (16, 17, 95), (1, 17, 100), (34, 0, 56), (28, 0, 49), (155, 54, 100), (165, 42, 100), (152, 44, 100), (368, 30, 100),
+        (140, 0, 44), (141, 0, 28), (139, 0, 34))
     for (c in cases) {
         let ab = read_ability(c._0)
         let f = ability_forecast(ramza, lez, ab)

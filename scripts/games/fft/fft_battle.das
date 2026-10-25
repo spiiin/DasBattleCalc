@@ -125,6 +125,7 @@ struct FftUnit {
     @hide reaction : int            // +0x14 u16 ability id (0x1BF Weapon Guard)
     @hide support : int             // +0x16 u16
     @hide movement : int            // +0x18 u16
+    @hide skills : uint8[11]        // +0x8B: the active R/S/M as bits (has_ability)
     @caption = "Zodiac" @readonly zodiac_text : string
     @caption = "Abilities" @readonly ability_text : string
     @hide active : bool             // taking its turn (its record's CT reads 0 meanwhile)
@@ -148,6 +149,16 @@ def unit_sprite(u : FftUnit) : int {
     return -1
 }
 
+// The active reactions, supports and movement abilities - the set ones
+// and the innate (a Chemist's Throw Item): bits from the record's +0x8B,
+// 0x80 first - reactions 0x1A6.., supports 0x1C6.. (+0x8F), movement
+// 0x1E6.. (+0x93). The game's forecasts follow these bits, not the ids at
+// +0x14..+0x18 (an Attack UP id alone changed nothing, its bit did).
+def has_ability(u : FftUnit; id : int) : bool {
+    let i = id - 0x1A6
+    return i >= 0 && i < 88 && (uint(u.skills[i >> 3]) & (0x80u >> uint(i & 7))) != 0u
+}
+
 def unit_present(rec : uint) : bool {
     return gba_read8(rec + 0x01u) != 0xFFu && gba_read8(rec + 0x12Cu) != 0xFFu
 }
@@ -166,6 +177,9 @@ def read_unit(slot : int) : FftUnit {
     u.reaction = int(gba_read16(rec + 0x14u))
     u.support = int(gba_read16(rec + 0x16u))
     u.movement = int(gba_read16(rec + 0x18u))
+    for (k in range(11)) {
+        u.skills[k] = uint8(gba_read8(rec + 0x8Bu + uint(k)))
+    }
     u.team = (u.flags & 0x10) != 0 ? TEAM_ENEMY : TEAM_PLAYER
     for (k in range(EQUIP_SLOTS)) {
         u.equip[k] = int(gba_read8(rec + 0x1Au + uint(k)))
@@ -212,8 +226,8 @@ def update_unit(var u : FftUnit) {
     let sex = (u.gender & 0x20) != 0 ? "monster" : ((u.gender & 0x40) != 0 ? "female" : "male")
     u.zodiac_text = "{u.zodiac < 13 ? ZODIAC_NAMES[u.zodiac] : "?"}, {sex}"
     var abil : array<string>
-    for (id in [u.reaction, u.support, u.movement]) {
-        if (id != 0) {
+    for (id in range(0x1A6, 0x1FE)) {
+        if (has_ability(u, id)) {
             abil |> push(ability_name(id))
         }
     }

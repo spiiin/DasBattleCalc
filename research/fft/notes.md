@@ -228,10 +228,7 @@ given to Ramza by RAM edits: +0x13 the secondary, +0x99 + 3 x job FF FF):
 | Night Sword (30) | 42, 100% | PA x WP |
 | Frog (0A), Death (0E) | 0% on Lezales | not explained: not his accessory; no immunity bits found |
 
-The evades are applied one by one with each step floored, in the order
-shield, class, weapon (accessory 0 here, first by assumption): Power
-Break 56 -> 43 -> 38 -> 36 and Head Break 58 -> 45 -> 40 -> 38 tell this
-from a product floored once (37 / 38).
+The evades: see "Modifiers and evades" below (the pass share).
 
 ## Export (a state with edits)
 
@@ -261,3 +258,35 @@ the 46 of rounding 2/5 up), 200 -> 80, 100 -> 40; Lezales' max HP 200
 
 The cursor's tile while targeting: 0x800E4E90 (x), 0x800E4E98 (y); in the
 first battle's camera Down x - 1, Up x + 1, Left y + 1, Right y - 1.
+
+## Modifiers and evades (the game's forecast)
+
+**Active abilities** are bits in the record, not the ids at +0x14..+0x18:
++0x8B..+0x8E reactions 0x1A6.., +0x8F..+0x92 supports 0x1C6.., +0x93..
+movement 0x1E6.. (0x80 first). Lezales: +0x8E 0x40 Weapon Guard, +0x92
+0x20 Equip Change (all the enemies); Fukes +0x91 0x08 Throw Item (the
+Chemist's innate). Setting Attack UP's id at +0x16 changed nothing; its
+bit (+0x90 0x10) gave 56.
+
+Ramza's sword at Lezales (42, 66%), one edit each:
+
+| edit | game | |
+|---|---|---|
+| Attack UP (Ramza) | 56 | XA 6 x 4 / 3 = 8 |
+| Defense UP / Protect (Lezales) | 28 | XA x 2 / 3 |
+| Berserk (Ramza) | 63 | XA x 3 / 2 |
+| Sleep / Charging (Lezales) | 63, 100% | x 3 / 2, no evades |
+| Chicken / Frog (Lezales) | 63 | x 3 / 2 |
+| Concentrate (Ramza) | 42, 100% | no evades |
+| Darkness (Ramza) / Defending (Lezales) | 42, 40% | evades x 2 |
+| no Weapon Guard bit (Lezales) | 70% | no weapon evade |
+| bare hands | 18 | PA x (PA x Br / 100) = 6 x 3 |
+| bare hands + Martial Arts | 27 | the PA factor 6 -> 9, x 3 (not 3 -> 4, x 6) |
+
+**Hit = base x pass / 100**, where pass is the share past the evades from
+100, the slots in the engine's order - accessory, right hand, left hand,
+class - each step floored; a hand gives its weapon's evade with Weapon
+Guard, else its shield's. Lezales: 100 -> 95 -> 74 -> 66; with Darkness
+100 -> 90 -> 50 -> 40. Breaks (PA + WP + Y): Head 58 -> 38, Shield 68 ->
+44, Weapon 43 -> 28, Armor 53 -> 34; Power / Magic Break (PA + Y) 56 ->
+36. Magic the same with magic evades: Slow 59 x 95 / 100 = 56.

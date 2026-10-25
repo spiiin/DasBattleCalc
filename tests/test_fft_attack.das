@@ -35,6 +35,16 @@ def find_unit(units : array<FftUnit>; name : string) : int {
     return -1
 }
 
+def set_status(var u : FftUnit; n : int) {
+    u.status[n >> 3] = uint8(uint(u.status[n >> 3]) | (0x80u >> uint(n & 7)))
+}
+
+def set_skill(var u : FftUnit; id : int; on : bool) {
+    let i = id - 0x1A6
+    let m = 0x80u >> uint(i & 7)
+    u.skills[i >> 3] = uint8(on ? (uint(u.skills[i >> 3]) | m) : (uint(u.skills[i >> 3]) & ~m))
+}
+
 [export]
 def main() : int {
     check("state loads", gba_load_state(gui_arg("--state", "")) == "")
@@ -79,6 +89,49 @@ def main() : int {
         let g = attack_forecast(armed, lez)
         check("{item_name(wc.x)}: {g.damage_min}..{g.damage_max} {g.hit}%, the game: {wc.y}..{wc.z} 66%",
             g.damage_min == wc.y && g.damage_max == wc.z && g.hit == 66)
+    }
+    // supports and statuses set in RAM (statuses +0x58, ability bits
+    // +0x8B), the game's forecast at Lezales (base 42, 66%)
+    for (mc in fixed_array<tuple<string; int; int>>(("Attack UP", 56, 66), ("Defense UP", 28, 66), ("Protect", 28, 66),
+            ("Berserk", 63, 66), ("Sleep", 63, 100), ("Charging", 63, 100), ("Concentrate", 42, 100), ("Darkness", 42, 40),
+            ("Chicken", 63, 66), ("Frog", 63, 66), ("Defending", 42, 40), ("no Weapon Guard", 42, 70), ("bare hands", 18, 66),
+            ("Martial Arts", 27, 66))) {
+        var a = ramza
+        var t = units[li]
+        a.equip[3] = ramza.equip[3]
+        let what = mc._0
+        if (what == "Attack UP") {
+            set_skill(a, int(0x1D1), true)
+        } elif (what == "Defense UP") {
+            set_skill(t, int(0x1D2), true)
+        } elif (what == "Protect") {
+            set_status(t, 26)
+        } elif (what == "Berserk") {
+            set_status(a, 20)
+        } elif (what == "Sleep") {
+            set_status(t, 35)
+        } elif (what == "Charging") {
+            set_status(t, 4)
+        } elif (what == "Concentrate") {
+            set_skill(a, int(0x1D5), true)
+        } elif (what == "Darkness") {
+            set_status(a, 10)
+        } elif (what == "Chicken") {
+            set_status(t, 21)
+        } elif (what == "Frog") {
+            set_status(t, 22)
+        } elif (what == "Defending") {
+            set_status(t, 6)
+        } elif (what == "no Weapon Guard") {
+            set_skill(t, int(0x1BF), false)
+        } elif (what == "bare hands") {
+            a.equip[3] = 0xFF
+        } elif (what == "Martial Arts") {
+            a.equip[3] = 0xFF
+            set_skill(a, int(0x1D8), true)
+        }
+        let g = attack_forecast(a, t)
+        check("{what}: {g.damage_min} {g.hit}%, the game: {mc._1} {mc._2}%", g.damage_min == mc._1 && g.hit == mc._2)
     }
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
     return failed == 0 ? 0 : 1
