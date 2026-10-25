@@ -27,9 +27,18 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   вкладки; сейв, где Luso стоит рядом с Sasarr — `ffta2_test_attack.State`),
   `tests/test_ffta2_vm.das` (все 245 — интерпретатором VM игры: `ffta2_vm.das` исполняет её скрипты из ROM, `ffta2_forecast.das` — нативные вызовы). Пробы FFTA2: `research/ffta2/plan_probe.lua` (план ввода,
   скриншоты, дампы, лог записей / исполнения), `vary_probe.lua` (прогноз при правках RAM), `exec_probe.lua` (настоящие удары с заданными сидами), `arm.py` (дизассемблер ARM), `vmdis.py` / `vmdec.py` (скрипты VM), `natives.py` (нативные вызовы).
+- FFT: The War of the Lions (PSP, ULUS10297): `battlecalc --game fftwotl --state <fftwotl_test_battle1.ppst>` — сейв
+  PPSSPP (`native/psp_mem.cpp`: заголовок 0xB0, тело zstd, RAM 32 МБ из секции Memory; запись — несжатые блоки zstd).
+  ISO не нужен: BOOT.BIN лежит в RAM (RAM = смещение + 0x08803FAC), таблицы и тексты читаются оттуда
+  (`fftwotl_data.das`; раскладки — `research/fftwotl/layouts.md`). Юниты — `fftwotl_battle.das` (21 запись по 0x1E8 с
+  0x092E5CB4), формулы — `fftwotl_attack.das` по `research/fftwotl/formulas.md` (Attack и Fire сверены с прогнозами игры:
+  `tests/test_fftwotl_forecast.das`, данные `research/fftwotl/forecast1.txt` / `forecast2.txt` от `fcvary.py [--magic]`), ходы —
+  `fftwotl_turns.das`, Explore — `fftwotl_explore.das`. Тесты: `tests/test_psp_mem.das` (`--out`), `test_fftwotl_battle.das`
+  (`--print 1`), `test_fftwotl_attack.das`, `test_fftwotl_explore.das` (+ порядок ходов), `test_fftwotl_export.das`.
+  Пробы: PPSSPP WebSocket-отладчик (`research/fftwotl/pprun.py`, `ppdbg.py`, `mips.py`; заметки — `research/fftwotl/notes.md`).
   Общие части игр: `scripts/ui/battle_field.das` (изометрическое поле: `FieldMap`, `FieldUnit`, ввод — `FieldInput`),
   `scripts/ui/roster.das`, `scripts/ui/inspector.das`, `scripts/core/teams.das`, `scripts/core/config.das` (local.cfg:
-  у FFTA ключи `state` / `rom`, у FFTA2 `ffta2_state` / `ffta2_rom`). Игры делят один загруженный ROM и сейв:
+  у FFTA ключи `state` / `rom`, у FFTA2 `ffta2_state` / `ffta2_rom`, у WotL `wotl_state`). Игры делят один загруженный ROM и сейв:
   `GameModule.activate()` перезагружает свои файлы при переключении, веб — `shell_reload()` по коду ROM.
 - Пути этой машины (ROM, BizHawk, тестовый сейв) — в `CLAUDE.local.md` (не в репозитории).
 - daScript — локальная ветка (master + `fix-annotation-hex`), через worktree dasSDL3 `C:\src\dasSDL3-localdas`
