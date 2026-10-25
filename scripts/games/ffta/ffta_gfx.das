@@ -32,8 +32,9 @@ def unit_sprite_set(un : BattleUnit) : int {
 }
 
 // The first frame of the standing animation (0 facing +y / +x, 1 facing
-// -x / -y; -y and +x mirrored) as a gba_gfx handle, -1 when off or absent.
-def unit_sprite(un : BattleUnit) : int {
+// -x / -y; -y and +x mirrored) as a gba_gfx handle, -1 when off or absent;
+// view_facing: the facing as the field draws it (field_view_facing)
+def unit_sprite(un : BattleUnit; view_facing : int) : int {
     if (!rom_sprites || !gba_has_rom()) {
         return -1
     }
@@ -41,7 +42,7 @@ def unit_sprite(un : BattleUnit) : int {
     if (set_ptr < 0x08000000u || set_ptr >= 0x0A000000u) {
         return -1
     }
-    let f = un.facing & 3
+    let f = view_facing & 3
     let anim = gba_read32(set_ptr + (f == 0 || f == 3 ? 0u : 12u))
     if (anim < 0x08000000u || anim >= 0x0A000000u || gba_read32(anim) == 0u) {
         return -1
