@@ -32,7 +32,8 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   `fft_map.das`). Тесты: `tests/test_psx_mem.das` (`--state <fft_test_battle1.State> [--out <new.State>]`),
   `tests/test_fft_battle.das` (то же), `tests/test_fft_turns.das` (`fft_test_battle1b.State`: 9 ходов из игры),
   `tests/test_fft_attack.das` (`fft_test_ramza2.State`: прогнозы Attack игры — урон, стороны, зодиак),
-  `tests/test_fft_graphics.das` (`fft_test_battle1.State --rom <.cue>`). Пробы и форматы — `research/fft/`
+  `tests/test_fft_graphics.das` (`fft_test_battle1.State --rom <.cue>`), `tests/test_fft_reach.das` (`--dir <PSX/State>`:
+  12 сейвов `fft_reach_*.State` с открытыми зонами Move / Attack — флаги игры в терраине +5). Пробы и форматы — `research/fft/`
   (`plan_probe.lua`, `ct_probe.lua`, `psx.py`, `notes.md`). В US-версии ○ подтверждает, × отменяет.
   Общие части игр: `scripts/ui/battle_field.das` (изометрическое поле: `FieldMap`, `FieldUnit`, ввод — `FieldInput`),
   `scripts/ui/roster.das`, `scripts/ui/inspector.das`, `scripts/core/teams.das`, `scripts/core/config.das` (local.cfg:

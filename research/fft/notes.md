@@ -167,3 +167,28 @@ them; checked by rendering (`native/gba_gfx.cpp`, `scripts/games/fft/fft_map.das
   Quad corners 0 1 / 2 3. MAP056: 63 + 372 textured, 27 + 45 untextured.
   The field draws the polygons back to front (by the diagonal) with the
   units between, textures per (page, palette).
+
+## Reach (the game's marks)
+
+Opening Move or an action's targeting marks the terrain's +5 in RAM: bit
+0x20 the tiles to move to, 0x40 the action's range (the bits stay until the
+next marking). States saved with the marks shown (`fft_reach_*.State`,
+`tests/test_fft_reach.das`): Ramza's Move with Move / Jump edited (5/3,
+7/3, 3/8, 6/1), his Attack with a sword, a spear, a bow, a crossbow, a gun
+(+0x1D edited) and tiles' heights edited.
+
+- **Move**: breadth first, a step to the 4 sides costs 1, the shown
+  heights (with half steps) differ by at most Jump, up or down; living
+  enemies block the way, allies and the dead do not; the end must be
+  free. Water's depth and terrain kinds (not on this map) not seen.
+- **Attack** by the weapon table's +1 flags: 0x80 striking (swords,
+  knives, axes, rods, staves, flails, bags; bare hands) the 4 neighbors;
+  0x40 lunging (spears, cloth: range 2) straight lines up to the range;
+  for both the target may be from 3 below to 2.5 above (14 above 11: no;
+  13.5: yes; 8: yes; 7.5: no). 0x10 arc (bows, range 5): 3 tiles to range
+  + (attacker - target) / 2 in whole steps, toward zero (target 5 above:
+  -2, still 3; 6 above: -3, no). 0x20 direct (guns 8, crossbows 4, harps
+  and books 3): 3 tiles to the range, any height (a target 19 above at 3
+  tiles: yes). Water: the target's height + its depth (MAP056's (0, 0):
+  height 0, depth 4, 9 tiles from Ramza at 11: out; without the depth:
+  in). +6 bit 1 (the tower's top): never a target.

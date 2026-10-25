@@ -31,6 +31,7 @@ require fft_battle
 require fft_turns
 require fft_attack
 require fft_map
+require fft_reach
 
 def private turn_end_text(how : TurnEnd) : string {
     return how == TurnEnd.MoveAndAct ? "Move + Act" : (how == TurnEnd.ActOnly ? "Act" : (how == TurnEnd.MoveOnly ? "Move" : "Wait"))
@@ -239,10 +240,19 @@ class FftGame : GameModule {
                 sprite = spr, sprite_scale = 0.75))
         }
         let bar = u(28.0)
+        // the selected unit's Move, or its Attack on the Attack tab
         var reach : array<bool>
-        let input = draw_battle_field(field_map, fu, selected, -1, reach, field, x + u(8.0), y, w - u(16.0), h - bar)
+        if (selected >= 0 && selected < length(units) && map.w > 0) {
+            reach <- calc_tab == 2 ? attack_reach(units[selected], map) : move_reach(units, map, selected)
+        }
+        let input = draw_battle_field(field_map, fu, selected, calc_tab == 2 ? attack_target : -1, reach, field, x + u(8.0), y,
+            w - u(16.0), h - bar)
         if (input.select >= 0) {
             selected = input.select
+        }
+        if (input.target >= 0) {
+            attack_target = input.target
+            calc_tab = 2
         }
         if (input.moved >= 0) {
             units[input.moved].x = input.move_x
@@ -369,7 +379,7 @@ class FftGame : GameModule {
         let dim = offset_color(fg, 60)
         SetCursorScreenPos(ImVec2(x, y))
         let head = wpn.item == 0 ? "bare hands" : "{wpn.name} (WP {wpn.wp}, range {wpn.reach})"
-        bl_label("{a.name}: Attack with {head}  (dim: out of range; height not checked)", ICON_ATTACK, w)
+        bl_label("{a.name}: Attack with {head}  (dim: out of reach from where it stands)", ICON_ATTACK, w)
         let row_h = u(21.0)
         let names = fixed_array<string>("Target", "Dist", "Side", "Damage", "Critical", "Hit", "HP after")
         let widths = fixed_array<float>(110.0, 50.0, 60.0, 80.0, 80.0, 50.0, 80.0)
@@ -390,7 +400,17 @@ class FftGame : GameModule {
         var yy = GetCursorScreenPos().y
         let sides = fixed_array<string>("front", "side", "back")
         if (attack_target < 0 || attack_target >= length(units) || attack_target == selected) {
-            attack_target = selected == 0 ? 1 : 0
+            // an enemy in reach, else any other unit alive
+            attack_target = -1
+            for (round in range(2)) {
+                for (i in range(length(units))) {
+                    let t = units[i]
+                    let fits = round == 1 || (t.team != a.team && attack_reaches(a, wpn, map, t.x, t.y))
+                    if (attack_target < 0 && i != selected && t.hp > 0 && fits) {
+                        attack_target = i
+                    }
+                }
+            }
         }
         for (i in range(length(units))) {
             let t = units[i]
@@ -410,7 +430,7 @@ class FftGame : GameModule {
             *dl |> AddRectFilled(ImVec2(x + u(2.0), yy + u(3.0)), ImVec2(x + u(6.0), yy + row_h - u(3.0)),
                 abgr(side_color(t.team)), u(2.0), ImDrawFlags.None)
             let b = yy + u(15.0)
-            let col = dist <= wpn.reach ? fg : dim
+            let col = attack_reaches(a, wpn, map, t.x, t.y) ? fg : dim
             let dmg = f.damage_min == f.damage_max ? "{f.damage_min}" : "{f.damage_min}..{f.damage_max}"
             text_at_baseline(cols[0], b, t.name, team_text_color(t.team))
             text_at_baseline(cols[1], b, "{dist}", col)

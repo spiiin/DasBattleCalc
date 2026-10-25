@@ -67,6 +67,7 @@ struct FftWeapon {
     wp : int
     w_ev : int
     reach : int
+    flags : int                     // 0x80 striking, 0x40 lunging, 0x20 direct, 0x10 arc
     element : int
 }
 
@@ -86,10 +87,11 @@ def unit_weapon(u : FftUnit) : FftWeapon {
             let w = WEAPON_TABLE + item_index(item) * 8u
             return FftWeapon(item = item, name = item_name(item), kind = int(gba_read8(ITEM_TABLE + uint(item) * 12u + 5u)),
                 wp = int(gba_read8(w + 4u)), w_ev = int(gba_read8(w + 5u)), reach = int(gba_read8(w)),
+                flags = int(gba_read8(w + 1u)),
                 element = int(gba_read8(w + 6u)))
         }
     }
-    return FftWeapon(name = "bare hands", reach = 1)
+    return FftWeapon(name = "bare hands", reach = 1, flags = 0x80)
 }
 
 def class_evade(u : FftUnit) : int {

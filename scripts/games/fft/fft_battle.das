@@ -228,6 +228,8 @@ struct FftMap {
     h : int
     height : array<int>             // the tile's height in half units (x 2: slopes are halves), -1 none
     upper : array<int>              // the upper floor's, -1 none
+    flags : array<int>              // +6: bit 1 - not a target (the tower's top in MAP056)
+    depth : array<int>              // +3 bits 5..7: water's depth in height steps
 }
 
 // a tile: +2 the height, +3 bits 0..4 the slope's height, +0 bits 0..5
@@ -249,6 +251,8 @@ def read_map(var m : FftMap) : bool {
     for (i in range(w * h)) {
         let t = tiles + uint(i) * 8u
         m.height |> push(tile_height2(t))
+        m.flags |> push(int(gba_read8(t + 6u)))
+        m.depth |> push(int(gba_read8(t + 3u)) >> 5)
         let u = tiles + 256u * 8u + uint(i) * 8u
         let any = gba_read32(u) != 0u || gba_read32(u + 4u) != 0u
         m.upper |> push(any ? tile_height2(u) : -1)
