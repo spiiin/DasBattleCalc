@@ -1,0 +1,8 @@
+*.bin
+*.bmp
+*.png
+*.raw
+sys.cnf
+*_log.txt
+domains.txt
+pad.txt

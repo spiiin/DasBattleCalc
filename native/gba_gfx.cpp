@@ -18,14 +18,16 @@ struct Gfx {
 std::vector<Gfx> g_gfx;
 std::map<std::tuple<int, uint32_t, uint32_t, uint32_t, int>, int> g_cache;
 uint32_t g_serial = 0;
+uint32_t g_disc_serial = 0;
 
-// another ROM: the cached textures show the old one
+// another ROM or disc: the cached textures show the old one
 void check_rom() {
-    if (g_serial == gba_rom_serial()) return;
+    if (g_serial == gba_rom_serial() && g_disc_serial == psx_disc_serial()) return;
     for (auto & g : g_gfx) if (g.tex) SDL_DestroyTexture(g.tex);
     g_gfx.clear();
     g_cache.clear();
     g_serial = gba_rom_serial();
+    g_disc_serial = psx_disc_serial();
 }
 
 uint32_t be16(uint32_t a) { return gba_read8(a) << 8 | gba_read8(a + 1); }
@@ -278,6 +280,188 @@ int nds_item_icon(SDL_Renderer * r, int icon) {
     return handle;
 }
 
+// ------------------------------------------------------------------ FFT (PSX)
+// research/fft/notes.md, "Graphics": the formats as FFTPatcher's sprite
+// editor and GaneshaDx read them.
+
+namespace {
+
+uint32_t bgr555(uint32_t v) {
+    uint32_t r = v & 31, g = (v >> 5) & 31, b = (v >> 10) & 31;
+    r = r << 3 | r >> 2; g = g << 3 | g >> 2; b = b << 3 | b >> 2;
+    return 0xFF000000u | b << 16 | g << 8 | r;
+}
+
+// a battle sprite sheet (.SPR): 16 palettes, 256 x 288 4bpp (low nibble
+// first), then 200 rows packed: nibbles high first, 0 + n a run of n
+// zeros (n 0: the next nibble, 7: two, 8: three nibbles, low first)
+bool spr_pixels(const std::vector<uint8_t> & b, std::vector<uint8_t> & px) {
+    const size_t RAW = 36864;
+    if (b.size() < 512 + RAW) return false;
+    px.assign(256 * 488, 0);
+    for (size_t i = 0; i < RAW; ++i) {
+        px[i * 2] = b[512 + i] & 15;
+        px[i * 2 + 1] = b[512 + i] >> 4;
+    }
+    std::vector<uint8_t> nib;
+    for (size_t i = 512 + RAW; i < b.size(); ++i) {
+        nib.push_back(b[i] >> 4);
+        nib.push_back(b[i] & 15);
+    }
+    std::vector<uint8_t> out;
+    size_t j = 0;
+    auto at = [&](size_t k) -> uint32_t { return k < nib.size() ? nib[k] : 0; };
+    while (j < nib.size() && out.size() < 200 * 256) {
+        if (nib[j]) { out.push_back(nib[j]); ++j; continue; }
+        uint32_t s = at(j + 1), l = s;
+        if (s == 7) { l = at(j + 2) | at(j + 3) << 4; j += 2; }
+        else if (s == 8) { l = at(j + 2) | at(j + 3) << 4 | at(j + 4) << 8; j += 3; }
+        else if (s == 0) { l = at(j + 2); j += 1; }
+        out.insert(out.end(), l, 0);
+        j += 2;
+    }
+    for (size_t k = 0; k + 1 < out.size(); k += 2) std::swap(out[k], out[k + 1]);
+    for (size_t k = 0; k < out.size() && RAW * 2 + k < px.size(); ++k) px[RAW * 2 + k] = out[k];
+    return true;
+}
+
+const int SPR_SIZES[16][2] = {{8, 8}, {16, 8}, {16, 16}, {16, 24}, {24, 8}, {24, 16}, {24, 24}, {32, 8},
+    {32, 16}, {32, 24}, {32, 32}, {32, 40}, {48, 16}, {40, 32}, {48, 48}, {56, 56}};
+const char * SHP_NAMES[8] = {"TYPE1", "TYPE2", "CYOKO", "MON", "OTHER", "RUKA", "ARUTE", "KANZEN"};
+
+uint32_t le32v(const std::vector<uint8_t> & s, size_t o) {
+    return o + 4 <= s.size() ? s[o] | s[o + 1] << 8 | s[o + 2] << 16 | (uint32_t)s[o + 3] << 24 : 0;
+}
+
+}  // namespace
+
+int psx_unit_sprite(SDL_Renderer * r, int sprite, int palette, int frame, bool flip) {
+    check_rom();
+    auto key = std::make_tuple(4, (uint32_t)sprite, (uint32_t)palette, (uint32_t)frame, flip ? 1 : 0);
+    auto it = g_cache.find(key);
+    if (it != g_cache.end()) return it->second;
+    int handle = -1;
+    // BATTLE.BIN: the sprites' sectors and sizes (8 B), their kinds (4 B:
+    // the SHP, the SEQ, flying, height)
+    auto battle = psx_buf(psx_disc_file("BATTLE.BIN"));
+    if (r && battle && battle->size() > 0x2E1CC && sprite > 0 && sprite < 159) {
+        int lba = (int)le32v(*battle, 0x2DCD4 + sprite * 8), size = (int)le32v(*battle, 0x2DCD8 + sprite * 8);
+        int kind = (*battle)[0x2D748 + sprite * 4];
+        std::vector<uint8_t> px;
+        auto spr = psx_buf(psx_disc_read(lba, size));
+        std::string shp_name = std::string("BATTLE/") + SHP_NAMES[kind & 7] + ".SHP";
+        auto shp = psx_buf(psx_disc_file(shp_name.c_str()));
+        if (spr && shp && shp->size() > 0x410 && kind < 8 && spr_pixels(*spr, px)) {
+            // the SHP: u32 the second table, u16 the first frame of the
+            // sheet's lower half; frames from 0x40A by u32 offsets at 8
+            const auto & s = *shp;
+            uint32_t half = s[4] | s[5] << 8;
+            std::vector<uint32_t> offs{0};
+            for (size_t o = 0x0C; o + 4 <= 0x40A; o += 4) {
+                uint32_t v = le32v(s, o);
+                if (!v) break;
+                offs.push_back(v);
+            }
+            if (frame >= 0 && frame < (int)offs.size()) {
+                size_t at = offs[frame] + 0x40A;
+                int yoff = frame >= (int)half ? 256 : 0;
+                int n = at + 2 <= s.size() ? s[at] + 1 : 0;
+                struct Piece { int x, y, tx, ty, w, h; bool rx, ry; };
+                std::vector<Piece> pieces;
+                int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+                for (int k = 0; k < n && at + 6 + k * 4 <= s.size(); ++k) {
+                    const uint8_t * b = &s[at + 2 + k * 4];
+                    uint32_t f = b[2] | b[3] << 8;
+                    Piece p{(int8_t)b[0], (int8_t)b[1], int(f & 31) * 8, int((f >> 5) & 31) * 8 + yoff,
+                            SPR_SIZES[(f >> 10) & 15][0], SPR_SIZES[(f >> 10) & 15][1], (f & 0x4000) != 0,
+                            (f & 0x8000) != 0};
+                    if (pieces.empty()) { x0 = p.x; y0 = p.y; x1 = p.x + p.w; y1 = p.y + p.h; }
+                    x0 = SDL_min(x0, p.x); y0 = SDL_min(y0, p.y);
+                    x1 = SDL_max(x1, p.x + p.w); y1 = SDL_max(y1, p.y + p.h);
+                    pieces.push_back(p);
+                }
+                int w = x1 - x0, h = y1 - y0;
+                if (!pieces.empty() && w <= 256 && h <= 256) {
+                    const uint8_t * pal = &(*spr)[(palette & 15) * 32];
+                    std::vector<uint32_t> img(w * h, 0);
+                    // the first piece is in front
+                    for (auto p = pieces.rbegin(); p != pieces.rend(); ++p)
+                        for (int y = 0; y < p->h; ++y)
+                            for (int x = 0; x < p->w; ++x) {
+                                int sx = p->tx + (p->rx ? p->w - 1 - x : x), sy = p->ty + (p->ry ? p->h - 1 - y : y);
+                                if (sx >= 256 || sy >= 488) continue;
+                                int c = px[sy * 256 + sx];
+                                if (!c) continue;
+                                int dx = p->x - x0 + x, dy = p->y - y0 + y;
+                                if (flip) dx = w - 1 - dx;
+                                img[dy * w + dx] = bgr555(pal[c * 2] | pal[c * 2 + 1] << 8);
+                            }
+                    handle = make(r, img, w, h, flip ? (float)x1 : (float)-x0, (float)-y0);
+                }
+            }
+        }
+    }
+    g_cache[key] = handle;
+    return handle;
+}
+
+int psx_item_icon(SDL_Renderer * r, int item) {
+    check_rom();
+    auto key = std::make_tuple(5, (uint32_t)item, 0u, 0u, 0);
+    auto it = g_cache.find(key);
+    if (it != g_cache.end()) return it->second;
+    int handle = -1;
+    // EVENT/ITEM.BIN: 256 x 256 4bpp, 16 palettes after; 15 icons a row
+    // from the third; the item table (12 B at 0x80062EB8): +0 the palette,
+    // +1 the icon
+    auto icons = psx_buf(psx_disc_file("EVENT/ITEM.BIN"));
+    if (r && icons && icons->size() >= 33280 && item > 0 && item < 0xFE && gba_state_is_psx()) {
+        uint32_t e = 0x80062EB8u + item * 12;
+        int pal = gba_read8(e) & 15, g = gba_read8(e + 1);
+        int ox = (g % 15) * 16, oy = 32 + (g / 15) * 16;
+        if (g > 0 && oy + 16 <= 208) {
+            const auto & b = *icons;
+            const uint8_t * pp = &b[32768 + pal * 32];
+            std::vector<uint32_t> img(16 * 16, 0);
+            for (int y = 0; y < 16; ++y)
+                for (int x = 0; x < 16; ++x) {
+                    int X = ox + x;
+                    int c = (b[(oy + y) * 128 + X / 2] >> (4 * (X & 1))) & 15;
+                    if (c) img[y * 16 + x] = bgr555(pp[c * 2] | pp[c * 2 + 1] << 8);
+                }
+            handle = make(r, img, 16, 16, 0, 0);
+        }
+    }
+    g_cache[key] = handle;
+    return handle;
+}
+
+int psx_map_texture(SDL_Renderer * r, int tex_buf, int pal_buf, int pal_off, int page, int palette) {
+    check_rom();
+    auto key = std::make_tuple(6, (uint32_t)tex_buf, (uint32_t)pal_off, (uint32_t)(pal_buf << 8 | page), palette);
+    auto it = g_cache.find(key);
+    if (it != g_cache.end()) return it->second;
+    int handle = -1;
+    // the map's texture: 256 x 1024 4bpp (low nibble first), page = 256
+    // rows; the mesh's 16 palettes (BGR555, 0: transparent)
+    auto tex = psx_buf(tex_buf);
+    auto pal = psx_buf(pal_buf);
+    if (r && tex && pal && tex->size() >= 131072 && page >= 0 && page < 4 && palette >= 0 && palette < 16 &&
+        pal_off >= 0 && (size_t)pal_off + 512 <= pal->size()) {
+        const uint8_t * pp = &(*pal)[pal_off + palette * 32];
+        std::vector<uint32_t> img(256 * 256, 0);
+        for (int y = 0; y < 256; ++y)
+            for (int x = 0; x < 256; ++x) {
+                int c = ((*tex)[(page * 256 + y) * 128 + x / 2] >> (4 * (x & 1))) & 15;
+                uint32_t v = pp[c * 2] | pp[c * 2 + 1] << 8;
+                if (v) img[y * 256 + x] = bgr555(v);
+            }
+        handle = make(r, img, 256, 256, 0, 0);
+    }
+    g_cache[key] = handle;
+    return handle;
+}
+
 static const Gfx * gfx(int handle) {
     check_rom();
     return handle >= 0 && handle < (int)g_gfx.size() ? &g_gfx[handle] : nullptr;
@@ -286,6 +470,15 @@ float gba_gfx_width(int handle) { auto g = gfx(handle); return g ? g->w : 0; }
 float gba_gfx_height(int handle) { auto g = gfx(handle); return g ? g->h : 0; }
 float gba_gfx_origin_x(int handle) { auto g = gfx(handle); return g ? g->ox : 0; }
 float gba_gfx_origin_y(int handle) { auto g = gfx(handle); return g ? g->oy : 0; }
+void gba_gfx_draw_quad(int handle, float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3,
+                       float u0, float v0, float u1, float v1, float u2, float v2, float u3, float v3, float shade) {
+    auto g = gfx(handle);
+    if (!g || !g->tex) return;
+    int k = (int)(SDL_clamp(shade, 0.0f, 1.0f) * 255);
+    ImGui::GetWindowDrawList()->AddImageQuad(ImTextureRef((ImTextureID)(intptr_t)g->tex), ImVec2(x0, y0),
+                                             ImVec2(x1, y1), ImVec2(x2, y2), ImVec2(x3, y3), ImVec2(u0, v0),
+                                             ImVec2(u1, v1), ImVec2(u2, v2), ImVec2(u3, v3), IM_COL32(k, k, k, 255));
+}
 void gba_gfx_draw(int handle, float x, float y, float w, float h, float alpha) {
     auto g = gfx(handle);
     if (!g || !g->tex) return;

@@ -30,6 +30,17 @@ struct FieldMap {
     height : array<int>
     water : array<bool>
     shown_shift : int               // the game's height = height + shown_shift (0 must mean "no tile")
+    polys : array<FieldPoly>        // the game's map mesh (FFT): drawn instead of the tiles' blocks
+}
+
+// a polygon of a map's mesh: corners in map coordinates (x, y as tiles -
+// their centers at whole numbers - and the height as FieldMap.height),
+// the texture's corners (0..1; tex: a gba_gfx handle, -1 a flat color)
+struct FieldPoly {
+    p : float3[4]                   // a triangle repeats its last corner
+    uv : float2[4]
+    tex : int = -1
+    color : uint = 0x606060ffu
 }
 
 // facing 0 +y, 1 -x, 2 -y, 3 +x (FFTA's numbering; a game maps its own)
@@ -42,6 +53,7 @@ struct FieldUnit {
     alive : bool = true
     sprite : int = -1               // gba_gfx handle, -1: the disc
     sprite_dy : float = 0.0         // game pixels to put the frame's origin below the tile center
+    sprite_scale : float = 1.0      // game pixels per 1/32 of a tile's width
 }
 
 // what the user did on the field this frame
@@ -129,6 +141,50 @@ struct private IsoView {
 def private iso_point(v : IsoView; tx, ty : int; hgt : float) : float2 {
     return float2(v.ox + (float(tx - ty) + v.rows) * v.cell,
         v.oy + (float(tx + ty) * 0.5 + v.top + 0.5 - (hgt - float(v.base)) * 0.5) * v.cell)
+}
+
+def private iso_pointf(v : IsoView; p : float3) : float2 {
+    return float2(v.ox + (p.x - p.y + v.rows) * v.cell, v.oy + ((p.x + p.y) * 0.5 + v.top + 0.5 - (p.z - float(v.base)) * 0.5) * v.cell)
+}
+
+// the mesh's polygons back to front: by the diagonal of the center, then
+// lower first; the bucket of each (its diagonal, rounded)
+def private poly_order(m : FieldMap; var order : array<int>; var bucket : array<int>) {
+    var keys : array<float>
+    for (pl in m.polys) {
+        let c = (pl.p[0] + pl.p[1] + pl.p[2] + pl.p[3]) * 0.25
+        keys |> push((c.x + c.y) + c.z * 0.02)
+        bucket |> push(int(floor(c.x + c.y + 0.5)))
+    }
+    for (i in range(length(m.polys))) {
+        order |> push(i)
+    }
+    sort(order) $(a, b) => keys[a] < keys[b]
+}
+
+// a polygon's light: the tops full, the walls by the side they face
+def private poly_shade(pl : FieldPoly) : float {
+    let n = cross(pl.p[1] - pl.p[0], pl.p[2] - pl.p[0])
+    let l = length(n)
+    if (l < 1e-6) {
+        return 1.0
+    }
+    let k = abs(n.z) / l
+    return k > 0.7 ? 1.0 : (abs(n.x) > abs(n.y) ? 0.62 : 0.8)
+}
+
+def private draw_poly(var dl : ImDrawList?; v : IsoView; pl : FieldPoly) {
+    let a = iso_pointf(v, pl.p[0])
+    let b = iso_pointf(v, pl.p[1])
+    let c = iso_pointf(v, pl.p[2])
+    let d = iso_pointf(v, pl.p[3])
+    let k = poly_shade(pl)
+    if (pl.tex >= 0) {
+        gba_gfx_draw_quad(pl.tex, a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y, pl.uv[0].x, pl.uv[0].y, pl.uv[1].x, pl.uv[1].y,
+            pl.uv[2].x, pl.uv[2].y, pl.uv[3].x, pl.uv[3].y, k)
+    } else {
+        *dl |> AddQuadFilled(ImVec2(a.x, a.y), ImVec2(b.x, b.y), ImVec2(c.x, c.y), ImVec2(d.x, d.y), abgr(shade(pl.color, k)))
+    }
 }
 
 // screen direction of a facing: +x down-right, +y down-left
@@ -246,7 +302,19 @@ def draw_battle_field(m : FieldMap; units : array<FieldUnit>; selected, target :
     var unit_rects : array<float4>                    // where each unit was drawn (picking)
     unit_rects |> resize(length(units))
     var drawn : array<int>                            // units in the order drawn
+    let mesh = length(m.polys) > 0
+    var order : array<int>
+    var bucket : array<int>
+    if (mesh) {
+        poly_order(m, order, bucket)
+    }
+    var next_poly = 0
     for (d in range(m.w + m.h - 1)) {
+        // the mesh: its polygons up to this diagonal (all with the last)
+        while (next_poly < length(order) && (bucket[order[next_poly]] <= d || d == m.w + m.h - 2)) {
+            draw_poly(dl, v, m.polys[order[next_poly]])
+            next_poly++
+        }
         for (tx in range(max(0, d - m.h + 1), min(m.w, d + 1))) {
             let ty = d - tx
             let hgt = m.height[ty * m.w + tx]
@@ -260,15 +328,17 @@ def draw_battle_field(m : FieldMap; units : array<FieldUnit>; selected, target :
             let r = ImVec2(c.x + cell, c.y)
             let b = ImVec2(c.x, c.y + cell * 0.5)
             let t = ImVec2(c.x, c.y - cell * 0.5)
-            *dl |> AddQuadFilled(l, b, ImVec2(b.x, b.y + wall), ImVec2(l.x, l.y + wall), abgr(shade(col, 0.72)))
-            *dl |> AddQuadFilled(b, r, ImVec2(r.x, r.y + wall), ImVec2(b.x, b.y + wall), abgr(shade(col, 0.55)))
-            *dl |> AddQuadFilled(t, r, b, l, abgr(col))
-            *dl |> AddQuad(t, r, b, l, abgr(shade(col, 0.85)), 1.0)
+            if (!mesh) {
+                *dl |> AddQuadFilled(l, b, ImVec2(b.x, b.y + wall), ImVec2(l.x, l.y + wall), abgr(shade(col, 0.72)))
+                *dl |> AddQuadFilled(b, r, ImVec2(r.x, r.y + wall), ImVec2(b.x, b.y + wall), abgr(shade(col, 0.55)))
+                *dl |> AddQuadFilled(t, r, b, l, abgr(col))
+                *dl |> AddQuad(t, r, b, l, abgr(shade(col, 0.85)), 1.0)
+            }
             if (show_reach && reach[ty * m.w + tx]) {
                 *dl |> AddQuadFilled(t, r, b, l, abgr(0xffa03050u))
                 diamond_outline(dl, c, v, u(1.5), 0xffa030ffu, u(1.5))
             }
-            if (cell >= u(22.0) && hi > lo) {
+            if (cell >= u(22.0) && hi > lo && !mesh) {
                 let hs = "{hgt + m.shown_shift}"
                 text_at_baseline(c.x - text_width(hs) * 0.5, c.y + u(5.0), hs, 0x00000070u)
             }
@@ -373,7 +443,7 @@ def draw_battle_field(m : FieldMap; units : array<FieldUnit>; selected, target :
 // for picking.
 def draw_field_unit(var dl : ImDrawList?; un : FieldUnit; feet : float2; cell : float) : float4 {
     if (un.sprite >= 0) {
-        let s = cell / 16.0                          // game pixels -> screen
+        let s = cell / 16.0 * un.sprite_scale        // game pixels -> screen
         let x0 = feet.x - gba_gfx_origin_x(un.sprite) * s
         let y0 = feet.y + un.sprite_dy * s - gba_gfx_origin_y(un.sprite) * s
         let sw = gba_gfx_width(un.sprite) * s

@@ -9,6 +9,11 @@
 const std::vector<uint8_t> & gba_rom_bytes();
 bool nds_state_ram(const std::vector<uint8_t> & core, std::vector<uint8_t> & ram, std::string & error);
 bool nds_is_rom(const std::vector<uint8_t> & rom);
+// psx_mem.cpp: the 2 MB main RAM of a BizHawk Nymashock (PSX) waterbox
+// image, found by the start of the game's code; its offset in the image
+const size_t PSX_RAM_SIZE = 0x200000;
+bool psx_state_ram(const std::vector<uint8_t> & core, std::vector<uint8_t> & ram, size_t & base);
+const std::vector<uint8_t> * psx_buf(int h);
 bool nds_state_write_ram(std::vector<uint8_t> & core, const std::vector<uint8_t> & ram,
                          const std::vector<uint8_t> & loaded, std::string & error);
 
@@ -28,6 +33,7 @@ const uint8_t * gba_state_frame(size_t & size);
 // RAM (pages the state does not hold read as 0). NDS ROM files
 // (nds_mem.cpp, FFTA2's archive): a handle >= 0 or -1, read by offset.
 bool gba_state_is_nds();
+bool gba_state_is_psx();
 int nds_file(const char * name);
 int nds_pak_file(const char * idx_name, const char * pak_name, int index);
 // an entry of the pc.bin archive by its name hash (the names of the
@@ -37,6 +43,20 @@ int nds_buf_size(int handle);
 uint32_t nds_buf_read8(int handle, int off);
 uint32_t nds_buf_read16(int handle, int off);
 uint32_t nds_buf_read32(int handle, int off);
+// The PSX game's disc (psx_mem.cpp): a .cue or a MODE2/2352 .bin, "" on
+// success. Files by ISO9660 path ("BATTLE/TYPE1.SHP") or sectors, read
+// whole: a handle >= 0 or -1 (kept until another disc is opened).
+const char * psx_open_disc(const char * path);
+bool psx_has_disc();
+uint32_t psx_disc_serial();
+int psx_disc_file(const char * path);
+int psx_disc_read(int lba, int size);
+int psx_buf_size(int handle);
+uint32_t psx_buf_read8(int handle, int off);
+uint32_t psx_buf_read16(int handle, int off);
+uint32_t psx_buf_read32(int handle, int off);
+// the battle's map number (MAPnnn.GNS held in RAM), -1 unknown
+int psx_find_map();
 // changes on every successful gba_load_state / gba_load_rom
 uint32_t gba_state_serial();
 uint32_t gba_rom_serial();
@@ -76,8 +96,21 @@ int nds_unit_sprite(SDL_Renderer * r, int set, int palette, int frame, bool flip
 // itemicon00..02.pak (256 icons each, 4bpp, rows of 8 bytes), the
 // palette (0..2 of itemicon.plt) by 4 bits per icon of itemicon0N.bhd +4
 int nds_item_icon(SDL_Renderer * r, int icon);
+// FFT (PSX): frame `frame` of battle sprite `sprite` (BATTLE.BIN's
+// table: the .SPR sheet, the SHP of its kind), palette 0..15; flip -
+// mirrored. The origin: the feet. -1 without the disc.
+int psx_unit_sprite(SDL_Renderer * r, int sprite, int palette, int frame, bool flip);
+// FFT (PSX): the 16 x 16 icon of item `item` (EVENT/ITEM.BIN; the palette
+// and the icon from the item table in RAM)
+int psx_item_icon(SDL_Renderer * r, int item);
+// FFT (PSX): a 256 x 256 page (0..3) of a map texture (disc buffer
+// tex_buf) with palette 0..15 of the mesh (buffer pal_buf at pal_off)
+int psx_map_texture(SDL_Renderer * r, int tex_buf, int pal_buf, int pal_off, int page, int palette);
 float gba_gfx_width(int handle);
 float gba_gfx_height(int handle);
 float gba_gfx_origin_x(int handle);
 float gba_gfx_origin_y(int handle);
 void gba_gfx_draw(int handle, float x, float y, float w, float h, float alpha);
+// a textured quad: screen corners, texture coordinates (0..1), shade 0..1
+void gba_gfx_draw_quad(int handle, float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3,
+                       float u0, float v0, float u1, float v1, float u2, float v2, float u3, float v3, float shade);

@@ -29,7 +29,7 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   скриншоты, дампы, лог записей / исполнения), `vary_probe.lua` (прогноз при правках RAM), `exec_probe.lua` (настоящие удары с заданными сидами), `arm.py` (дизассемблер ARM), `vmdis.py` / `vmdec.py` (скрипты VM), `natives.py` (нативные вызовы).
   Общие части игр: `scripts/ui/battle_field.das` (изометрическое поле: `FieldMap`, `FieldUnit`, ввод — `FieldInput`),
   `scripts/ui/roster.das`, `scripts/ui/inspector.das`, `scripts/core/teams.das`, `scripts/core/config.das` (local.cfg:
-  у FFTA ключи `state` / `rom`, у FFTA2 `ffta2_state` / `ffta2_rom`). Игры делят один загруженный ROM и сейв:
+  у FFTA ключи `state` / `rom`, у FFTA2 `ffta2_state` / `ffta2_rom`, у FFT `fft_state` / `fft_rom`). Игры делят один загруженный ROM и сейв:
   `GameModule.activate()` перезагружает свои файлы при переключении, веб — `shell_reload()` по коду ROM.
 - Пути этой машины (ROM, BizHawk, тестовый сейв) — в `CLAUDE.local.md` (не в репозитории).
 - daScript — локальная ветка (master + `fix-annotation-hex`), через worktree dasSDL3 `C:\src\dasSDL3-localdas`

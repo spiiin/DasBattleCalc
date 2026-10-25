@@ -16,6 +16,7 @@ require app/shell
 require core/game
 require games/ffta/ffta
 require games/ffta2/ffta2
+require games/fft/fft
 
 // between frames; collecting is cheap while the heap is small
 let COLLECT_BYTES = 0x1000000ul     // 16 MB of heap + strings
@@ -31,6 +32,7 @@ def collect_frame_garbage() {
 def run(window : SDL_Window?; renderer : SDL_Renderer?) : SdlStatus {
     register_game(new FftaGame())
     register_game(new Ffta2Game())
+    register_game(new FftGame())
     shell_init(renderer, to_float(gui_arg("--ui-scale", "1.3")))
     let shot = gui_arg("--shot", "")
     let max_frames = gui_arg_int("--frames", shot != "" ? 8 : gui_script_end() + 1)

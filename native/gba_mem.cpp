@@ -20,6 +20,7 @@
 static std::vector<uint8_t> g_ewram, g_iwram, g_rom, g_frame;
 static uint32_t g_rom_serial = 0;
 static bool g_state_nds = false;                  // the state is melonDS (NDS)
+static bool g_state_psx = false;                  // the state is Nymashock (PSX): 2 MB main RAM
 // for gba_save_state: the loaded file, its core image and the RAM to write
 static std::vector<uint8_t> g_zip, g_core, g_edit_ewram, g_edit_iwram;
 static size_t g_core_base = 0;
@@ -113,14 +114,19 @@ const char * gba_load_state(const char * path) {
     static const char wbx[] = "ActivatedWaterboxHost";
     if (core.size() > sizeof(wbx) && memcmp(core.data(), wbx, sizeof(wbx) - 1) == 0) {
         std::vector<uint8_t> ram;
-        if (!nds_state_ram(core, ram, g_error)) return g_error.c_str();
+        size_t psx_base = 0;
+        // Nymashock (PSX) or melonDS (NDS)
+        bool psx = psx_state_ram(core, ram, psx_base);
+        if (!psx && !nds_state_ram(core, ram, g_error)) return g_error.c_str();
+        g_error.clear();
         g_ewram.swap(ram);
         g_iwram.clear();
         g_zip.swap(zip);
         g_core.swap(core);
-        g_core_base = 0;
-        g_state_nds = true;
-        if (!unzip_entry(zip, "Framebuffer.bmp", g_frame)) g_frame.clear();
+        g_core_base = psx_base;
+        g_state_nds = !psx;
+        g_state_psx = psx;
+        if (!unzip_entry(g_zip, "Framebuffer.bmp", g_frame)) g_frame.clear();
         g_state_serial++;
         return "";
     }
@@ -130,6 +136,7 @@ const char * gba_load_state(const char * path) {
         if (core.size() >= o + 0x61000 && (rd32(core, o) & 0xffffff00u) == 0x01000000u) base = o;
     if (base == SIZE_MAX) return (g_error = "not an mGBA (GBA) state").c_str();
     g_state_nds = false;
+    g_state_psx = false;
     g_iwram.assign(core.begin() + base + 0x19000, core.begin() + base + 0x21000);
     g_ewram.assign(core.begin() + base + 0x21000, core.begin() + base + 0x61000);
     g_zip.swap(zip);
@@ -157,6 +164,7 @@ const char * gba_load_rom(const char * path) {
 uint32_t gba_rom_serial() { return g_rom_serial; }
 const std::vector<uint8_t> & gba_rom_bytes() { return g_rom; }
 bool gba_state_is_nds() { return g_state_nds; }
+bool gba_state_is_psx() { return g_state_psx; }
 
 bool gba_has_state() { return !g_ewram.empty(); }
 bool gba_has_rom() { return !g_rom.empty(); }
@@ -171,6 +179,12 @@ const char * gba_rom_code() {
 
 static const uint8_t * at(uint32_t addr, uint32_t n) {
     uint32_t region = addr >> 24, off = addr & 0xffffff;
+    if (g_state_psx) {
+        // 2 MB main RAM at 0x00000000 / 0x80000000 / 0xA0000000, mirrored
+        if (region != 0x00 && region != 0x80 && region != 0xA0) return nullptr;
+        off = addr & 0x1fffff;
+        return size_t(off) + n <= g_ewram.size() ? g_ewram.data() + off : nullptr;
+    }
     if (g_state_nds && region == 2) off &= 0x3fffff;  // 4 MB main RAM, mirrored
     const std::vector<uint8_t> * v = region == 2 ? &g_ewram : region == 3 ? &g_iwram : region == 8 ? &g_rom : nullptr;
     if (!v || size_t(off) + n > v->size()) return nullptr;
@@ -205,6 +219,11 @@ void gba_edit_begin() {
 
 static uint8_t * edit_at(uint32_t addr, uint32_t n) {
     uint32_t region = addr >> 24, off = addr & 0xffffff;
+    if (g_state_psx) {
+        if (region != 0x00 && region != 0x80 && region != 0xA0) return nullptr;
+        off = addr & 0x1fffff;
+        return size_t(off) + n <= g_edit_ewram.size() ? g_edit_ewram.data() + off : nullptr;
+    }
     std::vector<uint8_t> * v = region == 2 ? &g_edit_ewram : region == 3 ? &g_edit_iwram : nullptr;
     if (!v || size_t(off) + n > v->size()) return nullptr;
     return v->data() + off;
@@ -246,7 +265,12 @@ static std::vector<uint8_t> zstd_store(const std::vector<uint8_t> & data) {
 const char * gba_save_state(const char * path) {
     g_error.clear();
     std::vector<uint8_t> core = g_core;
-    if (g_state_nds) {
+    if (g_state_psx) {
+        // Nymashock: the main RAM lies in the image in one piece
+        if (g_core.empty() || g_edit_ewram.size() != PSX_RAM_SIZE || g_core_base + PSX_RAM_SIZE > core.size())
+            return (g_error = "no state loaded or no edit begun").c_str();
+        memcpy(core.data() + g_core_base, g_edit_ewram.data(), PSX_RAM_SIZE);
+    } else if (g_state_nds) {
         // melonDS: the main RAM's saved pages of the waterbox image
         if (g_core.empty() || g_edit_ewram.size() != 0x400000)
             return (g_error = "no state loaded or no edit begun").c_str();
