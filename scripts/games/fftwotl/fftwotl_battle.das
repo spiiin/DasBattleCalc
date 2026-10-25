@@ -19,9 +19,9 @@ let UNIT_SLOTS_W = 21
 
 let ZODIAC_NAMES = fixed_array<string>("Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio",
     "Sagittarius", "Capricorn", "Aquarius", "Pisces", "Serpentarius")
-// facing (record +0x51 low bits): 0 -y, 1 -x, 2 +y, 3 +x (1 and 3 checked
-// by the forecasts: front / back; 0 / 2 by the game's picture - the party
-// on row 3 faces the archers on row 1 with 0); the field's: 0 +y, 1 -x, ...
+// facing (record +0x51 low bits): 0 -y, 1 -x, 2 +y, 3 +x (checked by the
+// game's forecasts, forecast1.txt and forecast6.txt: the attacker on each
+// axis); the field's numbering: 0 +y, 1 -x, 2 -y, 3 +x
 let FACING_W_NAMES = fixed_array<string>("-y", "-x", "+y", "+x")
 
 // learned abilities (record +0xA3): 3 bytes per job - the action

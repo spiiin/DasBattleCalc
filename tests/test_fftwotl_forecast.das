@@ -12,7 +12,8 @@ options indenting = 4
 // damage (+0x1BA) and hit. forecast4.txt (fcvary.py --supports): Attack
 // with support / reaction bits of the record's masks (+0x95..);
 // forecast5.txt (--reactions): Shirahadori, Archer's Bane, Counter, First
-// Strike, Parry from the back. The same
+// Strike, Parry from the back; forecast6.txt (fcyside.py): the side
+// along y - Ramza moved to (7, 4) / (7, 2), Lezalas in each facing. The same
 // edits go into the model's units.
 //   battlecalc tests/test_fftwotl_forecast.das --state <fftwotl_test_battle1.ppst> [--print 1]
 require gba_mem
@@ -76,6 +77,10 @@ def apply_edit(var u : UnitW; off, v : int) {
         u.c_ev = v
     } elif (off == 0x51) {
         u.facing = v & 3
+    } elif (off == 0x4F) {
+        u.x = v
+    } elif (off == 0x50) {
+        u.y = v
     } elif (off == 0x77) {
         u.absorb = v
     } elif (off == 0x78) {
@@ -222,7 +227,9 @@ def main() : int {
     let fires = check_file(units, "forecast2.txt", 16)
     let supports = check_file(units, "forecast4.txt", ATTACK_W)
     let reactions = check_file(units, "forecast5.txt", ATTACK_W)
+    let sides = check_file(units, "forecast6.txt", ATTACK_W)
     check("{reactions} reaction forecasts", reactions >= 10)
+    check("{sides} side forecasts", sides >= 12)
     check("{supports} support forecasts", supports >= 8)
     check("{attacks} Attack forecasts", attacks >= 80)
     check("{fires} Fire forecasts", fires >= 30)
