@@ -48,6 +48,8 @@ struct UnitW {
     @readonly job : string
     @hide job_id : int              // +0x03
     @hide identity : int            // +0x00: 0x80 generic male, 0x81 female, 0x82 monster, else a story character
+    @hide palette : int             // +0x04: the sprite palette (0..7)
+    @hide sheet : int               // +0x181: the battle sprite sheet
     @readonly slot : int            // the record's number
     @readonly record : uint
     @caption = "Level" @min = 1 @max = 99 level : int
@@ -195,6 +197,8 @@ def read_unit_w(slot : int) : UnitW {
     let r = UNIT_BASE_W + uint(slot) * UNIT_SIZE_W
     var u = UnitW(slot = slot, record = r)
     u.identity = int(gba_read8(r))
+    u.palette = int(gba_read8(r + 4u))
+    u.sheet = int(gba_read8(r + 0x181u))
     u.job_id = int(gba_read8(r + 0x03u))
     u.job = job_name_w(u.job_id)
     u.team_byte = int(gba_read8(r + 0x05u))

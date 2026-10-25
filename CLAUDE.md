@@ -44,6 +44,10 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
 - FFT: The War of the Lions (PSP, ULUS10297): `battlecalc --game fftwotl --state <fftwotl_test_battle1.ppst>` — сейв
   PPSSPP (`native/psp_mem.cpp`: заголовок 0xB0, тело zstd, RAM 32 МБ из секции Memory; запись — несжатые блоки zstd).
   ISO не нужен: BOOT.BIN лежит в RAM (RAM = смещение + 0x08803FAC), таблицы и тексты читаются оттуда
+  (ISO в поле ROM, ключ `wotl_iso`, — только графика: `psx_open_disc` читает и .iso, `psp_pack_file` — файлы
+  fftpack.bin, `psp_unit_sprite` / `psp_item_icon` в `gba_gfx.cpp`, карта — `fftwotl_map.das`, карта боя ищется по GNS
+  в RAM — `psp_find_map`; тест `tests/test_fftwotl_graphics.das --state <ppst> --rom <iso>`; форматы —
+  `research/fftwotl/graphics.md`)
   (`fftwotl_data.das`; раскладки — `research/fftwotl/layouts.md`). Юниты — `fftwotl_battle.das` (21 запись по 0x1E8 с
   0x092E5CB4), формулы — `fftwotl_attack.das` по `research/fftwotl/formulas.md` (сверены с прогнозами игры:
   `tests/test_fftwotl_forecast.das`, данные `research/fftwotl/forecast1..5.txt` от `fcvary.py [--magic|--supports|--reactions]`

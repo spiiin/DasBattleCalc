@@ -32,6 +32,7 @@ require fftwotl_battle
 require fftwotl_attack
 require fftwotl_turns
 require fftwotl_explore
+require fftwotl_map
 
 let private STAT_W_LABELS = fixed_array<string>("PA", "MA", "Speed")
 
@@ -167,7 +168,8 @@ class WotlGame : GameModule {
     item_all : bool = false
     turns_ahead : int = 24
     state_path : string
-    iso_path : string                 // not needed (the tables are in the state's RAM); kept for later
+    iso_path : string                 // the ISO (optional): the graphics - sprites, icons, the map's mesh
+    disc_serial : uint = 0xFFFFFFFFu // psx_disc_serial() after opening iso_path (another game may open its disc)
     loaded_state : string
     export_path : string
     from_args : bool
@@ -189,9 +191,11 @@ class WotlGame : GameModule {
 
     def WotlGame {
         state_path = config_get("wotl_state")
+        iso_path = config_get("wotl_iso")
         if (gui_arg("--game", "") == "fftwotl") {
             from_args = gui_arg("--state", "") != ""
             state_path = gui_arg("--state", state_path)
+            iso_path = gui_arg("--rom", iso_path)
         }
     }
 
@@ -231,9 +235,35 @@ class WotlGame : GameModule {
             if (stat(state_path).is_valid) {
                 self->load(!from_args)
             }
-        } elif (!gba_state_is_psp()) {
-            gba_load_state(loaded_state)
+        } else {
+            if (!gba_state_is_psp()) {
+                gba_load_state(loaded_state)
+            }
+            if (iso_path != "" && psx_disc_serial() != disc_serial) {
+                self->open_iso()
+                self->make_map()
+            }
         }
+    }
+
+    // the ISO for the graphics (the disc reader is shared with FFT PSX)
+    def open_iso() : void {
+        if (iso_path == "") {
+            return
+        }
+        if (!psx_has_disc() || psx_disc_serial() != disc_serial) {
+            let err = psx_open_disc(iso_path)
+            disc_serial = psx_disc_serial()
+            if (err != "") {
+                log_line("ISO: {err} (no graphics)")
+            } elif (psp_pack_count() == 0) {
+                log_line("ISO: no PSP_GAME/USRDIR/fftpack.bin (no graphics)")
+            }
+        }
+    }
+
+    def has_iso() : bool {
+        return iso_path != "" && psx_has_disc() && psx_disc_serial() == disc_serial && psp_pack_count() > 0
     }
 
     def load(remember : bool = true) : void {
@@ -250,6 +280,9 @@ class WotlGame : GameModule {
         }
         loaded_state = state_path
         saved := units
+        if (iso_path != "" && psx_disc_serial() != disc_serial) {
+            self->open_iso()
+        }
         self->make_map()
         field.cell = 0.0
         selected = 0
@@ -266,6 +299,7 @@ class WotlGame : GameModule {
         log_line("loaded {state_path}: {message}")
         if (remember) {
             config_set("wotl_state", state_path)
+            config_set("wotl_iso", iso_path)
         }
     }
 
@@ -290,6 +324,12 @@ class WotlGame : GameModule {
             for (i in range(map_w.w * map_w.h)) {
                 field_map.height[i] = map_w.height[i] + 1
                 field_map.water[i] = map_w.depth[i] > 0
+            }
+            if (self->has_iso()) {
+                let err = load_map_mesh_w(shell_renderer(), field_map.polys)
+                if (err != "") {
+                    log_line("Map mesh: {err}")
+                }
             }
             return
         }
@@ -538,11 +578,17 @@ class WotlGame : GameModule {
         let bw = u(24.0)
         let kw = u(110.0)
         let job = read_job_w(un.job_id)
+        let iso = self->has_iso()
+        let iw = iso ? u(20.0) : 0.0
         for (slot in range(7)) {
             let it = un.equip[slot]
-            SetCursorScreenPos(ImVec2(x, ry))
+            let icon = iso && it.id != ITEM_NONE ? psp_item_icon(shell_renderer(), it.id) : -1
+            if (icon >= 0) {
+                gba_gfx_draw(icon, x, ry + u(2.0), u(16.0), u(16.0), 1.0)
+            }
+            SetCursorScreenPos(ImVec2(x + iw, ry))
             let caption = it.id != ITEM_NONE ? it.name : "({SLOT_W_NAMES[slot]}: empty)"
-            if (bl_tool_button("equipw_slot{slot}", caption, -1, w - bw - kw - u(4.0))) {
+            if (bl_tool_button("equipw_slot{slot}", caption, -1, w - bw - kw - u(4.0) - iw)) {
                 OpenPopup("##itemw_pick")
                 pick_slot = slot
                 item_filter = ImGuiInputTextBuffer("", 64)
@@ -755,9 +801,15 @@ class WotlGame : GameModule {
             return
         }
         var fu : array<FieldUnit>
+        let iso = self->has_iso()
         for (un in units) {
-            fu |> push(FieldUnit(name = un.name, x = un.x, y = un.y, facing = facing_to_field(un.facing), team = un.team,
-                alive = un.hp > 0, sprite = -1))
+            // standing: the front frame faces +y, the back one -x; +x and
+            // -y mirrored
+            let f = facing_to_field(un.facing)
+            let spr = iso ? psp_unit_sprite(shell_renderer(), un.sheet, un.palette, stand_frame_w(un.sheet, f == 1 || f == 2),
+                f >= 2) : -1
+            fu |> push(FieldUnit(name = un.name, x = un.x, y = un.y, facing = f, team = un.team,
+                alive = un.hp > 0, sprite = spr, sprite_scale = 0.75))
         }
         let bar = u(28.0)
         // the tiles in reach of the Attack tab's action (flat: by distance)
