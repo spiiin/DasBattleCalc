@@ -150,8 +150,9 @@ the other). `FieldMap.mirror` draws tile (x, y) at (h - 1 - y, w - 1 - x): the t
 the game. **Facing**: with that view the sprites match the game when 0 = -y, 1 = -x, 2 = +y, 3 = +x - Ramza and Agrias
 (0) look down-right, Lezalas, Alicia and the archer (1) down-left; the party on row 3 faces the archers on row 1, the
 archers (2) face the bridge. The forecasts had only fixed 1 = -x (front) and 3 = +x (back): 0 and 2 both gave "side",
-so the side rule's y direction changed without a test noticing; a forecast with the attacker on the y axis would
-check it (not done).
+so the side rule's y direction changed without a test noticing. **Checked** by `fcyside.py` (`forecast6.txt`, in
+`tests/test_fftwotl_forecast.das`): Ramza's record moved to (7, 4) - Lezalas at (7, 3) facing 0 gives 100% (back),
+2 gives 70% (front), 1 / 3 78% (side); at (7, 2) the reverse. The old rule (0 = +y) fails 4 of these.
 
 ## Notes for the calculator
 
