@@ -49,6 +49,7 @@ build\bin\battlecalc.exe tests\test_fftwotl_battle.das --state <fftwotl_test_bat
 build\bin\battlecalc.exe tests\test_fftwotl_attack.das --state <fftwotl_test_battle1.ppst>
 build\bin\battlecalc.exe tests\test_fftwotl_forecast.das --state <fftwotl_test_battle1.ppst>
 build\bin\battlecalc.exe tests\test_fftwotl_explore.das --state <fftwotl_test_battle1.ppst>
+build\bin\battlecalc.exe tests\test_fft_explore.das --state <fft_test_ramza2.State>
 build\bin\battlecalc.exe tests\test_fftwotl_export.das --state <fftwotl_test_battle1.ppst> --out <new.ppst>
 build\bin\battlecalc.exe tests\test_fftwotl_graphics.das --state <fftwotl_test_battle1.ppst> --rom <WotL (USA).iso>
 ```
@@ -238,6 +239,18 @@ Chart, сцена — с вкладки Attack (атакующий, цель, д
 - **Столбцы**: `damage healing dmg_min dmg_max hit crit expected reach distance mp_cost xa ya zodiac_rel`.
 - Пример: `vary atk.pa 3..20`, `vary atk.brave 40, 60, 80, 97`, `plot expected by atk.pa per atk.brave`.
 
+#### Explore в FFT (PSX)
+
+Параметры — `scripts/games/fft/fft_explore.das`; сцена — с вкладки Attack (атакующий, цель, выбранное действие).
+
+- **Параметры** `atk.*` / `tgt.*`: `pa ma sp` (как в записи, со снаряжением), `brave faith hp max_hp mp max_mp ct
+  level move jump`, `zodiac`, `weapon` (правая рука; бонусы предмета пересчитываются, как в редакторе), `support`,
+  `status.<имя>`, `job` (только чтение: множители PA / MA профессии не моделируются). Сцена: `action`, `side`.
+- **Генераторы**: `weapons`, `supports`, `actions` (Attack и способности наборов атакующего; все Jump — одно
+  действие), `sides` (цель разворачивается к атакующему передом, боком или спиной).
+- **Столбцы** — как в WotL. Проверка на `fft_test_ramza2`: стороны 66 / 74 / 100%, зодиак 35 / 49 / 21, Dagger 18,
+  Defender 48, Attack UP 56, Protect 28, Fire 17 при 95% — числа игры.
+
 ## Как устроено
 
 ```
@@ -263,6 +276,8 @@ scripts/
                      ffta2_explore.das (Explore)
   games/fftwotl/     FFT: WotL: fftwotl_data (таблицы и тексты из RAM), _battle (юниты, карта, экспорт), _attack
                      (прогноз, реакции), _turns, _explore, fftwotl.das (панели); сейв PPSSPP — native/psp_mem.cpp
+  games/fft/         FFT (PSX): fft_battle (юниты, карта, тексты, редактор, экспорт), _attack, _abilities,
+                     _reactions, _reach, _turns, _map, _explore, fft.das (панели); сейв BizHawk — native/psx_mem.cpp
   ui/explore_view    таблица (сортировка, только видимые строки) и график (линии, столбики, точки, лог-шкалы)
 research/          исследование FFTA: notes.md (результаты), Lua-скрипты BizHawk, дизассемблер Thumb, симулятор
 tests/             тесты на daslang

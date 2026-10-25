@@ -115,12 +115,17 @@ Choose it in the **Game** menu (or `--game fft`); the save is a BizHawk save sta
 - **Attack calculator**: Attack with every weapon kind, the zodiac, supports (Attack UP, Defense UP, Martial Arts,
   Concentrate), statuses (Protect, Berserk, Sleep, Charging, Chicken, Frog, Darkness, Defending), evades by side as
   the game takes them; the abilities the unit knows (or all): Guts, Battle Skill breaks, Black / White / Time Magic,
-  Holy Sword, Dark Sword, Punch Art, Charge, Items. **51 forecasts of the game match.**
-- **Editor**: Brave, Faith, HP / MP, PA / MA / Speed, CT, Move / Jump; **Export state with edits** writes a new
-  BizHawk state (the tile and facing are not written yet).
+  Holy Sword, Dark Sword, Punch Art, Charge, Items, Throw and Jump; elements (absorb, cancel, half, weak,
+  strengthen) and the target's reaction. **51 forecasts of the game match.**
+- **Editor**: Brave, Faith, HP / MP, PA / MA / Speed, CT, Move / Jump, the job, the skillsets, reaction / support /
+  movement, the equipment (an item picker by slot and job) and statuses; the stats, elements and ability bits the
+  game keeps follow. **Export state with edits** writes a new BizHawk state (the tile and facing are not written yet).
+- **Explore** with its own parameters (`atk.pa`, `atk.brave`, `atk.weapon`, `atk.support`, `tgt.zodiac`,
+  `tgt.status.protect`, `action`, `side`, ...); the experiments give the game's forecasts (sides, zodiac, weapons,
+  Attack UP, Protect, Fire).
 
-Not yet: the critical hit, elements, Throw / Jump, reactions, editing equipment and abilities. Frog and Death showed 0%
-on every unit in the first battle - not explained. RAM layout, tables and formulas: [research/fft/notes.md](research/fft/notes.md).
+Not yet: the critical hit's chance, a job's PA / MA multipliers when the job changes, the tile in the export. Frog and
+Death showed 0% on every unit in the first battle - not explained. RAM layout, tables and formulas: [research/fft/notes.md](research/fft/notes.md).
 
 ## Checked against the game
 

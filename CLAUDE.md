@@ -38,7 +38,8 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   `tests/test_fft_graphics.das` (`fft_test_battle1.State --rom <.cue>`), `tests/test_fft_reach.das` (`--dir <PSX/State>`:
   12 сейвов `fft_reach_*.State` с открытыми зонами Move / Attack — флаги игры в терраине +5),
   `tests/test_fft_abilities.das` (`fft_test_ramza2.State [--throw fft_test_throw.State]`: прогнозы способностей игры,
-  Jump, Throw; формулы — `fft_abilities.das`).
+  Jump, Throw; формулы — `fft_abilities.das`), `tests/test_fft_explore.das` (`fft_test_ramza2.State`: Explore —
+  стороны, зодиак, оружие, Attack UP, Protect, Fire дают числа игры). Второй бой (Гариленд) — `fft_test_battle2.State`.
   Экспорт сейва с правками — `export_battle` (характеристики, без позиции), тест `tests/test_fft_export.das`
   (`--state <fft_test_ramza2.State> --out <new.State>`). Пробы и форматы — `research/fft/`
   (`plan_probe.lua`, `ct_probe.lua`, `psx.py`, `notes.md`). В US-версии ○ подтверждает, × отменяет.

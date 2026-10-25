@@ -415,3 +415,21 @@ game: without his Mythril Shield 42 85% (the model: left hand 22% gone);
 Ramza with the Attack UP support (id 465, bit +0x90 0x10) 56; with
 Defender (a Squire can't wear it - the game uses it anyway) 48; Lezales
 as an Archer 42 66% (his sprite stays a Knight); Lezales with Protect 28.
+
+## Explore and the second battle (2026-10-25)
+
+Explore (`fft_explore.das`) runs the same forecasts as the Attack tab; a
+forced side turns the target (on an exact diagonal the attacker steps
+one tile along x first - a diagonal is always the side). On
+`fft_test_ramza2` the experiments give the game's numbers: sides 66 / 74
+/ 100%, zodiac 35 / 49 / 21, Dagger 18, Defender 48, Attack UP 56,
+Protect 28, Fire (MA 4) 17 at 95%. A weapon or support set by an axis
+goes through `recompute_unit` (its bonuses), as in the editor; a job is
+read only - changing it would need the job's PA / MA multipliers and the
+raw stats, not modelled.
+
+`fft_test_battle2.State` (BizHawk slot 2, 2026-10-25): Gariland, Ramza
+Lv1 and Delita with cadets against thieves, Barney's turn. 11 units in
+records 0..5 and 16..20; the map, its textures and the sprites read as in
+the first battle. Barney acting shows CT 100 in the game; Delita and
+Santos (record CT 2) have acted this round.
