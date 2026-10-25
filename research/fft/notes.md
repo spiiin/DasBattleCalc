@@ -192,3 +192,43 @@ next marking). States saved with the marks shown (`fft_reach_*.State`,
   tiles: yes). Water: the target's height + its depth (MAP056's (0, 0):
   height 0, depth 4, 9 tiles from Ramza at 11: out; without the depth:
   in). +6 bit 1 (the tower's top): never a target.
+
+## Abilities (the game's forecast)
+
+The tables are War of the Lions' layout (research/fftwotl/layouts.md) at
+other addresses: ability common data 8 B x 512 at 0x8005EBF0 (Cure, id 1:
+`32 00 5a 41 81 75 00 80`), action data 14 B at +0x1000 (Cure `04 01 01
+00 00 e2 00 00 0c 00 0e 00 04 06`), item abilities' items at +0x2420,
+Charge (CT, power) at +0x2454; skillsets 25 B at 0x80064A94 (5 Squire
+.. 0x18 Mime, 0x19..0x1B Ramza's Guts by chapter, 0x20 Dark Sword, 0x21
+Holy Sword); Chemist items (formula, X, inflict) at 0x80063F98; inflict
+statuses 6 B at 0x80063FC4. The names follow the item names in RAM (0x42
+'+', D1 1D '-', DA 76 an apostrophe).
+
+Learned abilities: the battle record +0x99, 3 B per job from Squire (2 B
+actions in skillset order, 0x80 the first; 1 B R/S/M). Ramza's Guts uses
+Squire's: 0xC4 = Accumulate, Dash, Wish - his menu. +0x96..+0x98: f0 for
+everyone (unlocked jobs?). Special skillsets (Holy Sword ...): all known.
+
+Forecasts (Ramza PA 6 MA 4 Faith 63 at Lezales Faith 51; other skillsets
+given to Ramza by RAM edits: +0x13 the secondary, +0x99 + 3 x job FF FF):
+
+| ability | game | model |
+|---|---|---|
+| Dash (37, Y 4) | 18, 100% | PA' x rand(1..4); the forecast shows one roll (3 here); PA 7: 21, 10: 30, Taurus target: 21 |
+| Throw Stone (37, Y 2) | 12, 66% | PA' x rand(1..2), physical evade (roll 2) |
+| Head Break (25, Y 45) | 38% | PA + WP + 45 = 58, evades |
+| Power Break (2B, X 3, Y 50) | 36% | PA + 50 = 56, evades |
+| Magic Break (2C) | 9 MP, 36% | half of max MP rounded up |
+| Fire (08, Y 14) | 17, 95% | MA x 14 x Fa x Fa / 10000, magic evade (shield 5%) |
+| Cure (0C, Y 14) | +17, 100% | the same, healing |
+| Slow (0A, X 180) | 56% | (MA + 180) x Fa x Fa / 10000, magic evade |
+| Poison (0A, X 160) | 49% | the same |
+| Stasis Sword (2D, Y 2) | 54, 100%, Stop | PA x (WP + 2) |
+| Night Sword (30) | 42, 100% | PA x WP |
+| Frog (0A), Death (0E) | 0% on Lezales | not explained: not his accessory; no immunity bits found |
+
+The evades are applied one by one with each step floored, in the order
+shield, class, weapon (accessory 0 here, first by assumption): Power
+Break 56 -> 43 -> 38 -> 36 and Head Break 58 -> 45 -> 40 -> 38 tell this
+from a product floored once (37 / 38).

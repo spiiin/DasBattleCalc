@@ -47,11 +47,14 @@ let ST_STOP = 30
 let ZODIAC_NAMES = fixed_array<string>("Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio",
     "Sagittarius", "Capricorn", "Aquarius", "Pisces", "Serpentarius")
 
-// FFT text: 0..9, A..Z, a..z, 0xFA space, 0xFE the end
+// FFT text: 0..9, A..Z, a..z, 0xFA space, 0x42 '+', 0xFE the end;
+// 0xD0..0xDA start a two-byte character: D1 1D '-', DA 76 '''
 def fft_text(at : uint; max_len : int) : string {
     var res = ""
-    for (i in range(max_len)) {
+    var i = 0
+    while (i < max_len) {
         let c = int(gba_read8(at + uint(i)))
+        i++
         if (c == 0xFE || c == 0xFF) {
             break
         } elif (c < 10) {
@@ -62,6 +65,12 @@ def fft_text(at : uint; max_len : int) : string {
             res += to_char('a' + c - 36)
         } elif (c == 0xFA) {
             res += " "
+        } elif (c == 0x42) {
+            res += "+"
+        } elif (c >= 0xD0 && c <= 0xDA) {
+            let d = int(gba_read8(at + uint(i)))
+            i++
+            res += c == 0xD1 && d == 0x1D ? "-" : (c == 0xDA && d == 0x76 ? "'" : "?")
         } else {
             res += "?"
         }
@@ -111,6 +120,8 @@ struct FftUnit {
     @hide stop_timer : int          // +0x63: ticks left of Stop
     @hide gender : int              // +0x06: 0x80 male, 0x40 female, 0x20 monster
     @hide zodiac : int              // +0x09 high nibble: 0 Aries .. 11 Pisces, 12 Serpentarius
+    @hide primary : int             // +0x12 skillset
+    @hide secondary : int           // +0x13
     @hide reaction : int            // +0x14 u16 ability id (0x1BF Weapon Guard)
     @hide support : int             // +0x16 u16
     @hide movement : int            // +0x18 u16
@@ -150,6 +161,8 @@ def read_unit(slot : int) : FftUnit {
     u.flags = int(gba_read8(rec + 0x05u))
     u.gender = int(gba_read8(rec + 0x06u))
     u.zodiac = int(gba_read8(rec + 0x09u)) >> 4
+    u.primary = int(gba_read8(rec + 0x12u))
+    u.secondary = int(gba_read8(rec + 0x13u))
     u.reaction = int(gba_read16(rec + 0x14u))
     u.support = int(gba_read16(rec + 0x16u))
     u.movement = int(gba_read16(rec + 0x18u))

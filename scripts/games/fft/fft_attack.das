@@ -75,7 +75,7 @@ def item_flags(item : int) : int {
     return item > 0 && item < 0xFF ? int(gba_read8(ITEM_TABLE + uint(item) * 12u + 3u)) : 0
 }
 
-def private item_index(item : int) : uint {
+def item_index(item : int) : uint {
     return gba_read8(ITEM_TABLE + uint(item) * 12u + 4u)
 }
 
@@ -164,8 +164,25 @@ struct AttackForecast {
     notes : array<string>
 }
 
-// XA's modifiers after the critical (in the Guide's order)
-def private modify_xa(xa0 : int; a, t : FftUnit; bare : bool) : int {
+// the zodiac on a factor (XA, MA): good + / 4, bad - / 4, best + / 2,
+// worst / 2 (seen in the game's forecasts)
+def zodiac_xa(xa : int; a, t : FftUnit) : int {
+    let z = zodiac_compat(a, t)
+    if (z == 1) {
+        return xa + xa / 4
+    } elif (z == -1) {
+        return xa - xa / 4
+    } elif (z == 2) {
+        return xa + xa / 2
+    } elif (z == -2) {
+        return xa / 2
+    }
+    return xa
+}
+
+// XA's physical modifiers after the critical (in the Guide's order);
+// bare: Martial Arts applies (bare hands, or not weapon-elemental)
+def physical_xa(xa0 : int; a, t : FftUnit; bare : bool) : int {
     var xa = xa0
     if (a.support == AB_ATTACK_UP) {
         xa = xa * 4 / 3
@@ -185,20 +202,47 @@ def private modify_xa(xa0 : int; a, t : FftUnit; bare : bool) : int {
     if (has_status(t, ST_CHARGING) || has_status(t, ST_SLEEP) || has_status(t, ST_CHICKEN) || has_status(t, ST_FROG)) {
         xa = xa * 3 / 2
     }
-    let z = zodiac_compat(a, t)
-    if (z == 1) {
-        xa = xa + xa / 4
-    } elif (z == -1) {
-        xa = xa - xa / 4
-    } elif (z == 2) {
-        xa = xa + xa / 2
-    } elif (z == -2) {
-        xa = xa / 2
-    }
-    return xa
+    return zodiac_xa(xa, a, t)
 }
 
-def attack_forecast(a, t : FftUnit) : AttackForecast {
+// the target's physical evades by the side a stands at, applied to base
+// (%) one by one, each step floored, in the order accessory, shields,
+// class, weapon (Weapon Guard): the game's forecasts - Power Break 56 ->
+// 43 -> 38 -> 36, Head Break 58 -> 45 -> 40 -> 38, Attack 100 -> 78 -> 70
+// -> 66 against a Knight with a Mythril Shield and Weapon Guard; evades:
+// the text
+def physical_hit(a, t : FftUnit; base : int; var evades : string&) : int {
+    let side = attack_side(a, t)
+    let cev = class_evade(t)
+    let sev = shield_evade(t)
+    let aev = accessory_evade(t)
+    let wev = t.reaction == AB_WEAPON_GUARD ? unit_weapon(t).w_ev : 0
+    var evs : array<int>
+    if (side == 0) {
+        evs <- [aev, sev, cev, wev]
+        evades = "front: class {cev}%, shield {sev}%, accessory {aev}%, weapon {wev}%"
+    } elif (side == 1) {
+        evs <- [aev, sev, wev]
+        evades = "side: shield {sev}%, accessory {aev}%, weapon {wev}%"
+    } else {
+        evs <- [aev]
+        evades = "back: accessory {aev}%"
+    }
+    let no_evade = (a.support == AB_CONCENTRATE || has_status(t, ST_CHARGING) || has_status(t, ST_PERFORMING)
+        || has_status(t, ST_SLEEP) || has_status(t, ST_STOP) || has_status(t, ST_DONT_ACT) || has_status(t, ST_PETRIFY))
+    if (no_evade) {
+        evades = "evades ignored (Concentrate or the target's status)"
+        return clamp(base, 0, 100)
+    }
+    var hit = clamp(base, 0, 100)
+    for (ev in evs) {
+        hit = hit * (100 - min(ev, 100)) / 100
+    }
+    return hit
+}
+
+// k: Charge's power, added to XA
+def attack_forecast(a, t : FftUnit; k : int = 0) : AttackForecast {
     var f = AttackForecast(weapon = unit_weapon(a))
     let w = f.weapon
     let bare = w.item == 0
@@ -240,38 +284,13 @@ def attack_forecast(a, t : FftUnit) : AttackForecast {
         f.xa_max = a.pa
     }
     f.ya = ya
-    f.damage_min = modify_xa(f.xa_min, a, t, bare) * ya
-    f.damage_max = modify_xa(f.xa_max, a, t, bare) * ya
-    f.crit_max = modify_xa(f.xa_max * 2 - 1, a, t, bare) * ya
-    // the hit chance
+    f.xa_min += k
+    f.xa_max += k
+    f.damage_min = physical_xa(f.xa_min, a, t, bare) * ya
+    f.damage_max = physical_xa(f.xa_max, a, t, bare) * ya
+    f.crit_max = physical_xa(f.xa_max * 2 - 1, a, t, bare) * ya
     f.side = attack_side(a, t)
-    let cev = class_evade(t)
-    let sev = shield_evade(t)
-    let aev = accessory_evade(t)
-    let wev = t.reaction == AB_WEAPON_GUARD ? unit_weapon(t).w_ev : 0
-    var evs : array<int>
-    if (f.side == 0) {
-        evs <- [cev, sev, aev, wev]
-        f.evades = "front: class {cev}%, shield {sev}%, accessory {aev}%, weapon {wev}%"
-    } elif (f.side == 1) {
-        evs <- [sev, aev, wev]
-        f.evades = "side: shield {sev}%, accessory {aev}%, weapon {wev}%"
-    } else {
-        evs <- [aev]
-        f.evades = "back: accessory {aev}%"
-    }
-    let no_evade = (a.support == AB_CONCENTRATE || has_status(t, ST_CHARGING) || has_status(t, ST_PERFORMING)
-        || has_status(t, ST_SLEEP) || has_status(t, ST_STOP) || has_status(t, ST_DONT_ACT) || has_status(t, ST_PETRIFY))
-    // the product of the fractions, floored: 100 x 0.90 x 0.78 x 0.95 = 66
-    var p = 1.0
-    if (!no_evade) {
-        for (ev in evs) {
-            p *= float(100 - min(ev, 100)) / 100.0
-        }
-    } else {
-        f.notes |> push("evades ignored (Concentrate or the target's status)")
-    }
-    f.hit = int(floor(p * 100.0 + 0.0001))
+    f.hit = physical_hit(a, t, 100, f.evades)
     f.notes |> push("zodiac: {ZODIAC_TEXT[zodiac_compat(a, t) + 2]}")
     if (a.support == AB_ATTACK_UP) {
         f.notes |> push("Attack UP: XA x 4 / 3")

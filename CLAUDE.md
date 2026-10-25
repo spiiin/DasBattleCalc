@@ -35,7 +35,8 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   `tests/test_fft_battle.das` (то же), `tests/test_fft_turns.das` (`fft_test_battle1b.State`: 9 ходов из игры),
   `tests/test_fft_attack.das` (`fft_test_ramza2.State`: прогнозы Attack игры — урон, стороны, зодиак),
   `tests/test_fft_graphics.das` (`fft_test_battle1.State --rom <.cue>`), `tests/test_fft_reach.das` (`--dir <PSX/State>`:
-  12 сейвов `fft_reach_*.State` с открытыми зонами Move / Attack — флаги игры в терраине +5). Пробы и форматы — `research/fft/`
+  12 сейвов `fft_reach_*.State` с открытыми зонами Move / Attack — флаги игры в терраине +5),
+  `tests/test_fft_abilities.das` (`fft_test_ramza2.State`: 17 прогнозов способностей игры; формулы — `fft_abilities.das`). Пробы и форматы — `research/fft/`
   (`plan_probe.lua`, `ct_probe.lua`, `psx.py`, `notes.md`). В US-версии ○ подтверждает, × отменяет.
 - FFT: The War of the Lions (PSP, ULUS10297): `battlecalc --game fftwotl --state <fftwotl_test_battle1.ppst>` — сейв
   PPSSPP (`native/psp_mem.cpp`: заголовок 0xB0, тело zstd, RAM 32 МБ из секции Memory; запись — несжатые блоки zstd).

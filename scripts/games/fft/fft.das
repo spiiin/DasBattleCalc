@@ -32,6 +32,7 @@ require fft_turns
 require fft_attack
 require fft_map
 require fft_reach
+require fft_abilities
 
 def private turn_end_text(how : TurnEnd) : string {
     return how == TurnEnd.MoveAndAct ? "Move + Act" : (how == TurnEnd.ActOnly ? "Act" : (how == TurnEnd.MoveOnly ? "Move" : "Wait"))
@@ -47,6 +48,9 @@ class FftGame : GameModule {
     scene_tab : int = 0               // 0 field, 1 the game screen
     calc_tab : int = 0                // 0 turn order, 1 units, 2 attack
     attack_target : int = -1
+    action_sel : int = 0              // the Attack tab's action: 0 Attack, k the unit's k-th ability
+    action_unit : int = -1            // whose abilities action_sel picks from
+    all_abilities : bool = false      // also the abilities not learned
     turns_ahead : int = 24
     state_path : string
     rom_path : string                 // the disc (.cue / .bin): the graphics
@@ -377,9 +381,33 @@ class FftGame : GameModule {
         let wpn = unit_weapon(a)
         let fg = bt.regular.text | 0xffu
         let dim = offset_color(fg, 60)
+        // the action: Attack or one of the unit's abilities
+        if (action_unit != selected) {
+            action_unit = selected
+            action_sel = 0
+        }
+        let abilities <- unit_abilities(a)
+        var shown : array<int>                        // ability ids in the choice after Attack
+        var items : array<string>
+        items |> push("Attack")
+        for (ua in abilities) {
+            if (ua.learned || all_abilities) {
+                shown |> push(ua.id)
+                items |> push(ua.learned ? ability_name(ua.id) : "{ability_name(ua.id)} (not learned)")
+            }
+        }
+        action_sel = clamp(action_sel, 0, length(items) - 1)
         SetCursorScreenPos(ImVec2(x, y))
+        bl_choice("fft_action", items, action_sel, u(220.0))
+        SetCursorScreenPos(ImVec2(x + u(228.0), y))
+        bl_option("fft_all_abilities", "Not learned too", all_abilities)
+        if (action_sel > 0) {
+            self->ability_view(a, read_ability(shown[action_sel - 1]), x, y + u(26.0), w, h - u(26.0))
+            return
+        }
         let head = wpn.item == 0 ? "bare hands" : "{wpn.name} (WP {wpn.wp}, range {wpn.reach})"
-        bl_label("{a.name}: Attack with {head}  (dim: out of reach from where it stands)", ICON_ATTACK, w)
+        SetCursorScreenPos(ImVec2(x + u(380.0), y))
+        bl_label("with {head}  (dim: out of reach)", -1, w - u(380.0))
         let row_h = u(21.0)
         let names = fixed_array<string>("Target", "Dist", "Side", "Damage", "Critical", "Hit", "HP after")
         let widths = fixed_array<float>(110.0, 50.0, 60.0, 80.0, 80.0, 50.0, 80.0)
@@ -449,6 +477,90 @@ class FftGame : GameModule {
             lines |> push("{units[attack_target].name}: {f.formula}, XA {xa}, YA {f.ya}")
             lines |> push("critical (5%): XA + rand(0..XA - 1)")
             lines |> push("evades, {f.evades}")
+            for (n in f.notes) {
+                lines |> push(n)
+            }
+            for (l in lines) {
+                text_at_baseline(x + u(12.0), yy + u(14.0), l, dim)
+                yy += u(19.0)
+            }
+        }
+        SetCursorScreenPos(ImVec2(x, yy))
+        Dummy(ImVec2(1.0, u(4.0)))
+        EndChild()
+    }
+
+    // an ability from the selected unit at every other unit (as they stand)
+    def ability_view(a : FftUnit; ab : FftAbility; x, y, w, h : float) : void {
+        let fg = bt.regular.text | 0xffu
+        let dim = offset_color(fg, 60)
+        SetCursorScreenPos(ImVec2(x, y))
+        let reach = ab.reach == 0 ? "self" : "range {ab.reach}"
+        let mp = ab.mp > 0 ? "MP {ab.mp}, " : ""
+        let ct = ab.ct > 0 ? "CT {ab.ct}, " : "now, "
+        let area = ab.area > 0 ? ", area {ab.area}" : ""
+        bl_label("{ab.name}: {mp}{ct}{reach}{area}  (dim: out of range)", ICON_ATTACK, w)
+        let row_h = u(21.0)
+        let names = fixed_array<string>("Target", "Dist", "Effect", "Amount", "Hit", "HP after")
+        let widths = fixed_array<float>(110.0, 50.0, 190.0, 80.0, 50.0, 80.0)
+        var cols : array<float>
+        var cx = x + u(12.0)
+        for (k in range(length(widths))) {
+            cols |> push(cx)
+            cx += u(widths[k])
+        }
+        var ry = y + u(26.0)
+        for (k in range(length(names))) {
+            text_at_baseline(cols[k], ry + u(14.0), names[k], dim)
+        }
+        ry += row_h
+        SetCursorScreenPos(ImVec2(x, ry))
+        BeginChild("fft_ability", ImVec2(w, y + h - ry), ImGuiChildFlags.None, ImGuiWindowFlags.None)
+        var dl = GetWindowDrawList()
+        var yy = GetCursorScreenPos().y
+        for (i in range(length(units))) {
+            let t = units[i]
+            let self_only = ab.reach == 0
+            // the caster too when the area holds it (flags 2 bit 0: never)
+            let caster_hit = ab.area > 0 && (uint(ab.flags[1]) & 1u) == 0u
+            if ((i == selected) != self_only && !(caster_hit && i == selected)) {
+                continue
+            }
+            // the dead: only for revival
+            if (t.hp <= 0 && ab.formula != 0x0D && ab.formula != 0x4B) {
+                continue
+            }
+            let f = ability_forecast(a, t, ab)
+            let dist = abs(t.x - a.x) + abs(t.y - a.y)
+            SetCursorScreenPos(ImVec2(x, yy))
+            if (InvisibleButton("##fft_ab{i}", ImVec2(w - u(4.0), row_h))) {
+                attack_target = i
+            }
+            if (i == attack_target) {
+                *dl |> AddRectFilled(ImVec2(x, yy), ImVec2(x + w - u(4.0), yy + row_h), abgr(bt.menu_item.inner_sel), 0.0,
+                    ImDrawFlags.None)
+            }
+            *dl |> AddRectFilled(ImVec2(x + u(2.0), yy + u(3.0)), ImVec2(x + u(6.0), yy + row_h - u(3.0)),
+                abgr(side_color(t.team)), u(2.0), ImDrawFlags.None)
+            let b = yy + u(15.0)
+            let col = dist <= ab.reach + ab.area ? fg : dim
+            let range_text = "{f.amount_min}..{f.amount_max}"
+            let amount = f.amount_max == 0 ? "-" : (f.amount_min == f.amount_max ? "{f.amount_min}" : range_text)
+            let after = f.heal ? min(t.max_hp, t.hp + f.amount_max) : max(0, t.hp - f.amount_max)
+            text_at_baseline(cols[0], b, t.name, team_text_color(t.team))
+            text_at_baseline(cols[1], b, "{dist}", col)
+            text_at_baseline(cols[2], b, f.effect, f.known ? col : dim)
+            text_at_baseline(cols[3], b, f.heal && f.amount_max > 0 ? "+{amount}" : amount, col)
+            text_at_baseline(cols[4], b, "{f.hit}%", col)
+            text_at_baseline(cols[5], b, f.amount_max == 0 ? "" : "{after}/{t.max_hp}", col)
+            yy += row_h
+        }
+        if (attack_target >= 0 && attack_target < length(units)) {
+            let f = ability_forecast(a, units[attack_target], ab)
+            yy += u(8.0)
+            var lines : array<string>
+            let how = f.known ? f.formula : "this formula is not modelled yet"
+            lines |> push("{units[attack_target].name}: {how}")
             for (n in f.notes) {
                 lines |> push(n)
             }
