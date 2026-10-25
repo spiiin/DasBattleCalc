@@ -376,6 +376,10 @@ def ability_forecast(a, t : FftUnit; ab : FftAbility) : AbilityForecast {
         f.known = false
         f.effect = "formula 0x{fmt(":02x", fo)}"
     }
+    if (ab.id == 0x1D || ab.id == 0x1E) {
+        // research/fft/notes.md, "Abilities": the first battle showed 0%
+        f.notes |> push("unverified: the game's forecast showed 0% for Frog / Death on every unit in battle 1")
+    }
     if (st != "" && fo != 0x2D && fo != 0x0A && fo != 0x0B && fo != 0x38) {
         f.notes |> push("status: {st}")
     }

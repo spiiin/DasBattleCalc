@@ -44,6 +44,7 @@ let ST_CRYSTAL = 1
 let ST_HASTE = 28
 let ST_SLOW = 29
 let ST_STOP = 30
+let ST_CHARGING = 4
 let ZODIAC_NAMES = fixed_array<string>("Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio",
     "Sagittarius", "Capricorn", "Aquarius", "Pisces", "Serpentarius")
 
@@ -118,6 +119,8 @@ struct FftUnit {
     @hide equip : int[EQUIP_SLOTS]  // +0x1A.. item ids, 0xFF none
     @hide status : uint8[5]         // +0x58
     @hide stop_timer : int          // +0x63: ticks left of Stop
+    @hide charge : int              // +0x15D: ticks left of the ability being charged, 255 none
+    @hide charge_ability : int      // +0x170 u16: that ability (+0x16F its skillset)
     @hide gender : int              // +0x06: 0x80 male, 0x40 female, 0x20 monster
     @hide zodiac : int              // +0x09 high nibble: 0 Aries .. 11 Pisces, 12 Serpentarius
     @hide primary : int             // +0x12 skillset
@@ -207,6 +210,8 @@ def read_unit(slot : int) : FftUnit {
         u.status[k] = uint8(gba_read8(rec + 0x58u + uint(k)))
     }
     u.stop_timer = int(gba_read8(rec + 0x63u))
+    u.charge = int(gba_read8(rec + 0x15Du))
+    u.charge_ability = int(gba_read16(rec + 0x170u))
     u.active = gba_read32(ACTIVE_UNIT) == rec
     u.name = fft_text(rec + 0x12Cu, 16)
     u.job = fft_text(rec + 0x13Cu, 20)

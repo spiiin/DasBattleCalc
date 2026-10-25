@@ -226,7 +226,7 @@ given to Ramza by RAM edits: +0x13 the secondary, +0x99 + 3 x job FF FF):
 | Poison (0A, X 160) | 49% | the same |
 | Stasis Sword (2D, Y 2) | 54, 100%, Stop | PA x (WP + 2) |
 | Night Sword (30) | 42, 100% | PA x WP |
-| Frog (0A), Death (0E) | 0% on Lezales | not explained: not his accessory; no immunity bits found |
+| Frog (0A), Death (0E) | 0% on everyone | Lezales, Viggs (enemies), Alicia (guest): not the target; Poison (same 0A) 49% - open |
 
 The evades: see "Modifiers and evades" below (the pass share).
 
@@ -290,3 +290,31 @@ Guard, else its shield's. Lezales: 100 -> 95 -> 74 -> 66; with Darkness
 100 -> 90 -> 50 -> 40. Breaks (PA + WP + Y): Head 58 -> 38, Shield 68 ->
 44, Weapon 43 -> 28, Armor 53 -> 34; Power / Magic Break (PA + Y) 56 ->
 36. Magic the same with magic evades: Slow 59 x 95 / 100 = 56.
+
+Frog and Death show 0% at Lezales, Viggs and Alicia alike (the first
+battle; Ramza casting with Black Magic given by RAM edits), while Poison
+and Slow (the same formula 0A) give 49% / 56%. Frog's data `03 00 00 00
+00 e2 42 00 0a 78 00 73 05 0c`, Poison's `04 01 02 00 00 e2 42 00 0a a0 00
+27 03 06`: they differ in range / area / vertical (0 for Frog and Death,
+2 for Poison), X and the inflicted status. Open: the vertical 0, the
+statuses Frog / Dead, or the first battle itself (try another battle).
+
+## Charged abilities, Haste, Slow (the game)
+
+Ramza set Fire (CT 4) on Lezales (fft_test_charge.State: Act -> Black
+Magic given by edits -> Fire -> Unit), then Wait (Down, Down, Circle, a
+facing, Circle). The record: +0x58 0x08 Charging, **+0x15D the charge
+counter** (4; 255 none), +0x16F the skillset, +0x170 u16 the ability,
++0x178.. the target. `ct_probe.lua` (now also logging +0x58, +0x5B,
++0x15D): the counter drops by 1 a tick (4 -> 1 in 3 ticks, Ramza's CT
+growing as usual: 20 -> 38); at tick 4 it reaches 0 and Fire goes off
+(Lezales -17, Ramza -22: he stands in its area) before Alicia's turn,
+which came at tick 7 with CT 102. The order: Gafgarion +3 (101), Fire +4,
+Alicia and Lavian (dead) +7 (102), Agrias, Lezales, Wezaleff, Dish,
+Fukes, Rad +10 (100) - `predict_turns` gives the same.
+
+Haste / Slow (fft_test_haste.State: +0x5B 0x08 / 0x04 with the timers
++0x61 / +0x62 - without a timer the status is gone at the next status
+check): Lezales 40 -> 67 in 3 ticks (Speed 6 x 3 / 2 = 9), Agrias 40 ->
+49 -> 61 -> 67 -> 70 (6 / 2 = 3). Timers from +0x5D: Poison, Regen,
+Protect, Shell, Haste, Slow, Stop (+0x63), ...

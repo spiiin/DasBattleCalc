@@ -32,7 +32,6 @@ let AB_DEFENSE_UP = int(0x1D2)
 let AB_CONCENTRATE = int(0x1D5)
 let AB_MARTIAL_ARTS = int(0x1D8)
 
-let ST_CHARGING = 4
 let ST_PERFORMING = 7
 let ST_BERSERK = 20
 let ST_CHICKEN = 21

@@ -9,6 +9,10 @@ options indenting = 4
 // (neither), and CT is then at most 60. The unit taking its turn now
 // (its record's CT reads 0) goes first and ends with 100 - the cost. A
 // dead unit ticks and takes instant turns (its count to the crystal).
+// Charged abilities: the counter (+0x15D) drops by 1 a tick and the
+// ability goes off at the start of the tick it reaches 0, before the
+// turns (Ramza's Fire, CT 4: off at tick 4; Alicia's turn at tick 7 came
+// after). Haste: Speed x 3 / 2 (6 -> 9 a tick), Slow: / 2 (6 -> 3) - seen.
 module fft_turns shared public
 
 require math
@@ -21,6 +25,7 @@ struct Turn {
     ct : int                        // its CT when the turn starts
     tick : int                      // ticks since now
     nth : int                       // the unit's 1st, 2nd, ... turn
+    charge : int                    // a charged ability going off (its id), 0 a turn
 }
 
 def turn_cost(how : TurnEnd) : int {
@@ -61,6 +66,10 @@ def predict_turns(units : array<FftUnit>; count : int) : array<Turn> {
             ct[i] = min(100 - turn_cost(units[i].assumed), 60)
         }
     }
+    var charge : array<int>         // ticks left of a charged ability, -1 none
+    for (u in units) {
+        charge |> push(has_status(u, ST_CHARGING) && u.charge < 255 ? u.charge : -1)
+    }
     var ticks = 0
     var guard = 0
     while (length(res) < count && guard < 100000) {
@@ -77,6 +86,17 @@ def predict_turns(units : array<FftUnit>; count : int) : array<Turn> {
             let cost = has_status(units[best], ST_DEAD) || units[best].hp <= 0 ? 100 : turn_cost(units[best].assumed)
             ct[best] = min(ct[best] - cost, 60)
         } else {
+            ticks++
+            // the charged abilities first
+            for (i in live) {
+                if (charge[i] > 0) {
+                    charge[i]--
+                    if (charge[i] == 0 && length(res) < count) {
+                        res |> push(Turn(unit = i, ct = ct[i], tick = ticks, charge = max(units[i].charge_ability, 1)))
+                        charge[i] = -1
+                    }
+                }
+            }
             for (i in live) {
                 if (stop[i] > 0) {
                     stop[i]--
@@ -86,7 +106,6 @@ def predict_turns(units : array<FftUnit>; count : int) : array<Turn> {
                 }
                 ct[i] += tick_amount(units[i])
             }
-            ticks++
         }
     }
     return <- res

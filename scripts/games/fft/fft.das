@@ -372,12 +372,19 @@ class FftGame : GameModule {
                 abgr(side_color(un.team)), u(2.0), ImDrawFlags.None)
             let b = yy + u(15.0)
             text_at_baseline(x + u(cols[0]), b, "{k + 1}", dim)
-            text_at_baseline(x + u(cols[1]), b, un.name, team_text_color(un.team))
-            text_at_baseline(x + u(cols[2]), b, un.job, fg)
             text_at_baseline(x + u(cols[3]), b, t.tick == 0 ? "now" : "+{t.tick}", fg)
-            text_at_baseline(x + u(cols[4]), b, "{t.nth}", fg)
-            text_at_baseline(x + u(cols[5]), b, "{t.ct}", fg)
-            text_at_baseline(x + u(450.0), b, turn_end_text(un.assumed), dim)
+            if (t.charge != 0) {
+                // a charged ability going off, before the turns of its tick
+                text_at_baseline(x + u(cols[1]), b, "{ability_name(t.charge)} ({un.name})", team_text_color(un.team))
+                text_at_baseline(x + u(cols[2]), b, "charged", dim)
+                text_at_baseline(x + u(450.0), b, "goes off", dim)
+            } else {
+                text_at_baseline(x + u(cols[1]), b, un.name, team_text_color(un.team))
+                text_at_baseline(x + u(cols[2]), b, un.job, fg)
+                text_at_baseline(x + u(cols[4]), b, "{t.nth}", fg)
+                text_at_baseline(x + u(cols[5]), b, "{t.ct}", fg)
+                text_at_baseline(x + u(450.0), b, turn_end_text(un.assumed), dim)
+            }
             yy += row_h
         }
         SetCursorScreenPos(ImVec2(x, yy))

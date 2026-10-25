@@ -1,7 +1,8 @@
 -- FFT (PSX): CT over time. Plays PROBE_PLAN ("frame:Button,...", buttons
 -- as plan_probe.lua) from PROBE_STATE and logs every change of the battle
--- records' CT (+0x39), HP (+0x28), x / y (+0x47 / +0x48) and +0x49 for
--- the 21 slots at 0x801908CC. Output: ct_log.txt "frame slot field old
+-- records' CT (+0x39), HP (+0x28), x / y (+0x47 / +0x48), +0x49, the
+-- status bytes 0 / 3 (+0x58, +0x5B: Charging, Haste / Slow / Stop) and
+-- the charge counter (+0x15D) for the 21 slots at 0x801908CC. Output: ct_log.txt "frame slot field old
 -- new"; shots/ct_<frame>.png at PROBE_SHOTS.
 local OUT = "C:/src/DasBattleCalc-psx/research/fft/"
 local STATE = os.getenv("PROBE_STATE") or "C:/rom/BizHawk-2.11-win-x64/PSX/State/fft_test_battle1.State"
@@ -19,7 +20,8 @@ for f, b in string.gmatch(PLAN, "(%d+):([%w%+]+)") do
 end
 for f in string.gmatch(SHOTS, "%d+") do shots[tonumber(f)] = true end
 local BASE = 0x1908CC
-local fields = { { "ct", 0x39, 1 }, { "hp", 0x28, 2 }, { "x", 0x47, 1 }, { "y", 0x48, 1 }, { "f49", 0x49, 1 } }
+local fields = { { "ct", 0x39, 1 }, { "hp", 0x28, 2 }, { "x", 0x47, 1 }, { "y", 0x48, 1 }, { "f49", 0x49, 1 },
+  { "st0", 0x58, 1 }, { "st3", 0x5B, 1 }, { "chg", 0x15D, 1 } }
 local last, pend, since = {}, {}, {}
 local STABLE = tonumber(os.getenv("PROBE_STABLE") or "5")
 local log = io.open(OUT .. "ct_log.txt", "w")

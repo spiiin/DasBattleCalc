@@ -32,7 +32,8 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
 - FFT (PSX, USA): `battlecalc --game fft --state <BizHawk Nymashock .State> [--rom <FFT (USA).cue>]` — RAM из сейва
   (`native/psx_mem.cpp`), диск только для графики (спрайты, иконки, текстурированный меш карты на поле —
   `fft_map.das`). Тесты: `tests/test_psx_mem.das` (`--state <fft_test_battle1.State> [--out <new.State>]`),
-  `tests/test_fft_battle.das` (то же), `tests/test_fft_turns.das` (`fft_test_battle1b.State`: 9 ходов из игры),
+  `tests/test_fft_battle.das` (то же), `tests/test_fft_turns.das` (`fft_test_battle1b.State`: 9 ходов из игры;
+  `--charge fft_test_charge.State` — заряд Fire, `--haste fft_test_haste.State` — Haste / Slow),
   `tests/test_fft_attack.das` (`fft_test_ramza2.State`: прогнозы Attack игры — урон, стороны, зодиак),
   `tests/test_fft_graphics.das` (`fft_test_battle1.State --rom <.cue>`), `tests/test_fft_reach.das` (`--dir <PSX/State>`:
   12 сейвов `fft_reach_*.State` с открытыми зонами Move / Attack — флаги игры в терраине +5),
