@@ -54,6 +54,13 @@ public:
         GUI_BIND(psx_buf_read16);
         GUI_BIND(psx_buf_read32);
         GUI_BIND(psx_find_map);
+        GUI_BIND(psp_pack_count);
+        GUI_BIND(psp_pack_size);
+        GUI_BIND(psp_pack_file);
+        GUI_BIND(psp_find_map);
+        GUI_BIND(psp_unit_sprite);
+        GUI_BIND(psp_sprite_type);
+        GUI_BIND(psp_item_icon);
         GUI_BIND(gba_state_is_nds);
         GUI_BIND(gba_state_is_psx);
         GUI_BIND(gba_state_is_psp);

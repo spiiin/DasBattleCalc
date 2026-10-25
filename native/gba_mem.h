@@ -69,6 +69,12 @@ uint32_t psx_buf_read16(int handle, int off);
 uint32_t psx_buf_read32(int handle, int off);
 // the battle's map number (MAPnnn.GNS held in RAM), -1 unknown
 int psx_find_map();
+// FFT: WotL (PSP .iso opened by psx_open_disc): fftpack.bin's file count,
+// file i (1-based) as a buffer (psx_buf_*), the map's GNS file, -1
+int psp_pack_count();
+int psp_pack_size(int i);
+int psp_pack_file(int i);
+int psp_find_map();
 // changes on every successful gba_load_state / gba_load_rom
 uint32_t gba_state_serial();
 uint32_t gba_rom_serial();
@@ -118,6 +124,15 @@ int psx_item_icon(SDL_Renderer * r, int item);
 // FFT (PSX): a 256 x 256 page (0..3) of a map texture (disc buffer
 // tex_buf) with palette 0..15 of the mesh (buffer pal_buf at pal_off)
 int psx_map_texture(SDL_Renderer * r, int tex_buf, int pal_buf, int pal_off, int page, int palette);
+// FFT: WotL (PSP): frame `frame` of battle sprite sheet `sheet` (the
+// record's +0x181; BOOT.BIN's tables in RAM, fftpack.bin), palette 0..15;
+// flip - mirrored; the origin: the feet. psp_sprite_type: the sheet's SHP
+// type (0 TYPE1 .. 7 KANZEN), -1
+int psp_unit_sprite(SDL_Renderer * r, int sheet, int palette, int frame, bool flip);
+int psp_sprite_type(int sheet);
+// FFT: WotL (PSP): the 16 x 16 icon of item `item` (EVENT/ITEM.BIN =
+// fftpack 33; item byte 0 the palette, byte 1 the icon)
+int psp_item_icon(SDL_Renderer * r, int item);
 float gba_gfx_width(int handle);
 float gba_gfx_height(int handle);
 float gba_gfx_origin_x(int handle);

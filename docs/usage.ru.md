@@ -50,6 +50,7 @@ build\bin\battlecalc.exe tests\test_fftwotl_attack.das --state <fftwotl_test_bat
 build\bin\battlecalc.exe tests\test_fftwotl_forecast.das --state <fftwotl_test_battle1.ppst>
 build\bin\battlecalc.exe tests\test_fftwotl_explore.das --state <fftwotl_test_battle1.ppst>
 build\bin\battlecalc.exe tests\test_fftwotl_export.das --state <fftwotl_test_battle1.ppst> --out <new.ppst>
+build\bin\battlecalc.exe tests\test_fftwotl_graphics.das --state <fftwotl_test_battle1.ppst> --rom <WotL (USA).iso>
 ```
 
 ### FFT: The War of the Lions (PSP)
@@ -57,7 +58,8 @@ build\bin\battlecalc.exe tests\test_fftwotl_export.das --state <fftwotl_test_bat
 `battlecalc --game fftwotl --state <сейв .ppst>`; сейв — save state PPSSPP (`memstick/PSP/PPSSPP_STATE/
 ULUS10297_1.00_N.ppst`, в меню PPSSPP это слот N + 1), игра — The War of the Lions (USA, ULUS10297). ISO не нужен:
 код игры (BOOT.BIN) уже лежит в памяти сейва, таблицы предметов, способностей, профессий и все имена читаются оттуда.
-Поле ROM для этой игры пустое. В вебе так же: выбрать только `.ppst`.
+В поле ROM можно указать ISO игры (`--rom <.iso>`) — только ради графики: спрайты юнитов на поле, иконки предметов в
+снаряжении, 3D-модель карты боя (карта находится сама — по её файлу GNS в памяти сейва). В вебе — только `.ppst`.
 
 - **Roster**: юниты боя (у кого сейчас ход — «(turn)»), гости (союзники под управлением ИИ) — зелёным.
 - **Inspector**: профессия, основной и второй набор умений, Reaction / Support / Movement (в бою действуют по
@@ -65,7 +67,8 @@ ULUS10297_1.00_N.ppst`, в меню PPSSPP это слот N + 1), игра — 
   Speed (база + снаряжение), 7 слотов снаряжения (список того, что может носить профессия; «All items» — всё),
   статусы, выученные способности по профессиям. **Export state with edits** пишет новый `.ppst` (PPSSPP: File → Load
   State…); RAM в нём — правленая, остальное — как в загруженном сейве.
-- **Battle → Field**: карта боя с высотами и водой (из памяти игры), юниты, клетки дальности действия (без учёта высот).
+- **Battle → Field**: карта боя с высотами и водой (из памяти игры; с ISO — текстурированная модель), юниты (с ISO —
+  спрайты в палитрах игры), клетки дальности действия (без учёта высот).
 - **Calculation**: Turn order (тики CT, Haste / Slow / Stop; ход стоит 100 / 80 / 60 CT, у ходящего сейчас 100 уже
   снято), Attack (прогноз урона и шанса по шагам, реакция цели и ответный удар), Explore, Units, Items и Abilities
   (таблицы игры).

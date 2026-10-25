@@ -70,7 +70,8 @@ The formulas, RAM layout and ROM files: [research/ffta2/notes.md](research/ffta2
 ## Final Fantasy Tactics: The War of the Lions
 
 Choose it in the **Game** menu (or `--game fftwotl`); the save is a PPSSPP save state (`.ppst`, PSP, USA, ULUS10297).
-No ISO is needed: the game's tables and texts are read from the RAM in the state.
+No ISO is needed: the game's tables and texts are read from the RAM in the state. The ISO (optional, in the ROM
+field) gives the graphics: the units' sprites, the items' icons and the battle map's textured mesh.
 
 - **Battle from a save**: the units (names, jobs, levels, Brave / Faith, HP / MP, CT, zodiac, positions, teams and
   guests), their stats, evades, elements, equipment and statuses; whose turn it is.
@@ -89,9 +90,9 @@ No ISO is needed: the game's tables and texts are read from the RAM in the state
 - **Items / Abilities** tabs: the game's item and ability tables.
 - **Explore** with its own parameters (`atk.pa`, `atk.brave`, `tgt.faith`, `tgt.status.protect`, `atk.zodiac`, ...).
 
-- **The battle map** with its heights and water.
+- **The battle map** with its heights and water; with the ISO, the map's 3D model and the units' sprites.
 
-Not yet: the height limits of reach, sprites, Jump / Throw / Arithmeticks. RAM layout and tables:
+Not yet: the height limits of reach, Jump / Throw / Arithmeticks. RAM layout and tables:
 [research/fftwotl/notes.md](research/fftwotl/notes.md), [layouts.md](research/fftwotl/layouts.md).
 
 ## Final Fantasy Tactics (PSX)

@@ -333,6 +333,62 @@ uint32_t le32v(const std::vector<uint8_t> & s, size_t o) {
     return o + 4 <= s.size() ? s[o] | s[o + 1] << 8 | s[o + 2] << 16 | (uint32_t)s[o + 3] << 24 : 0;
 }
 
+// a frame of a SHP over a decoded SPR sheet (frames from the second half
+// read from row lower_y: PSX 256, WotL 288); -1
+int shp_frame(SDL_Renderer * r, const std::vector<uint8_t> & sprb, const std::vector<uint8_t> & s, int palette,
+              int frame, bool flip, int lower_y) {
+    std::vector<uint8_t> px;
+    if (s.size() <= 0x410 || !spr_pixels(sprb, px)) return -1;
+    int handle = -1;
+    // the SHP: u32 the second table, u16 the first frame of the
+    // sheet's lower half; frames from 0x40A by u32 offsets at 8
+    uint32_t half = s[4] | s[5] << 8;
+    std::vector<uint32_t> offs{0};
+    for (size_t o = 0x0C; o + 4 <= 0x40A; o += 4) {
+        uint32_t v = le32v(s, o);
+        if (!v) break;
+        offs.push_back(v);
+    }
+    if (frame >= 0 && frame < (int)offs.size()) {
+        size_t at = offs[frame] + 0x40A;
+        int yoff = frame >= (int)half ? lower_y : 0;
+        int n = at + 2 <= s.size() ? s[at] + 1 : 0;
+        struct Piece { int x, y, tx, ty, w, h; bool rx, ry; };
+        std::vector<Piece> pieces;
+        int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+        for (int k = 0; k < n && at + 6 + k * 4 <= s.size(); ++k) {
+            const uint8_t * b = &s[at + 2 + k * 4];
+            uint32_t f = b[2] | b[3] << 8;
+            Piece p{(int8_t)b[0], (int8_t)b[1], int(f & 31) * 8, int((f >> 5) & 31) * 8 + yoff,
+                    SPR_SIZES[(f >> 10) & 15][0], SPR_SIZES[(f >> 10) & 15][1], (f & 0x4000) != 0,
+                    (f & 0x8000) != 0};
+            if (pieces.empty()) { x0 = p.x; y0 = p.y; x1 = p.x + p.w; y1 = p.y + p.h; }
+            x0 = SDL_min(x0, p.x); y0 = SDL_min(y0, p.y);
+            x1 = SDL_max(x1, p.x + p.w); y1 = SDL_max(y1, p.y + p.h);
+            pieces.push_back(p);
+        }
+        int w = x1 - x0, h = y1 - y0;
+        if (!pieces.empty() && w <= 256 && h <= 256) {
+            const uint8_t * pal = &sprb[(palette & 15) * 32];
+            std::vector<uint32_t> img(w * h, 0);
+            // the first piece is in front
+            for (auto p = pieces.rbegin(); p != pieces.rend(); ++p)
+                for (int y = 0; y < p->h; ++y)
+                    for (int x = 0; x < p->w; ++x) {
+                        int sx = p->tx + (p->rx ? p->w - 1 - x : x), sy = p->ty + (p->ry ? p->h - 1 - y : y);
+                        if (sx >= 256 || sy >= 488) continue;
+                        int c = px[sy * 256 + sx];
+                        if (!c) continue;
+                        int dx = p->x - x0 + x, dy = p->y - y0 + y;
+                        if (flip) dx = w - 1 - dx;
+                        img[dy * w + dx] = bgr555(pal[c * 2] | pal[c * 2 + 1] << 8);
+                    }
+            handle = make(r, img, w, h, flip ? (float)x1 : (float)-x0, (float)-y0);
+        }
+    }
+    return handle;
+}
+
 }  // namespace
 
 int psx_unit_sprite(SDL_Renderer * r, int sprite, int palette, int frame, bool flip) {
@@ -347,59 +403,10 @@ int psx_unit_sprite(SDL_Renderer * r, int sprite, int palette, int frame, bool f
     if (r && battle && battle->size() > 0x2E1CC && sprite > 0 && sprite < 159) {
         int lba = (int)le32v(*battle, 0x2DCD4 + sprite * 8), size = (int)le32v(*battle, 0x2DCD8 + sprite * 8);
         int kind = (*battle)[0x2D748 + sprite * 4];
-        std::vector<uint8_t> px;
         auto spr = psx_buf(psx_disc_read(lba, size));
         std::string shp_name = std::string("BATTLE/") + SHP_NAMES[kind & 7] + ".SHP";
         auto shp = psx_buf(psx_disc_file(shp_name.c_str()));
-        if (spr && shp && shp->size() > 0x410 && kind < 8 && spr_pixels(*spr, px)) {
-            // the SHP: u32 the second table, u16 the first frame of the
-            // sheet's lower half; frames from 0x40A by u32 offsets at 8
-            const auto & s = *shp;
-            uint32_t half = s[4] | s[5] << 8;
-            std::vector<uint32_t> offs{0};
-            for (size_t o = 0x0C; o + 4 <= 0x40A; o += 4) {
-                uint32_t v = le32v(s, o);
-                if (!v) break;
-                offs.push_back(v);
-            }
-            if (frame >= 0 && frame < (int)offs.size()) {
-                size_t at = offs[frame] + 0x40A;
-                int yoff = frame >= (int)half ? 256 : 0;
-                int n = at + 2 <= s.size() ? s[at] + 1 : 0;
-                struct Piece { int x, y, tx, ty, w, h; bool rx, ry; };
-                std::vector<Piece> pieces;
-                int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-                for (int k = 0; k < n && at + 6 + k * 4 <= s.size(); ++k) {
-                    const uint8_t * b = &s[at + 2 + k * 4];
-                    uint32_t f = b[2] | b[3] << 8;
-                    Piece p{(int8_t)b[0], (int8_t)b[1], int(f & 31) * 8, int((f >> 5) & 31) * 8 + yoff,
-                            SPR_SIZES[(f >> 10) & 15][0], SPR_SIZES[(f >> 10) & 15][1], (f & 0x4000) != 0,
-                            (f & 0x8000) != 0};
-                    if (pieces.empty()) { x0 = p.x; y0 = p.y; x1 = p.x + p.w; y1 = p.y + p.h; }
-                    x0 = SDL_min(x0, p.x); y0 = SDL_min(y0, p.y);
-                    x1 = SDL_max(x1, p.x + p.w); y1 = SDL_max(y1, p.y + p.h);
-                    pieces.push_back(p);
-                }
-                int w = x1 - x0, h = y1 - y0;
-                if (!pieces.empty() && w <= 256 && h <= 256) {
-                    const uint8_t * pal = &(*spr)[(palette & 15) * 32];
-                    std::vector<uint32_t> img(w * h, 0);
-                    // the first piece is in front
-                    for (auto p = pieces.rbegin(); p != pieces.rend(); ++p)
-                        for (int y = 0; y < p->h; ++y)
-                            for (int x = 0; x < p->w; ++x) {
-                                int sx = p->tx + (p->rx ? p->w - 1 - x : x), sy = p->ty + (p->ry ? p->h - 1 - y : y);
-                                if (sx >= 256 || sy >= 488) continue;
-                                int c = px[sy * 256 + sx];
-                                if (!c) continue;
-                                int dx = p->x - x0 + x, dy = p->y - y0 + y;
-                                if (flip) dx = w - 1 - dx;
-                                img[dy * w + dx] = bgr555(pal[c * 2] | pal[c * 2 + 1] << 8);
-                            }
-                    handle = make(r, img, w, h, flip ? (float)x1 : (float)-x0, (float)-y0);
-                }
-            }
-        }
+        if (spr && shp && kind < 8) handle = shp_frame(r, *spr, *shp, palette, frame, flip, 256);
     }
     g_cache[key] = handle;
     return handle;
@@ -457,6 +464,88 @@ int psx_map_texture(SDL_Renderer * r, int tex_buf, int pal_buf, int pal_off, int
                 if (v) img[y * 256 + x] = bgr555(v);
             }
         handle = make(r, img, 256, 256, 0, 0);
+    }
+    g_cache[key] = handle;
+    return handle;
+}
+
+// ------------------------------------------------------------------ FFT: WotL (PSP)
+// research/fftwotl/graphics.md: BOOT.BIN's tables are in RAM (offset +
+// 0x08803FAC), the files in the ISO's fftpack.bin.
+
+namespace {
+
+const uint32_t BOOT_RAM = 0x08803FACu;
+
+// the sheet's fftpack file and size: BOOT.BIN 0x32481C + 8 s (u32 a PSX
+// "sector", u32 size); file i's sector at 0x252F34 + 4 (i - 3)
+bool psp_sheet_file(int sheet, int & file, int & size) {
+    if (!gba_state_is_psp() || sheet <= 0 || sheet >= 170) return false;
+    uint32_t sector = gba_read32(BOOT_RAM + 0x32481C + sheet * 8);
+    size = (int)gba_read32(BOOT_RAM + 0x324820 + sheet * 8);
+    int n = psp_pack_count();
+    for (int i = 3; i <= n; ++i)
+        if (gba_read32(BOOT_RAM + 0x252F34 + (i - 3) * 4) == sector) {
+            file = i;
+            return size > 0;
+        }
+    return false;
+}
+
+}  // namespace
+
+int psp_sprite_type(int sheet) {
+    if (!gba_state_is_psp() || sheet <= 0 || sheet >= 170) return -1;
+    return (int)gba_read8(BOOT_RAM + 0x324284 + sheet * 4);
+}
+
+int psp_unit_sprite(SDL_Renderer * r, int sheet, int palette, int frame, bool flip) {
+    check_rom();
+    auto key = std::make_tuple(7, (uint32_t)sheet, (uint32_t)palette, (uint32_t)frame, flip ? 1 : 0);
+    auto it = g_cache.find(key);
+    if (it != g_cache.end()) return it->second;
+    int handle = -1, file = 0, size = 0, kind = psp_sprite_type(sheet);
+    // the SHP files: fftpack 51.. (TYPE1, TYPE2, CYOKO, MON, OTHER, ARUTE,
+    // KANZEN); RUKA uses MON's
+    static const int SHP_FILE[8] = {51, 52, 53, 54, 55, 54, 56, 57};
+    if (r && kind >= 0 && kind < 8 && psp_sheet_file(sheet, file, size)) {
+        auto spr = psx_buf(psp_pack_file(file));
+        auto shp = psx_buf(psp_pack_file(SHP_FILE[kind]));
+        if (spr && shp) {
+            std::vector<uint8_t> sheet_bytes(spr->begin(), spr->begin() + SDL_min((size_t)size, spr->size()));
+            handle = shp_frame(r, sheet_bytes, *shp, palette, frame, flip, 288);
+        }
+    }
+    g_cache[key] = handle;
+    return handle;
+}
+
+int psp_item_icon(SDL_Renderer * r, int item) {
+    check_rom();
+    auto key = std::make_tuple(8, (uint32_t)item, 0u, 0u, 0);
+    auto it = g_cache.find(key);
+    if (it != g_cache.end()) return it->second;
+    int handle = -1;
+    // 256 x 256 4bpp, then 33 palettes at 0x8000; 15 icons a row from y 32;
+    // the item tables (12 B): 0..255 at 0x08B29288, 256..315 at 0x08A5ADAC
+    auto icons = psx_buf(psp_pack_file(33));
+    if (r && icons && icons->size() >= 0x8000 + 64 * 32 && item >= 0 && item < 316 && item != 255 &&
+        gba_state_is_psp()) {
+        uint32_t e = item < 256 ? 0x08B29288u + item * 12 : 0x08A5ADACu + (item - 256) * 12;
+        int pal = gba_read8(e) & 63, g = gba_read8(e + 1);
+        int ox = (g % 15) * 16, oy = 32 + (g / 15) * 16;
+        if (g > 0 && oy + 16 <= 256) {
+            const auto & b = *icons;
+            const uint8_t * pp = &b[0x8000 + pal * 32];
+            std::vector<uint32_t> img(16 * 16, 0);
+            for (int y = 0; y < 16; ++y)
+                for (int x = 0; x < 16; ++x) {
+                    int X = ox + x;
+                    int c = (b[(oy + y) * 128 + X / 2] >> (4 * (X & 1))) & 15;
+                    if (c) img[y * 16 + x] = bgr555(pp[c * 2] | pp[c * 2 + 1] << 8);
+                }
+            handle = make(r, img, 16, 16, 0, 0);
+        }
     }
     g_cache[key] = handle;
     return handle;

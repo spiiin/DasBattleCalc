@@ -34,7 +34,7 @@ bool psx_state_ram(const std::vector<uint8_t> & core, std::vector<uint8_t> & ram
 
 // ------------------------------------------------------------------ the disc
 // The disc image (MODE2/2352, one data track, ISO9660): a .cue (its FILE)
-// or the .bin itself. Files are read whole into buffers kept until another
+// or the .bin itself; or a PSP .iso (2048-byte sectors). Files are read whole into buffers kept until another
 // disc is opened; handles as nds_file's.
 
 namespace {
@@ -43,6 +43,9 @@ const int SECTOR = 2352;
 
 struct DiscState {
     std::string bin;
+    int sector = SECTOR, data_off = 24;       // a .bin; an .iso: 2048, 0
+    std::vector<uint32_t> pack;               // fftpack.bin (PSP): count, starts
+    uint32_t pack_lba = 0, pack_size = 0;
     uint32_t serial = 0;
     std::vector<std::vector<uint8_t>> bufs;
     std::map<std::string, int> by_key;
@@ -54,17 +57,18 @@ bool read_sectors(uint32_t lba, uint32_t size, std::vector<uint8_t> & out) {
     out.clear();
     FILE * f = fopen(g_disc.bin.c_str(), "rb");
     if (!f) return false;
-    std::vector<uint8_t> raw(SECTOR);
+    const int sector = g_disc.sector, data = g_disc.data_off;
+    std::vector<uint8_t> raw(sector);
     bool ok = true;
     while (out.size() < size) {
 #ifdef _WIN32
-        if (_fseeki64(f, (long long)lba * SECTOR, SEEK_SET) != 0) { ok = false; break; }
+        if (_fseeki64(f, (long long)lba * sector, SEEK_SET) != 0) { ok = false; break; }
 #else
-        if (fseeko(f, (off_t)lba * SECTOR, SEEK_SET) != 0) { ok = false; break; }
+        if (fseeko(f, (off_t)lba * sector, SEEK_SET) != 0) { ok = false; break; }
 #endif
-        if (fread(raw.data(), 1, SECTOR, f) != SECTOR) { ok = false; break; }
+        if (fread(raw.data(), 1, sector, f) != (size_t)sector) { ok = false; break; }
         size_t n = std::min<size_t>(2048, size - out.size());
-        out.insert(out.end(), raw.begin() + 24, raw.begin() + 24 + n);   // mode 2 form 1
+        out.insert(out.end(), raw.begin() + data, raw.begin() + data + n);   // mode 2 form 1
         ++lba;
     }
     fclose(f);
@@ -143,8 +147,12 @@ const char * psx_open_disc(const char * path) {
     std::swap(g_disc, next);
     std::vector<uint8_t> pvd;
     if (!read_sectors(16, 2048, pvd) || memcmp(&pvd[1], "CD001", 5) != 0) {
-        g_disc.bin.clear();
-        return (g_disc.error = "not a MODE2/2352 disc image").c_str();
+        g_disc.sector = 2048;
+        g_disc.data_off = 0;
+        if (!read_sectors(16, 2048, pvd) || memcmp(&pvd[1], "CD001", 5) != 0) {
+            g_disc.bin.clear();
+            return (g_disc.error = "not a disc image (MODE2/2352 .bin or .iso)").c_str();
+        }
     }
     return "";
 }
@@ -185,6 +193,78 @@ uint32_t psx_buf_read32(int h, int off) {
     return psx_buf_read16(h, off) | psx_buf_read16(h, off + 2) << 16;
 }
 const std::vector<uint8_t> * psx_buf(int h) { return disc_buf(h); }
+
+// ------------------------------------------------------------------ PSP
+// FFT: WotL: PSP_GAME/USRDIR/fftpack.bin (research/fftwotl/graphics.md):
+// u32 count, u32 0x10, u32 start of file i (1-based) at 8 + 4 (i - 1);
+// file i ends where file i + 1 starts.
+
+int psp_pack_count() {
+    if (!psx_has_disc()) return 0;
+    if (g_disc.pack.empty()) {
+        g_disc.pack.push_back(0);
+        std::vector<uint8_t> h;
+        if (iso_find("PSP_GAME/USRDIR/fftpack.bin", g_disc.pack_lba, g_disc.pack_size) &&
+            read_sectors(g_disc.pack_lba, 8, h)) {
+            uint32_t n = le32(&h[0]);
+            if (n > 0 && n < 100000 && read_sectors(g_disc.pack_lba, 8 + n * 4, h)) {
+                g_disc.pack[0] = n;
+                for (uint32_t i = 0; i < n; ++i) g_disc.pack.push_back(le32(&h[8 + i * 4]));
+            }
+        }
+    }
+    return (int)g_disc.pack[0];
+}
+
+int psp_pack_size(int i) {
+    int n = psp_pack_count();
+    if (i < 1 || i > n) return 0;
+    uint32_t start = g_disc.pack[i], end = i < n ? g_disc.pack[i + 1] : g_disc.pack_size;
+    return end > start ? int(end - start) : 0;
+}
+
+int psp_pack_file(int i) {
+    std::string key = "p:" + std::to_string(i);
+    auto it = g_disc.by_key.find(key);
+    if (it != g_disc.by_key.end()) return it->second;
+    std::vector<uint8_t> data;
+    int size = psp_pack_size(i);
+    uint32_t start = size > 0 ? g_disc.pack[i] : 0;
+    bool ok = size > 0 && size < 0x1000000 &&
+              read_sectors(g_disc.pack_lba + start / 2048, start % 2048 + size, data);
+    if (ok) data.erase(data.begin(), data.begin() + start % 2048);
+    return keep(key, ok, data);
+}
+
+// the battle's map: its MAPnnn.GNS (20-byte records, the PSP placeholder
+// "34 33 cc ba ed fe" at +6) held whole in RAM; its fftpack file, -1
+int psp_find_map() {
+    int n = psp_pack_count();
+    if (!gba_state_is_psp() || n == 0) return -1;
+    const uint32_t lo = 0x08800000u, hi = 0x0A000000u;
+    std::vector<uint8_t> ram(hi - lo);
+    for (uint32_t a = 0; a < ram.size(); a += 4) {
+        uint32_t v = gba_read32(lo + a);
+        memcpy(&ram[a], &v, 4);
+    }
+    static const uint8_t mark[6] = {0x34, 0x33, 0xcc, 0xba, 0xed, 0xfe};
+    // where a GNS may start in RAM: its first record's mark
+    std::vector<size_t> at;
+    for (size_t p = 0; p + 20 <= ram.size(); p += 4)
+        if (memcmp(&ram[p + 6], mark, 6) == 0) at.push_back(p);
+    if (at.empty()) return -1;
+    for (int i = 1; i <= n; ++i) {
+        int size = psp_pack_size(i);
+        if (size <= 0 || size > 4096) continue;
+        auto g = disc_buf(psp_pack_file(i));
+        if (!g || g->size() < 20 || memcmp(&(*g)[6], mark, 6) != 0) continue;
+        size_t len = g->size();
+        while (len > 0 && (*g)[len - 1] == 0) --len;
+        for (size_t p : at)
+            if (len > 0 && p + len <= ram.size() && memcmp(&ram[p], g->data(), len) == 0) return i;
+    }
+    return -1;
+}
 
 // the battle's map: the MAPnnn.GNS the game holds in RAM (its first 64
 // bytes), -1 none
