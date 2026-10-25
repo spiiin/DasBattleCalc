@@ -70,6 +70,12 @@ def main() : int {
     check("Squire: move 4, jump 3, C-EV 5, HP 11/100", sq.move == 4 && sq.jump == 3 && sq.c_ev == 5 && sq.hp_c == 11 &&
         sq.hp_m == 100)
     check("status 26 Protect, 38 Reflect", status_name_w(26) == "Protect" && status_name_w(38) == "Reflect")
+    // the map: 10 x 14; the heights the game's cursor shows
+    var m : MapW
+    check("map reads", read_map_w(m) && m.w == 10 && m.h == 14)
+    check("heights (5,3) 11, (5,2) 11, (5,1) 9, (6,3) 11, (7,3) 10", map_height_w(m, 5, 3) == 11 &&
+        map_height_w(m, 5, 2) == 11 && map_height_w(m, 5, 1) == 9 && map_height_w(m, 6, 3) == 11 &&
+        map_height_w(m, 7, 3) == 10)
     print("test_fftwotl_battle: {total - failed} / {total} passed\n")
     return failed == 0 ? 0 : 1
 }

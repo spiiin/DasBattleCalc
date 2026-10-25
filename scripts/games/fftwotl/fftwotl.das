@@ -4,8 +4,7 @@ options indenting = 4
 // Final Fantasy Tactics: The War of the Lions (PSP, USA, ULUS10297): the
 // game's panels. A PPSSPP save state (.ppst) is loaded; the units and the
 // game's tables come from its RAM (fftwotl_battle.das, fftwotl_data.das),
-// no ISO is needed. The field is flat: the map's heights are not decoded
-// yet.
+// no ISO is needed. The field shows the map's heights (read_map_w).
 module fftwotl shared public
 
 require imgui
@@ -150,6 +149,7 @@ class WotlGame : GameModule {
     target : int = -1
     field = FieldState()
     field_map : FieldMap
+    map_w : MapW
     scene_tab : int = 0               // 0 field, 1 the Explore chart
     calc_tab : int = 0                // 0 turn order, 1 attack, 2 explore, 3 units, 4 items, 5 abilities
     side_choice : int = 0             // 0 auto, 1 + SideW
@@ -266,8 +266,19 @@ class WotlGame : GameModule {
         log_line(message)
     }
 
-    // a flat field around the units (the map's heights are not decoded yet)
+    // the battle map with its heights (water: depth); a flat field around
+    // the units when the state has none
     def make_map() : void {
+        if (read_map_w(map_w)) {
+            field_map = FieldMap(w = map_w.w, h = map_w.h, shown_shift = -1)
+            field_map.height |> resize(map_w.w * map_w.h)
+            field_map.water |> resize(map_w.w * map_w.h)
+            for (i in range(map_w.w * map_w.h)) {
+                field_map.height[i] = map_w.height[i] + 1
+                field_map.water[i] = map_w.depth[i] > 0
+            }
+            return
+        }
         var w = 1
         var h = 1
         for (un in units) {
@@ -924,7 +935,10 @@ class WotlGame : GameModule {
         rows |> push(("Hit", "{join(f.hit_mods, "; ")} -> {f.hit}%"))
         rows |> push(("Zodiac", "{att.zodiac} vs {tgt.zodiac}: {ZODIAC_REL_NAMES[f.zodiac]}"))
         let dist = abs(att.x - tgt.x) + abs(att.y - tgt.y)
-        rows |> push(("Reach", "{dist} tiles, range {f.reach}: {dist <= f.reach ? "in reach" : "OUT OF REACH"} (heights not counted)"))
+        let dh = map_height_w(map_w, tgt.x, tgt.y, tgt.high) - map_height_w(map_w, att.x, att.y, att.high)
+        let reach_s = dist <= f.reach ? "in reach" : "OUT OF REACH"
+        let sign = dh >= 0 ? "+" : ""
+        rows |> push(("Reach", "{dist} tiles, height {sign}{dh} h, range {f.reach}: {reach_s} (the height limit is not modelled)"))
         if (f.mp_cost != 0 || f.ct != 0) {
             rows |> push(("Cost", "MP {f.mp_cost}, charge {f.ct} ticks"))
         }

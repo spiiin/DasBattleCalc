@@ -69,10 +69,33 @@ Gaffgarion, Alicia, Lavian, Ladd in the first battle: the game shows them as gue
 Checked against the game: the Status screen after an exported edit shows the new Bravery, weapon (WP), secondary
 skillset; the HP number of the panel is the game's own copy until it is redrawn (the record holds the new HP).
 
+## Battle map
+
+Tiles of 8 bytes (the GNS terrain format) at **0x092E8530**, index y x width + x; the upper level 0x800 later. The size:
+**0x093EBB6C height (rows), 0x093EBB6D width** (the game's code reads both: 0x0887C070..). Tile: +0 surface type (low 6
+bits), +2 height, +3 slope height (low 5 bits) and depth (high 3 bits: water), +4 slope type, +6 / +7 flags. Found with
+the target cursor (x 0x093E189C, y 0x093E18A4) and the heights the game shows (5,3) 11, (5,2) 11, (5,1) 9, (6,3) 11,
+(7,3) 10; the first battle's map is 10 x 14.
+
+## Abilities and supports (checked)
+
+`fcgroups.py` writes Ramza's secondary skillset and learned bits, opens the ability and reads its forecast: damage
+(+0x1B6), healing (+0x1B8), MP damage (+0x1BA), hit; `forecast3.txt`. `fcvary.py --supports` sets bits of the record's
+ability masks: `forecast4.txt`. Settled:
+- evades combine into **one factor truncated at each step** (100 x 78 / 100 x 90 / 100 = 70), then hit x factor / 100
+  (Rend Power base 69 -> 48, 87 -> 60, 67 -> 46);
+- chance formulas: zodiac scales **both** addends (Rend Power PA 7 + Y 62 = 69; Umbra MA 5 + X 250); Arts of War: the
+  chance constant is **Y** (45..55), X the effect (stat -X, X% of MP); base at most 100;
+- Rush / Stone: the forecast is PA' x [(Y + 2) / 2] (PA' through Protect and zodiac), Stone evadable, Rush not;
+- Cure: MA' x Y x Faith, Shell no effect, an undead target takes the amount as damage; Potion 30, undead: damage;
+- **R/S/M abilities in effect are the record's bit masks** +0x95 (reactions, 4 bytes, 0x1A6 + n, 0x80 first), +0x99
+  (supports, 4), +0x9D (movement, 3); the ids at +0x14..0x18 alone change nothing. Attack Boost x 4/3, Defense Boost
+  x 2/3, Concentration 100%, Brawler (bare) PA x 3/2, **Doublehand doubles the stat** (not WP), Parry adds the
+  weapon's evade, Reflexes doubles the evades.
+
 ## Not found yet
 
-- **The map's heights.** Not a raw GNS terrain block (256 x 8 B per level) in RAM; candidates by "x 5..8, y 3 are 11 h"
-  did not show up in a quick search. The field is flat for now.
+- (found, see "Battle map")
 ## Forecasts of the game (checked)
 
 The forecast of an action is in the **target's record**: +0x1B6 u16 HP damage, +0x1CA kind (0x82 for Attack),

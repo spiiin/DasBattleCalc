@@ -290,6 +290,54 @@ def read_battle_w(var units : array<UnitW>) : string {
     return ""
 }
 
+// ------------------------------------------------------------ map
+
+// The battle map: tiles of 8 bytes (the GNS terrain format) at 0x092E8530
+// by y * width + x, the upper level 0x800 later; the size at 0x093EBB6C
+// (height, rows) and 0x093EBB6D (width) - the code of the game reads them.
+// Tile: +0 surface type (low 6 bits), +2 height, +3 slope height (low 5
+// bits) and depth (high 3: water), +4 slope type. Checked: the heights the
+// game's cursor shows on five tiles of the first battle.
+let MAP_TILES_W = 0x092E8530u
+let MAP_SIZE_W = 0x093EBB6Cu
+
+struct MapW {
+    w : int
+    h : int
+    height : array<int>             // in h (the tile's height byte), lower level
+    slope : array<int>              // slope height (the higher side: height + slope)
+    depth : array<int>              // water depth
+    upper : array<int>              // the upper level's height, 0 none
+}
+
+def read_map_w(var m : MapW) : bool {
+    m = MapW()
+    m.h = int(gba_read8(MAP_SIZE_W))
+    m.w = int(gba_read8(MAP_SIZE_W + 1u))
+    if (m.w <= 0 || m.h <= 0 || m.w * m.h > 256) {
+        m.w = 0
+        m.h = 0
+        return false
+    }
+    for (i in range(m.w * m.h)) {
+        let t = MAP_TILES_W + uint(i) * 8u
+        m.height |> push(int(gba_read8(t + 2u)))
+        let sd = int(gba_read8(t + 3u))
+        m.slope |> push(sd & 31)
+        m.depth |> push(sd >> 5)
+        m.upper |> push(int(gba_read8(t + 0x800u + 2u)))
+    }
+    return true
+}
+
+def map_height_w(m : MapW; x, y : int; high : bool = false) : int {
+    if (x < 0 || y < 0 || x >= m.w || y >= m.h) {
+        return -1
+    }
+    let i = y * m.w + x
+    return high && m.upper[i] > 0 ? m.upper[i] : m.height[i]
+}
+
 // ------------------------------------------------------------ export
 
 // Puts a unit into the edit copy of RAM (gba_edit_begin): the fields the
