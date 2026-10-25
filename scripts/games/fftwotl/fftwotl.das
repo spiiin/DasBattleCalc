@@ -997,7 +997,7 @@ class WotlGame : GameModule {
             ry += u(21.0)
         }
         text_at_baseline(x + u(8.0), ry + u(15.0),
-            "Matches 239 of the game's own forecasts (Attack, Fire, Cure, Arts of War, Throw, Jump, ...); the rest: formulas.md", 0xe0a060ffu)
+            "Matches 266 of the game's own forecasts (Attack, magicks, statuses, Arts of War, Throw, Jump, ...); the rest: formulas.md", 0xe0a060ffu)
         ry += u(28.0)
         var rows : array<tuple<string; string>>
         if (f.formula != 0) {
