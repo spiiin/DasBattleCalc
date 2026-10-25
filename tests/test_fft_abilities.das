@@ -7,7 +7,8 @@ options indenting = 4
 // Weapon Guard, facing Ramza). The other skillsets were given to Ramza in
 // RAM (secondary +0x13, all learned at +0x99) by research/fft/plan_probe.
 // Dash and Throw Stone: the forecast shows one roll of rand(1..Y) - 3 and
-// 2 in this state - so the game's number is PA' x that roll.
+// 2 in this state - so the game's number is PA' x that roll. Also Wish
+// (caster's max HP / 5 x 2), Chakra, Potion, Charge with a bow at Viggs.
 //   battlecalc tests/test_fft_abilities.das --state <fft_test_ramza2.State>
 require gba_mem
 require gui_common
@@ -60,8 +61,9 @@ def main() : int {
     }
     check("Ramza knows:{learned}", learned == " Accumulate Dash Wish")
     // (ability id, the game's amount, the game's hit %)
+    // + Wish (152) 44, Chakra (106) on Ramza himself 30, Potion (368) 30
     let cases = fixed_array<tuple<int; int; int>>((147, 18, 100), (148, 12, 66), (138, 0, 38), (144, 0, 36), (142, 9, 36),
-        (16, 17, 95), (1, 17, 100), (34, 0, 56), (28, 0, 49), (155, 54, 100), (165, 42, 100))
+        (16, 17, 95), (1, 17, 100), (34, 0, 56), (28, 0, 49), (155, 54, 100), (165, 42, 100), (152, 44, 100), (368, 30, 100))
     for (c in cases) {
         let ab = read_ability(c._0)
         let f = ability_forecast(ramza, lez, ab)
@@ -78,6 +80,30 @@ def main() : int {
         check("Dash PA {pc.x}: {f.amount_min * 3}, the game: {pc.y}", f.amount_min * 3 == pc.y)
     }
     ramza.pa = 6
+    // Chakra on himself: PA x 5
+    let fc = ability_forecast(ramza, ramza, read_ability(106))
+    check("Chakra: {fc.amount_min}, the game: 30", fc.amount_min == 30)
+    // Wish by the caster's max HP: 200 -> 80, 100 -> 40
+    for (wc in fixed_array<int2>(int2(200, 80), int2(100, 40))) {
+        var r2 = ramza
+        r2.max_hp = wc.x
+        r2.hp = wc.x
+        let fw = ability_forecast(r2, lez, read_ability(152))
+        check("Wish, max HP {wc.x}: {fw.amount_min}, the game: {wc.y}", fw.amount_min == wc.y)
+    }
+    // Charge with a Long Bow at Viggs (side, no shield): (PA + Speed) / 2
+    // + K, x WP 4: +1 -> 28, +4 -> 40; Attack 24
+    let vi = find_unit(units, "Viggs")
+    if (vi >= 0) {
+        var archer = ramza
+        archer.equip[3] = 0x53
+        let fa = attack_forecast(archer, units[vi])
+        check("bow at Viggs: {fa.damage_min} {fa.hit}%, the game: 24 100%", fa.damage_min == 24 && fa.hit == 100)
+        for (cc in fixed_array<int2>(int2(0x196, 28), int2(0x199, 40))) {
+            let fq = ability_forecast(archer, units[vi], read_ability(cc.x))
+            check("{ability_name(cc.x)}: {fq.amount_min} {fq.hit}%, the game: {cc.y} 100%", fq.amount_min == cc.y && fq.hit == 100)
+        }
+    }
     var taurus = lez
     taurus.zodiac = 1
     let fz = ability_forecast(ramza, taurus, read_ability(147))

@@ -8,8 +8,10 @@ options indenting = 4
 // / Sleep / Chicken / Frog, the zodiac. The hit chance multiplies the
 // target's evades by the side it is hit from: front - class, shields,
 // accessory, weapon (Weapon Guard); side - no class; back - the
-// accessory. Seen in the game's forecast: sword PA x WP, the zodiac's
-// integer steps on PA, the evades by side. The rest - the Guide.
+// accessory. Seen in the game's forecast: sword PA x WP, knife and bow
+// (PA + Speed) / 2 x WP, knight sword PA x Br / 100 x WP, axe rand(1..PA)
+// x WP, Charge's K added to XA, the zodiac's integer steps on PA, the
+// evades by side. The rest (statuses, supports, critical) - the Guide.
 module fft_attack shared public
 
 require gba_mem

@@ -68,6 +68,18 @@ def main() : int {
         let g = attack_forecast(ramza, lez)
         check("zodiac {ZODIAC_NAMES[z._0]}: {g.damage_min}, the game: {z._1}", g.damage_min == z._1)
     }
+    // other weapons in Ramza's right hand (+0x1D edited), at Lezales:
+    // Dagger (WP 3) (PA + Speed) / 2 x WP = 18; Defender (WP 16) PA x Br /
+    // 100 x WP = 3 x 16 = 48; Battle Axe (WP 9) rand(1..PA) x WP - the
+    // game showed one roll, 36 = 4 x 9
+    lez.zodiac = units[li].zodiac
+    var armed = ramza
+    for (wc in fixed_array<int3>(int3(1, 18, 18), int3(0x21, 48, 48), int3(0x30, 9, 54))) {
+        armed.equip[3] = wc.x
+        let g = attack_forecast(armed, lez)
+        check("{item_name(wc.x)}: {g.damage_min}..{g.damage_max} {g.hit}%, the game: {wc.y}..{wc.z} 66%",
+            g.damage_min == wc.y && g.damage_max == wc.z && g.hit == 66)
+    }
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
     return failed == 0 ? 0 : 1
 }

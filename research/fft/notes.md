@@ -245,3 +245,19 @@ Not the tile or the facing: the game logic takes them (its Move range
 went around Lezales moved to (4, 3)) but his sprite stayed at (5, 3);
 the sprite's object with its own position is not found yet (a step of
 Ramza changed only the GPU lists, the cursor and the camera).
+
+## More forecasts (2026-10-25)
+
+Ramza's right hand edited (+0x1D), at Lezales (front, 66%): Dagger WP 3 ->
+18 = (6 + 6) / 2 x 3; Defender WP 16 -> 48 = (6 x 56 / 100 = 3) x 16;
+Battle Axe WP 9 -> 36 = one roll of rand(1..6) (4) x 9. Long Bow at Viggs
+(side, no shield: 100%): 24 = 6 x 4; Charge+1 28 = (6 + 1) x 4, Charge+4
+40 = (6 + 4) x 4: K is added to XA. Chakra on himself 30 = PA x 5;
+Potion 30.
+
+Wish: the caster's max HP / 5 (floored) x 2, any target: 113 -> 44 (not
+the 46 of rounding 2/5 up), 200 -> 80, 100 -> 40; Lezales' max HP 200
+-> still 44.
+
+The cursor's tile while targeting: 0x800E4E90 (x), 0x800E4E98 (y); in the
+first battle's camera Down x - 1, Up x + 1, Left y + 1, Right y - 1.

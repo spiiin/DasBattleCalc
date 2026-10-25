@@ -344,9 +344,10 @@ def ability_forecast(a, t : FftUnit; ab : FftAbility) : AbilityForecast {
     } elif (fo == 0x3C) {
         f.effect = "heal"
         f.heal = true
-        f.amount_min = (a.max_hp * 2 + 4) / 5
+        // the game: max HP 113 -> 44, 200 -> 80, 100 -> 40 (any target)
+        f.amount_min = a.max_hp / 5 * 2
         f.amount_max = f.amount_min
-        f.formula = "2/5 of the caster's max HP (the caster loses 1/5: {(a.max_hp + 4) / 5})"
+        f.formula = "caster's max HP / 5 x 2 (the caster loses max HP / 5: {a.max_hp / 5})"
     } elif (fo == 0x48) {
         f.effect = has_status(t, ST_UNDEAD) ? "damage (undead)" : "heal"
         f.heal = !has_status(t, ST_UNDEAD)
