@@ -34,7 +34,19 @@ struct FieldMap {
     // FFT: the game's camera sees the mirror image of this view (+x up-right,
     // +y up-left): drawn as x' = h - 1 - y, y' = w - 1 - x (field_view_facing)
     mirror : bool
-    mirrored_from : int4            // on the drawn copy: the game's w, h, x0, y0 (the tooltip)
+    drawn_from : FieldView          // on the drawn copy (mirrored / turned): the game's map
+}
+
+// how the game's map is drawn: mirrored (FieldMap.mirror), then turned
+// clockwise rot times by 90 degrees (FieldState.view_rot); w, h, x0, y0 -
+// the game's map (w 0: drawn as it is)
+struct FieldView {
+    mirror : bool
+    rot : int
+    w : int
+    h : int
+    x0 : int
+    y0 : int
 }
 
 // a polygon of a map's mesh: corners in map coordinates (x, y as tiles -
@@ -73,6 +85,7 @@ struct FieldInput {
 struct FieldState {
     drag : int = -1                 // unit being dragged
     cell : float = 0.0              // half a tile's width (16 game pixels) before the UI scale; 0: fit
+    view_rot : int = 0              // the view turned clockwise by 90 degrees this many times (0..3)
 }
 
 let FIELD_CELL_MIN = 6.0
@@ -83,9 +96,61 @@ let FIELD_FACING_NAMES = fixed_array<string>("+y", "-x", "-y", "+x")
 let private FIELD_MIRROR_FACING = fixed_array<int>(1, 0, 3, 2)
 
 // the facing as drawn (0 down-left, 1 up-left, 2 up-right, 3 down-right):
-// a mirrored map's units turn too
+// the units of a mirrored or turned view turn too
+def field_view_facing(m : FieldMap; st : FieldState; facing : int) : int {
+    let f = m.mirror ? FIELD_MIRROR_FACING[facing & 3] : facing & 3
+    return (f + st.view_rot) & 3
+}
+
+// the same without the view's turn (mirror only)
 def field_view_facing(m : FieldMap; facing : int) : int {
     return m.mirror ? FIELD_MIRROR_FACING[facing & 3] : facing & 3
+}
+
+// a point of the game's map (relative to x0, y0; tile centers at whole
+// numbers) -> the drawn view: the mirror (x, y) -> (h - 1 - y, w - 1 - x),
+// each turn (x, y) -> (h - 1 - y, x), the sides swapped after each step
+def field_view_point(v : FieldView; p : float2) : float2 {
+    var q = p
+    var w = v.w
+    var h = v.h
+    if (v.mirror) {
+        q = float2(float(h - 1) - q.y, float(w - 1) - q.x)
+        let t = w
+        w = h
+        h = t
+    }
+    for (k in range(v.rot & 3)) {
+        q = float2(float(h - 1) - q.y, q.x)
+        let t = w
+        w = h
+        h = t
+    }
+    return q
+}
+
+// a tile of the drawn view -> the game's coordinates
+def field_game_tile(v : FieldView; vx, vy : int) : int2 {
+    // the sides before each turn, undone from the last
+    var w = v.mirror ? v.h : v.w
+    var h = v.mirror ? v.w : v.h
+    for (k in range(v.rot & 3)) {
+        let t = w
+        w = h
+        h = t
+    }
+    var q = int2(vx, vy)
+    for (k in range(v.rot & 3)) {
+        // q was (h - 1 - y, x) with the sides (h, w) -> back to (w, h)
+        let t = w
+        w = h
+        h = t
+        q = int2(q.y, h - 1 - q.x)
+    }
+    if (v.mirror) {
+        q = int2(v.w - 1 - q.y, v.h - 1 - q.x)
+    }
+    return int2(q.x + v.x0, q.y + v.y0)
 }
 
 // by team (TEAM_*): player, enemy, guest, judge
@@ -258,11 +323,14 @@ def private stand_height(m : FieldMap; x, y : int) : float {
 // reach: tiles to highlight (w x h, empty - none)
 def draw_battle_field(m : FieldMap; units : array<FieldUnit>; selected, target : int; reach : array<bool>;
                       var st : FieldState; x, y, w, h : float) : FieldInput {
-    if (!m.mirror) {
+    st.view_rot = st.view_rot & 3
+    if (!m.mirror && st.view_rot == 0) {
         return draw_field_view(m, units, selected, target, reach, st, x, y, w, h)
     }
-    // the mirrored copy: tile (tx, ty) at (h - 1 - ty, w - 1 - tx)
-    var mm = FieldMap(w = m.h, h = m.w, shown_shift = m.shown_shift, mirrored_from = int4(m.w, m.h, m.x0, m.y0))
+    // the drawn copy: tiles, reach, the mesh and the units moved and turned
+    let v = FieldView(mirror = m.mirror, rot = st.view_rot, w = m.w, h = m.h, x0 = m.x0, y0 = m.y0)
+    let swapped = m.mirror != ((st.view_rot & 1) != 0)
+    var mm = FieldMap(w = swapped ? m.h : m.w, h = swapped ? m.w : m.h, shown_shift = m.shown_shift, drawn_from = v)
     mm.height |> resize(m.w * m.h)
     mm.water |> resize(m.w * m.h)
     var vr : array<bool>
@@ -273,7 +341,8 @@ def draw_battle_field(m : FieldMap; units : array<FieldUnit>; selected, target :
     for (ty in range(m.h)) {
         for (tx in range(m.w)) {
             let i = ty * m.w + tx
-            let vi = (m.w - 1 - tx) * mm.w + (m.h - 1 - ty)
+            let q = field_view_point(v, float2(float(tx), float(ty)))
+            let vi = int(q.y + 0.5) * mm.w + int(q.x + 0.5)
             mm.height[vi] = m.height[i]
             mm.water[vi] = m.water[i]
             if (has_reach) {
@@ -284,23 +353,25 @@ def draw_battle_field(m : FieldMap; units : array<FieldUnit>; selected, target :
     for (pl in m.polys) {
         var q = pl
         for (c in range(4)) {
-            q.p[c] = float3(float(m.h - 1) - pl.p[c].y, float(m.w - 1) - pl.p[c].x, pl.p[c].z)
+            let p2 = field_view_point(v, pl.p[c].xy)
+            q.p[c] = float3(p2.x, p2.y, pl.p[c].z)
         }
         mm.polys |> push(q)
     }
     var vu : array<FieldUnit>
     for (un in units) {
-        var v = un
-        v.x = m.h - 1 - (un.y - m.y0)
-        v.y = m.w - 1 - (un.x - m.x0)
-        v.facing = FIELD_MIRROR_FACING[un.facing & 3]
-        vu |> push(v)
+        var vun = un
+        let q = field_view_point(v, float2(float(un.x - m.x0), float(un.y - m.y0)))
+        vun.x = int(floor(q.x + 0.5))
+        vun.y = int(floor(q.y + 0.5))
+        vun.facing = field_view_facing(m, st, un.facing)
+        vu |> push(vun)
     }
     var res = draw_field_view(mm, vu, selected, target, vr, st, x, y, w, h)
     if (res.moved >= 0) {
-        let vx = res.move_x
-        res.move_x = m.w - 1 - res.move_y + m.x0
-        res.move_y = m.h - 1 - vx + m.y0
+        let g = field_game_tile(v, res.move_x, res.move_y)
+        res.move_x = g.x
+        res.move_y = g.y
     }
     return res
 }
@@ -489,12 +560,16 @@ def private draw_field_view(m : FieldMap; units : array<FieldUnit>; selected, ta
             res.turn = 1
         }
     }
+    if (hovered && IsKeyPressed(ImGuiKey.Z, false)) {
+        st.view_rot = (st.view_rot + 3) & 3
+    }
+    if (hovered && IsKeyPressed(ImGuiKey.C, false)) {
+        st.view_rot = (st.view_rot + 1) & 3
+    }
     if (hovered && st.drag < 0 && field_height(m, mx, my) > 0) {
         let who = under >= 0 ? "  {units[under].name}" : ""
-        let g = m.mirrored_from
-        let gx = g.x > 0 ? g.x - 1 - my + g.z : mx
-        let gy = g.x > 0 ? g.y - 1 - mx + g.w : my
-        bl_tooltip("{gx}, {gy}  height {field_height(m, mx, my) + m.shown_shift}{who}")
+        let g = m.drawn_from.w > 0 ? field_game_tile(m.drawn_from, mx, my) : int2(mx, my)
+        bl_tooltip("{g.x}, {g.y}  height {field_height(m, mx, my) + m.shown_shift}{who}")
     }
     EndChild()
     return res
@@ -545,7 +620,16 @@ def field_bar(var st : FieldState; x, y : float) : int {
     if (bl_tool_button("field_fit", "Fit", ICON_FIT, u(56.0))) {
         st.cell = 0.0
     }
+    // the view: turned by 90 degrees
     SetCursorScreenPos(ImVec2(x + u(128.0), y))
-    bl_label("Click: select   Right click: target   Drag: move   Q / E: turn   Wheel: zoom")
+    if (bl_tool_button("view_ccw", "View", ICON_TURN_CCW, u(64.0), BND_CORNER_RIGHT)) {
+        st.view_rot = (st.view_rot + 3) & 3
+    }
+    SetCursorScreenPos(ImVec2(x + u(192.0), y))
+    if (bl_tool_button("view_cw", "", ICON_TURN_CW, u(28.0), BND_CORNER_LEFT)) {
+        st.view_rot = (st.view_rot + 1) & 3
+    }
+    SetCursorScreenPos(ImVec2(x + u(228.0), y))
+    bl_label("Click: select  Right click: target  Drag: move  Q / E: turn  Z / C: view  Wheel: zoom")
     return res
 }

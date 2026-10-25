@@ -30,11 +30,11 @@ def field_map(m : BattleMap) : FieldMap {
     return <- f
 }
 
-def field_unit(un : BattleUnit) : FieldUnit {
+def field_unit(un : BattleUnit; st : FieldState) : FieldUnit {
     // the frame's shadow is drawn ~8 game pixels above its origin: put the
     // origin 8 below the tile center so the shadow lies on the tile
     return FieldUnit(name = un.name, x = un.x, y = un.y, facing = un.facing, team = team(un), alive = un.hp > 0,
-        sprite = unit_sprite(un), sprite_dy = 8.0)
+        sprite = unit_sprite(un, (un.facing + st.view_rot) & 3), sprite_dy = 8.0)
 }
 
 // the field; returns what was clicked (moves and turns already applied)
@@ -53,7 +53,7 @@ def draw_field(m : BattleMap; var units : array<BattleUnit>; selected, target, a
     }
     var fu : array<FieldUnit>
     for (un in units) {
-        fu |> push(field_unit(un))
+        fu |> push(field_unit(un, st))
     }
     let res = draw_battle_field(field_map(m), fu, selected, target, reach, st, x, y, w, h)
     if (res.moved >= 0) {

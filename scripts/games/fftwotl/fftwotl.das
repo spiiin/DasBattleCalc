@@ -812,7 +812,7 @@ class WotlGame : GameModule {
             // standing: the front frame faces down-left, the back one
             // up-left; the right ones mirrored
             let f = facing_to_field(un.facing)
-            let vf = field_view_facing(field_map, f)
+            let vf = field_view_facing(field_map, field, f)
             let spr = iso ? psp_unit_sprite(shell_renderer(), un.sheet, un.palette, stand_frame_w(un.sheet, vf == 1 || vf == 2),
                 vf >= 2) : -1
             fu |> push(FieldUnit(name = un.name, x = un.x, y = un.y, facing = f, team = un.team,

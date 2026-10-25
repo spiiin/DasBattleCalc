@@ -688,7 +688,7 @@ class Ffta2Game : GameModule {
         var fu : array<FieldUnit>
         for (un in units) {
             // standing: frame 0 facing +y / +x, 1 facing -x / -y; -y and +x mirrored (as in FFTA)
-            let f = un.facing & 3
+            let f = field_view_facing(field_map, field, un.facing)
             let spr = rom_sprites2 ? nds_unit_sprite(shell_renderer(), unit_gfx_set(un), 0, f == 0 || f == 3 ? 0 : 1, f >= 2) : -1
             fu |> push(FieldUnit(name = un.name, x = un.x, y = un.y, facing = un.facing, team = un.team, alive = un.hp > 0,
                 sprite = spr, sprite_dy = 4.0))

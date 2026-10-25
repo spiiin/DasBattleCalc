@@ -271,7 +271,7 @@ class FftGame : GameModule {
             // standing: frame 2 (three quarters, facing down-left on the
             // screen) and 6 (up-left); the right ones mirrored
             let f = facing_to_field(un.facing)
-            let vf = field_view_facing(field_map, f)
+            let vf = field_view_facing(field_map, field, f)
             let spr = (psx_has_disc() ? psx_unit_sprite(shell_renderer(), unit_sprite(un), un.palette,
                 vf == 1 || vf == 2 ? 6 : 2, vf >= 2) : -1)
             fu |> push(FieldUnit(name = un.name, x = un.x, y = un.y, facing = f, team = un.team, alive = un.hp > 0,
