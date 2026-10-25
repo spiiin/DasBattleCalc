@@ -361,3 +361,46 @@ def item_name(id : int) : string {
 def ability_name(id : int) : string {
     return text_list(ability_names, "Cure", "Cure 2", 512, id)
 }
+
+// ------------------------------------------------------------ export
+
+// Puts a unit into the edit copy of RAM (gba_edit_begin): the stats the
+// calculator edits (the inspector), not the position. Brave / Faith set the original and the current;
+// PA / MA / Speed the current (+0x36..) and move the original (+0x30..)
+// by the same amount, so a buff seen in the state stays.
+def write_unit(u : FftUnit) {
+    let r = u.record
+    gba_edit8(r + 0x23u, uint(clamp(u.brave, 0, 100)))
+    gba_edit8(r + 0x24u, uint(clamp(u.brave, 0, 100)))
+    gba_edit8(r + 0x25u, uint(clamp(u.faith, 0, 100)))
+    gba_edit8(r + 0x26u, uint(clamp(u.faith, 0, 100)))
+    gba_edit16(r + 0x28u, uint(clamp(u.hp, 0, 999)))
+    gba_edit16(r + 0x2Au, uint(clamp(u.max_hp, 1, 999)))
+    gba_edit16(r + 0x2Cu, uint(clamp(u.mp, 0, 999)))
+    gba_edit16(r + 0x2Eu, uint(clamp(u.max_mp, 0, 999)))
+    let stats = fixed_array<int>(u.pa, u.ma, u.speed)
+    for (k in range(3)) {
+        let old_cur = int(gba_read8(r + 0x36u + uint(k)))
+        let old_orig = int(gba_read8(r + 0x30u + uint(k)))
+        gba_edit8(r + 0x36u + uint(k), uint(clamp(stats[k], 0, 99)))
+        gba_edit8(r + 0x30u + uint(k), uint(clamp(old_orig + stats[k] - old_cur, 0, 99)))
+    }
+    gba_edit8(r + 0x39u, uint(clamp(u.ct, 0, 255)))
+    gba_edit8(r + 0x3Au, uint(clamp(u.move, 0, 255)))
+    gba_edit8(r + 0x3Bu, uint(clamp(u.jump, 0, 255)))
+    // not the tile (+0x47 / +0x48) nor the facing: the game takes them
+    // (its Move range follows), but the sprite stays where it was - its
+    // object keeps its own position (not found yet)
+}
+
+// Writes the loaded BizHawk state with the units to path. "" or the error.
+def export_battle(units : array<FftUnit>; path : string) : string {
+    if (!gba_has_state()) {
+        return "no state loaded"
+    }
+    gba_edit_begin()
+    for (u in units) {
+        write_unit(u)
+    }
+    return gba_save_state(path)
+}

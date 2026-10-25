@@ -135,6 +135,17 @@ class FftGame : GameModule {
         }
     }
 
+    def export_state() : void {
+        var err = ""
+        if (export_path == "" || export_path == state_path) {
+            err = "choose a path other than the loaded state"
+        } else {
+            err = export_battle(units, export_path)
+        }
+        message = err != "" ? "Export: {err}" : "exported to {export_path} (BizHawk: File > Load State)"
+        log_line(message)
+    }
+
     // the field: the shown height (half units rounded down) + 1, 0 no tile
     def make_map() : void {
         if (read_map(map)) {
@@ -163,9 +174,11 @@ class FftGame : GameModule {
 
     def override draw_roster(x, y, w, h : float) : void {
         var pressed = 0
-        var ry = source_fields(state_path, rom_path, export_path, false, x, y, w, pressed)
+        var ry = source_fields(state_path, rom_path, export_path, length(units) > 0, x, y, w, pressed)
         if (pressed == ROSTER_LOAD) {
             self->load()
+        } elif (pressed == ROSTER_EXPORT) {
+            self->export_state()
         }
         for (i in range(length(units))) {
             let un = units[i]

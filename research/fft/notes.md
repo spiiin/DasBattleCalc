@@ -232,3 +232,16 @@ The evades are applied one by one with each step floored, in the order
 shield, class, weapon (accessory 0 here, first by assumption): Power
 Break 56 -> 43 -> 38 -> 36 and Head Break 58 -> 45 -> 40 -> 38 tell this
 from a product floored once (37 / 38).
+
+## Export (a state with edits)
+
+`export_battle` writes the inspector's stats into the loaded state's RAM
+copy (gba_edit_*, the PSX branch of gba_save_state copies the 2 MB back
+into the waterbox image): Brave / Faith (original and current), HP / MP
+and their maxima, PA / MA / Speed (current; the original moved by the
+same amount), CT, Move, Jump. Loaded in BizHawk: the panel shows HP
+077/113 once redrawn (moving the cursor), Move 6 gives the model's range.
+Not the tile or the facing: the game logic takes them (its Move range
+went around Lezales moved to (4, 3)) but his sprite stayed at (5, 3);
+the sprite's object with its own position is not found yet (a step of
+Ramza changed only the GPU lists, the cursor and the camera).
