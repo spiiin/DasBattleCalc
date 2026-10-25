@@ -156,6 +156,21 @@ used to fit them and matches tile for tile (`tests/test_fftwotl_reach.das`).
 - The units in battle: every record with an ENTD slot (+0x01 != 0xFF); +0x2E is not "on the field" (Gariland: only
   the unit at its turn has it).
 
+## Abilities' reach (checked)
+
+`fcareach.py` (`reach3.txt`: the first battle, 3 tiles x Fire, Poison, Aurablast, Rend Helm, Rush, Stone, Tailwind,
+Chant, Throw, Jump - fitted; `reach4.txt`: Gariland, Ganelon, Fire / Aurablast / Throw / Jump from 3 tiles - held out,
+matches tile for tile):
+
+- An ability's range, the **own tile too** unless action flag 1 bit 0x01 (Fire, Poison, Stone light it; Aurablast,
+  Chant not). **Flag 1 bit 0x08 (vertical tolerance): the height within the ability's vertical** (Aurablast and Chant:
+  3 h); without it any height.
+- The tiles the weapons can not select (byte 6 bit 0x02) are lit only for abilities with an area (Fire, Poison - area 1;
+  Stone, Tailwind - area 0 not).
+- Weapon-range abilities (flag 1 bit 0x20: Rend Helm) and Aim use the weapon's rules. **Throw: Move, any height.**
+- **Jump**: the learned horizontal / vertical; it lands on the bottom of water (the depth not added: from the bridge,
+  11 h down to the floor - out of the 8 h Jump).
+
 ## The second battle: Gariland (checked)
 
 `fcb2.py` (`forecast10.txt`, `tests/test_fftwotl_battle2.das`), the user's save: Ganelon (Chemist, record 16) at his

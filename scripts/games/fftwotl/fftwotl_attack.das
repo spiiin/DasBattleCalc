@@ -561,7 +561,7 @@ def private throw_w(att, tgt : UnitW; kind, item : int; var f : FightW) {
     f.dmg_min = f.damage
     f.dmg_max = f.damage
     f.hit = miss ? 0 : physical_hit(att, tgt, f.side, 100, f.hit_mods)
-    f.note = "throws {it.name} (range = Move, unverified)"
+    f.note = "throws {it.name} (range = Move: checked)"
 }
 
 // Throw of a given item (the tests: the forecasts were taken with the
@@ -625,20 +625,42 @@ def reach_w(att : UnitW; f : FightW; m : MapW; tx, ty : int; t_high : bool) : Re
     // the height difference in half h (the target's - the attacker's)
     let dh = m.w > 0 ? stand_half_w(m, tx, ty, t_high) - stand_half_w(m, att.x, att.y, att.high) : 0
     let hs = "{dh >= 0 ? "+" : "-"}{abs(dh) / 2}{(abs(dh) & 1) != 0 ? ".5" : ""} h"
+    let ab = f.ability
+    let weapon = ab.id == 0 || ab.kind == AB_CHARGE || (ab.kind == AB_NORMAL && (ab.f1 & 0x20) != 0)
+    if (!weapon && ab.kind == AB_NORMAL) {
+        // the other abilities: their range, the own tile too unless flag
+        // 0x01; flag 0x08: the height within the ability's vertical (checked:
+        // Aurablast 3 h); the tiles the weapons can not select only with an
+        // area (Fire yes, Stone / Tailwind no)
+        if (dist == 0 && (ab.f1 & 0x01) != 0) {
+            return ReachW(why = "not on its own tile")
+        }
+        if (ab.area == 0 && m.w > 0 && tx >= 0 && ty >= 0 && tx < m.w && ty < m.h && m.blocked[ty * m.w + tx]) {
+            return ReachW(why = "a tile the cursor can not select")
+        }
+        let tol = (ab.f1 & 0x08) != 0
+        let ok = dist <= f.reach && (!tol || abs(dh) <= ab.vertical * 2)
+        let vt = tol ? "{ab.vertical} h up or down" : "any height"
+        return ReachW(ok = ok, why = "range {f.reach}, {vt}: {dist} tiles, {hs}")
+    }
     if (dist < 1) {
         return ReachW(why = "its own tile")
     }
     if (m.w > 0 && tx >= 0 && ty >= 0 && tx < m.w && ty < m.h && m.blocked[ty * m.w + tx]) {
         return ReachW(why = "a tile the cursor can not select")
     }
-    let ab = f.ability
     if (ab.kind == AB_JUMP) {
+        // Jump lands on the bottom of the water (checked: from the bridge,
+        // 11 h down to the water's floor, the Jump of 8 h does not reach)
         let r = jump_reach_w(att)
-        let ok = dist <= r.x && abs(dh) <= r.y * 2
+        let ti = ty * m.w + tx
+        let jdh = m.w > 0 && tx >= 0 && ty >= 0 && tx < m.w && ty < m.h && !t_high ? dh - m.depth[ti] * 2 : dh
+        let ai = att.y * m.w + att.x
+        let jdh2 = m.w > 0 && !att.high ? jdh + m.depth[ai] * 2 : jdh
+        let ok = dist <= r.x && abs(jdh2) <= r.y * 2
         return ReachW(ok = ok, why = "Jump {r.x} tiles, {r.y} h: {dist} tiles, {hs}")
     }
-    let weapon = ab.id == 0 || ab.kind == AB_CHARGE || (ab.kind == AB_NORMAL && (ab.f1 & 0x20) != 0)
-    if (!weapon || ab.kind == AB_THROW) {
+    if (!weapon) {
         return ReachW(ok = dist <= max(f.reach, 1), why = "range {max(f.reach, 1)}: {dist} tiles, {hs} (any height)")
     }
     let w = weapon_of(att)

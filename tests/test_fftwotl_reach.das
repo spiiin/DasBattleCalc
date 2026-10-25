@@ -7,7 +7,9 @@ options indenting = 4
 // of a tile). Lines: "at X,Y | weapon ID | x,y x,y ... | upper ...".
 //   battlecalc tests/test_fftwotl_reach.das --state <fftwotl_test_battle1.ppst> [--print 1]
 //   battlecalc tests/test_fftwotl_reach.das --state <fftwotl_test_battle2.ppst> --reach reach2.txt --unit 16
-// (reach2.txt: the Gariland battle, Ganelon - record 16 - at its turn;
+//   battlecalc tests/test_fftwotl_reach.das --state <fftwotl_test_battle1.ppst> --reach reach3.txt
+//   battlecalc tests/test_fftwotl_reach.das --state <fftwotl_test_battle2.ppst> --reach reach4.txt --unit 16
+// (reach3.txt: abilities, fcareach.py; reach2.txt: the Gariland battle, Ganelon - record 16 - at its turn;
 // not used to fit the rules)
 require gba_mem
 require gui_common
@@ -17,6 +19,7 @@ require daslib/strings_boost
 require ../scripts/games/fftwotl/fftwotl_data.das
 require ../scripts/games/fftwotl/fftwotl_battle.das
 require ../scripts/games/fftwotl/fftwotl_attack.das
+require fftwotl_edits
 
 var failed = 0
 var total = 0
@@ -78,15 +81,23 @@ def main() : int {
             continue
         }
         cases++
+        // "at X,Y | weapon ID | tiles | upper" (Attack) or "at X,Y | ability
+        // ID | edits | tiles | upper" (reach3.txt)
         let at <- tiles_of(slice(strip(parts[0]), 3))
-        let wid = to_int(slice(strip(parts[1]), 7))
-        let game <- tiles_of(parts[2])
+        let ability = starts_with(strip(parts[1]), "ability")
+        let id = to_int(slice(strip(parts[1]), ability ? 8 : 7))
+        let game <- tiles_of(parts[ability ? 3 : 2])
         var att = units[who]
+        var other = units[who]
         att.x = at[0].x
         att.y = at[0].y
-        att.items[SLOT_RIGHT] = wid
-        recompute_unit_w(att)
-        let f <- action_w(att, att, ATTACK_W, SideW.Front)
+        if (ability) {
+            apply_writes(att, other, parts[2], slot)
+        } else {
+            att.items[SLOT_RIGHT] = id
+            recompute_unit_w(att)
+        }
+        let f <- action_w(att, att, ability ? id : ATTACK_W, SideW.Front)
         var model : array<int2>
         for (ty in range(m.h)) {
             for (tx in range(m.w)) {
@@ -107,7 +118,7 @@ def main() : int {
                 extra |> push("{t.x},{t.y} ({reach_w(att, f, m, t.x, t.y, false).why})")
             }
         }
-        let name = "{strip(parts[0])}, {read_item_w(wid).name}"
+        let name = "{strip(parts[0])}, {ability ? ability_name_w(id) : read_item_w(id).name}"
         if (gui_arg("--print", "") != "") {
             print("{name}: game {length(game)} tiles, model {length(model)}\n")
         }
