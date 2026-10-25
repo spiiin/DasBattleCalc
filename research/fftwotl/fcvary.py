@@ -42,6 +42,13 @@ cases.append(('t_elem_half_dark', [(A, 0x20, 0x100, 2), (T, 0x79, 0x01, 1)]))
 cases.append(('t_elem_absorb_dark', [(A, 0x20, 0x100, 2), (T, 0x77, 0x01, 1)]))
 cases.append(('a_strengthen_dark', [(A, 0x20, 0x100, 2), (A, 0x7B, 0x01, 1)]))
 MAGIC = '--magic' in sys.argv
+if '--supports' in sys.argv:
+    # the record's ability bit masks (+0x95..): Attack Boost, Defense Boost,
+    # Concentration, Brawler (bare hands), Doublehand, Parry, Reflexes
+    cases = [('a_attackboost', [(A, 0x9A, 0x10, 1)]), ('t_defenseboost', [(T, 0x9A, 0x08, 1)]),
+             ('a_concentration', [(A, 0x9A, 0x01, 1)]), ('a_brawler_bare', [(A, 0x9B, 0x20, 1), (A, 0x20, 0xFF, 2)]),
+             ('a_doublehand', [(A, 0x9B, 0x02, 1)]), ('t_parry', [(T, 0x98, 0x40, 1)]),
+             ('t_reflexes', [(T, 0x98, 0x10, 1)]), ('a_attackboost_id_only', [(A, 0x16, 0x1D1, 2)])]
 only = [a for a in sys.argv[1:] if not a.startswith('--')]
 if MAGIC:
     # Ramza casts Fire on Lezalas: Black Magicks as the secondary skillset, every spell learned
@@ -65,7 +72,7 @@ if MAGIC:
     cases.append(('t_absorb_fire', [(T, 0x77, 0x80, 1)]))
     cases.append(('t_cancel_fire', [(T, 0x78, 0x80, 1)]))
     cases.append(('cev50', [(T, 0x4B, 50, 1)]))
-out = open('fc2.txt' if MAGIC else 'fc1.txt', 'a' if only else 'w')
+out = open('fc2.txt' if MAGIC else ('fc4.txt' if '--supports' in sys.argv else 'fc1.txt'), 'a' if only else 'w')
 P.restart()
 for name, writes in cases:
     if only and name not in only:

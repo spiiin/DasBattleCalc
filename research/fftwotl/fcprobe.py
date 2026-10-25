@@ -12,16 +12,20 @@ def w16(a, v): d.write(a, struct.pack('<H', v & 0xFFFF))
 def r8(a): return d.read(a, 1)[0]
 import pprun
 STATE = 'C:/rom/psx/PPSSPP/memstick/PSP/PPSSPP_STATE/fftwotl_test_battle1.ppst'
-# from the state: menu, Act, Attack (the help box), close it, the cursor to
-# Lezalas (up-right of Ramza), confirm
+# Keys go through the debugger (input.buttons.press): no window focus, so
+# nothing reaches other windows. Letters as in controls.ini: W/A/S/D the
+# d-pad, H cross, Y circle. From the state: menu, Act, Attack (the help
+# box), close it, the cursor to Lezalas (up-right of Ramza), confirm.
 FRESH = ['Y', 'S', 'H', 'H', 'sleep:0.6', 'H', 'sleep:0.5', 'W', 'sleep:0.5', 'H', 'sleep:1.0']
+BUTTONS = {'W': 'up', 'S': 'down', 'A': 'left', 'D': 'right', 'H': 'cross', 'Y': 'circle'}
 def focus():
-    h = ppkeys.window()
-    ppkeys.u.ShowWindow(h, 9); ppkeys.u.SetForegroundWindow(h); time.sleep(0.5)
+    pass                                # the debugger's input needs no focus
 def keys(seq):
     for a in seq:
         if a.startswith('sleep:'): time.sleep(float(a[6:]))
-        else: ppkeys.tap(a)
+        else:
+            d.call('input.buttons.press', button=BUTTONS[a], duration=6)
+            time.sleep(0.7)
 SETUP = []        # (address, bytes) written after a restart, before the keys
 def restart():
     global d

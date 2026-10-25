@@ -78,15 +78,18 @@ No ISO is needed: the game's tables and texts are read from the RAM in the state
 - **Attack calculator**: Attack with every weapon type, Holy Sword / Fell Sword, magicks (damage, healing, chances of
   status spells with Faith), Arts of War, Aim, Items, Fundaments; zodiac compatibility, Protect / Shell and the support
   abilities, elements, evasion by side. The formulas come from the PSX battle code
-  ([research/fftwotl/formulas.md](research/fftwotl/formulas.md)); **Attack (81 forecasts: every weapon kind, zodiac,
-  statuses, evades, sides, elements) and Fire (31: MA, Faith, Shell, elements) match the game's own forecasts**.
+  ([research/fftwotl/formulas.md](research/fftwotl/formulas.md)); **175 forecasts of the game match**: Attack (every
+  weapon kind, zodiac, statuses, evades, sides, elements, supports and reactions), Fire, Cure, Arts of War, Umbra,
+  Potion, Rush, Stone.
 - **Editor**: job, primary / secondary skillsets, reaction / support / movement, PA / MA / Speed, Level, Exp, Brave,
   Faith, HP / MP / CT, the seven equipment slots (what the job can wear), statuses, learned abilities by job; drag units
   on the field. **Export state with edits** writes a new `.ppst` (PPSSPP: File > Load State).
 - **Items / Abilities** tabs: the game's item and ability tables.
 - **Explore** with its own parameters (`atk.pa`, `atk.brave`, `tgt.faith`, `tgt.status.protect`, `atk.zodiac`, ...).
 
-Not yet: the map's heights (the field is flat), sprites, reactions, Jump / Throw / Arithmeticks. RAM layout and tables:
+- **The battle map** with its heights and water.
+
+Not yet: the height limits of reach, sprites, reactions, Jump / Throw / Arithmeticks. RAM layout and tables:
 [research/fftwotl/notes.md](research/fftwotl/notes.md), [layouts.md](research/fftwotl/layouts.md).
 
 ## Checked against the game
