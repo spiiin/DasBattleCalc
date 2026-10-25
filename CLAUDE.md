@@ -6,7 +6,9 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
 ## Сборка, запуск, проверка
 
 - `build.bat` (VS 2022 x64 + Ninja) -> `build\bin\battlecalc.exe [script.das] [опции]`; по умолчанию `scripts/main.das`.
-- Картинку проверяем `--shot file.png`, ввод — `--script "F click X Y; F shot file.png"` (см. `native/gui_common.cpp`).
+- Картинку проверяем `--shot file.png`, ввод — `--script "F click X Y; F drop PATH; F shot file.png"` (см. `native/gui_common.cpp`;
+  `drop` — файл, перетащенный в окно). Кнопки «...» у полей State / ROM / Export — системный диалог SDL3
+  (`gui_file_dialog`, только десктоп), перетаскивание — `gui_take_dropped`; разбор — `scripts/ui/roster.das`.
 - Тест модели FFTA: `battlecalc tests\test_ffta_turn_order.das --state <ffta_test_battle1.State> --rom <FFTA.zip>`
   (сейвы-копии — в `CLAUDE.local.md`; слоты QuickSave пользователь перезаписывает); второй бой —
   `tests/test_ffta_battle2.das --state <ffta_test_battle2.State> --start <ffta_test_battle2_start.State>`;

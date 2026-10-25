@@ -2,7 +2,9 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -300,7 +302,7 @@ const char * gui_project_dir() { return GUI_PROJECT_DIR; }
 
 // ---------------------------------------------------------- scripted input
 // --script "F move X Y; F click X Y; F rclick X Y; F down X Y; F up X Y; F drag X0 Y0 X1 Y1;
-//           F text STR; F key SCANCODE; F wheel DY; F shot PATH"
+//           F text STR; F key SCANCODE; F wheel DY; F drop PATH; F shot PATH"
 // Events are pushed through SDL's queue, so every library sees real input.
 
 struct ScriptAction { int frame; std::string op; std::vector<std::string> args; };
@@ -376,6 +378,13 @@ void gui_script_step(SDL_Window * window, int frame) {
                 e.key.key = SDL_GetKeyFromScancode(e.key.scancode, SDL_KMOD_NONE, false);
                 e.key.down = down != 0; SDL_PushEvent(&e);
             }
+        } else if (a.op == "drop" && !a.args.empty()) {
+            // a file dropped on the window (the path may hold spaces)
+            std::string path;
+            for (auto & w : a.args) path += (path.empty() ? "" : " ") + w;
+            SDL_Event e{}; e.type = SDL_EVENT_DROP_FILE; e.drop.windowID = g_win_id;
+            e.drop.data = SDL_strdup(path.c_str());   // leaks a few bytes, as text does
+            SDL_PushEvent(&e);
         } else if (a.op == "wheel") {
             SDL_Event e{}; e.type = SDL_EVENT_MOUSE_WHEEL; e.wheel.windowID = g_win_id; e.wheel.y = f(a, 0);
             float mx, my; SDL_GetMouseState(&mx, &my); e.wheel.mouse_x = mx; e.wheel.mouse_y = my; SDL_PushEvent(&e);
@@ -414,4 +423,83 @@ const char * gui_save_text(const char * path, const char * text) {
         }, path);
 #endif
     return error.c_str();
+}
+
+// ---------------------------------------------------------------- file dialogs, dropped files
+// Desktop only (the web page picks its files itself). SDL3's dialog calls
+// back later, maybe on another thread: the path waits under the request's
+// id until the script takes it. Files dropped on the window queue up.
+
+static std::mutex g_files_mutex;
+static std::map<int, std::string> g_dialog_done;
+static std::vector<std::string> g_dropped;
+static bool g_drop_watch = false;
+
+bool gui_has_file_dialog() {
+#ifdef __EMSCRIPTEN__
+    return false;
+#else
+    return true;
+#endif
+}
+
+#ifndef __EMSCRIPTEN__
+static void SDLCALL dialog_done(void * user, const char * const * files, int) {
+    if (!files || !files[0]) return;   // cancelled or failed
+    std::lock_guard<std::mutex> lock(g_files_mutex);
+    g_dialog_done[(int)(intptr_t)user] = files[0];
+}
+
+static bool SDLCALL drop_watch(void *, SDL_Event * e) {
+    if (e->type == SDL_EVENT_DROP_FILE && e->drop.data) {
+        std::lock_guard<std::mutex> lock(g_files_mutex);
+        g_dropped.push_back(e->drop.data);
+    }
+    return true;
+}
+#endif
+
+void gui_file_dialog(int id, bool save, const char * filter_name, const char * patterns, const char * default_path) {
+#ifndef __EMSCRIPTEN__
+    static std::string name, pattern;   // SDL keeps the filters until the callback
+    name = filter_name ? filter_name : "";
+    pattern = patterns ? patterns : "*";
+    static SDL_DialogFileFilter filters[2];
+    filters[0] = SDL_DialogFileFilter{name.c_str(), pattern.c_str()};
+    filters[1] = SDL_DialogFileFilter{"All files", "*"};
+    SDL_Window * parent = g_win_id ? SDL_GetWindowFromID(g_win_id) : nullptr;
+    const char * at = default_path && *default_path ? default_path : nullptr;
+    if (save)
+        SDL_ShowSaveFileDialog(dialog_done, (void *)(intptr_t)id, parent, filters, 2, at);
+    else
+        SDL_ShowOpenFileDialog(dialog_done, (void *)(intptr_t)id, parent, filters, 2, at, false);
+#else
+    (void)id; (void)save; (void)filter_name; (void)patterns; (void)default_path;
+#endif
+}
+
+const char * gui_file_dialog_result(int id) {
+    static std::string res;
+    std::lock_guard<std::mutex> lock(g_files_mutex);
+    auto it = g_dialog_done.find(id);
+    res = it == g_dialog_done.end() ? "" : it->second;
+    if (it != g_dialog_done.end()) g_dialog_done.erase(it);
+    return res.c_str();
+}
+
+const char * gui_take_dropped() {
+    static std::string res;
+#ifndef __EMSCRIPTEN__
+    if (!g_drop_watch) {
+        g_drop_watch = true;
+        SDL_AddEventWatch(drop_watch, nullptr);
+    }
+#endif
+    std::lock_guard<std::mutex> lock(g_files_mutex);
+    res.clear();
+    if (!g_dropped.empty()) {
+        res = g_dropped.front();
+        g_dropped.erase(g_dropped.begin());
+    }
+    return res.c_str();
 }

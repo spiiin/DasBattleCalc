@@ -40,6 +40,16 @@ bool gui_save_renderer_png(SDL_Renderer * r, const char * path);
 // handed to the user as a download (its name: the last part of path).
 const char * gui_save_text(const char * path, const char * text);
 
+// File dialogs (SDL3's, desktop only: false in the browser) and files
+// dropped on the window. gui_file_dialog asks; the chosen path comes later
+// from gui_file_dialog_result(id) once ("" until then, or if cancelled).
+// patterns: "State;ppst" (extensions without dots, ';' between).
+bool gui_has_file_dialog();
+void gui_file_dialog(int id, bool save, const char * filter_name, const char * patterns, const char * default_path);
+const char * gui_file_dialog_result(int id);
+// the next file dropped on the window, "" none
+const char * gui_take_dropped();
+
 // Command line after the script name: --name value.
 void gui_set_args(int argc, char ** argv);
 const char * gui_arg(const char * name, const char * fallback);

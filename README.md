@@ -120,7 +120,9 @@ build\bin\battlecalc.exe --state <save>.State --rom <FFTA (USA)>.zip
 ```
 
 The save is a BizHawk 2.x quick save made with the mGBA core, taken during a battle (FFTA2: the melonDS core,
-`--game ffta2`). The web version is built with
+`--game ffta2`). On the desktop the paths can also be picked with the **...** buttons next to the State / ROM / Export
+fields, or by dropping a save (`.State`, `.ppst`) or a ROM / disc (`.gba`, `.nds`, `.zip`, `.cue`, `.bin`, `.iso`) on the
+window; the last loaded paths are remembered. The web version is built with
 `web\build.ps1` (Emscripten) into `build-web/site`. In the browser you pick the save and the ROM yourself, and the files
 stay in the browser. The web build needs daScript's dasPEG module without `options no_aot`.
 

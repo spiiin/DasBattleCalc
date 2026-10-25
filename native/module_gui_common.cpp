@@ -28,6 +28,10 @@ public:
         GUI_BIND(gui_no_clip);
         GUI_BIND(gui_save_renderer_png);
         GUI_BIND(gui_save_text);
+        GUI_BIND(gui_has_file_dialog);
+        GUI_BIND(gui_file_dialog);
+        GUI_BIND(gui_file_dialog_result);
+        GUI_BIND(gui_take_dropped);
         GUI_BIND(gui_arg);
         GUI_BIND(gui_arg_int);
         GUI_BIND(gui_project_dir);
