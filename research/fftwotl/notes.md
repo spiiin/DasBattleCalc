@@ -121,6 +121,23 @@ every ability learned (+0xA3 + job x 3), at Lezalas.
   target charging 77, PA 10 -> 84, zodiac neutral 42; Gungnir's lightning on a weak target - still 319: **Jump has no
   element**. The command opens the targeting at once; the learned Jumps (0x18A..0x195) set its reach.
 
+## Status magicks, drains, Gravity, Rend Helm, Aurablast (checked)
+
+`fcgroups.py --status` (`forecast9.txt`), Ramza with the set as the secondary, at Lezalas:
+
+- **Chance (MA + X) x Faith x Faith / 10000, the zodiac on both addends**, then the magic evade: Poison, Stop, Toad,
+  Gravity, Quick, Protect, Haste, Empowerment, Invigoration (formulas 0x09 .. 0x12) - all as the model already had
+  (Shell / Arcane Defense only for the harmful ones).
+- **Percent amounts are rounded up**: Gravity 25% of 134 = 34, Invigoration 34, Empowerment 33% of MP 17 = 6 (the model
+  had the drains rounded down).
+- **Death** on the undead (Lezalas made undead): heals 134 (max HP) at 40% - the chance without the magic evade, as a
+  healing. **Death and Toad on the living Lezalas: 0%** in the game for every MA / Faith / zodiac; Poison and Stop on
+  him work. No immunity in his record (+0x5D), job or equipment - **not explained**; the test skips these 7 lines.
+- **Rend Helm .. Rend Weapon (0x25): zodiac on the sum (PA + WP + Y)** - (6 + 7 + 45) x 5 / 4 = 72, PA 20: 90, the
+  worst zodiac 29 (then the evades: 50, 63, 20%); Rend Power .. MP (0x2B / 0x2C) scale PA and Y apart (7 + 62 = 69).
+- **Aurablast (0x31): PA' x [(PA + Y) / 2]** - the modifiers and the zodiac on the first PA only: 7 x 4 = 28, PA 10:
+  12 x 6 = 72, the target's Protect: 5 x 4 = 20.
+
 ## Not found yet
 
 - (found, see "Battle map")

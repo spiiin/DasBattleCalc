@@ -33,8 +33,32 @@ GROUPS = [
          ('t_protect', [(T, 0x65, 0x20, 1)])]),
     (148, 0, 0, 1, 2, STD + stats('pa', 0x3E, (20,)) + [('cev0', [(T, 0x4B, 0, 1)])]),
 ]
-only = [int(a) for a in sys.argv[1:]]
-out = open('fc3.txt', 'a' if only else 'w')
+# --status: the formulas the model had from the references only (forecast9.txt):
+# status magicks 0x0A (Poison, Stop, Toad), Death 0x0E, Gravity 0x09, Quick
+# 0x12, Empowerment 0x0F / Invigoration 0x10, Protect / Haste 0x0B, Rend
+# Helm 0x25, Aurablast 0x31
+CH = [('tfa30', [(T, 0x2D, 30, 1)]), ('zodiac7', [(A, 0x09, 0x70, 1)])]
+STATUS_GROUPS = [
+    (28, 11, 6, 2, 12, STD + stats('ma', 0x3F, (1, 10, 20)) + stats('afa', 0x2D, (90,)) + CH +
+        [('zodiac5', [(A, 0x09, 0x50, 1)]), ('t_shell', [(T, 0x65, 0x10, 1)]), ('t_innocent', [(T, 0x66, 0x40, 1)])]),
+    (36, 12, 7, 2, 4, STD + stats('ma', 0x3F, (10,)) + CH),
+    (29, 11, 6, 2, 13, STD + CH),
+    (30, 11, 6, 2, 14, STD + stats('ma', 0x3F, (10,)) + CH + [('t_undead', [(T, 0x62, 0x10, 1)])]),
+    (42, 12, 7, 2, 9, STD + stats('ma', 0x3F, (10,)) + CH + [('t_shell', [(T, 0x65, 0x10, 1)])]),
+    (41, 12, 7, 2, 8, STD + stats('ma', 0x3F, (10,)) + CH),
+    (47, 16, 11, 2, 1, STD + stats('ma', 0x3F, (10,)) + CH),
+    (48, 16, 11, 2, 2, STD + stats('ma', 0x3F, (10,)) + CH),
+    (9, 10, 5, 2, 8, STD + stats('ma', 0x3F, (10,)) + CH),
+    (32, 12, 7, 2, 0, STD + stats('ma', 0x3F, (10,))),
+    (138, 7, 2, 2, 0, STD + stats('pa', 0x3E, (20,)) + [('zodiac7', [(A, 0x09, 0x70, 1)])]),
+    (102, 9, 4, 2, 2, STD + stats('pa', 0x3E, (10,)) + [('zodiac7', [(A, 0x09, 0x70, 1)]),
+         ('t_protect', [(T, 0x65, 0x20, 1)])]),
+]
+STATUS = '--status' in sys.argv
+if STATUS:
+    GROUPS = STATUS_GROUPS
+only = [int(a) for a in sys.argv[1:] if not a.startswith('--')]
+out = open('forecast9.txt' if STATUS else 'fc3.txt', 'a' if only else 'w')
 for aid, sec, job, sub, idx, cases in GROUPS:
     if only and aid not in only:
         continue

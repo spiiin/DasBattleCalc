@@ -713,7 +713,13 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
         let xz = zodiac_apply(x, f.zodiac)
         var h = (ma + xz) * fa / 10000
         f.hit_mods |> push("(MA {ma} + {xz}) x Faith {faith_of(att)} x {faith_of(tgt)} / 10000 = {h}")
-        h = magic_hit(att, tgt, ab, min(h, 100), f.hit_mods)
+        if (fo == 0x0E && is_undead_w(tgt)) {
+            // Death heals the undead in full, a healing: no magic evade
+            // (checked: 40% = the chance, 134 HP)
+            h = min(h, 100)
+        } else {
+            h = magic_hit(att, tgt, ab, min(h, 100), f.hit_mods)
+        }
         f.hit = h
         if (fo == 0x0D) {
             f.healing = true
@@ -723,15 +729,19 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
             f.damage = (tgt.max_hp * y + 99) / 100
             f.note = "{y}% of the target's max HP"
         } elif (fo == 0x10) {
-            f.damage = tgt.max_hp * y / 100
+            // rounded up as Gravity (checked: 25% of 134 = 34)
+            f.damage = (tgt.max_hp * y + 99) / 100
             f.note = "drains {y}% of max HP"
         } elif (fo == 0x0F) {
             f.mp_effect = true
-            f.damage = tgt.max_mp * y / 100
+            f.damage = (tgt.max_mp * y + 99) / 100        // checked: 33% of 17 = 6
             f.note = "drains {y}% of max MP"
         } elif (fo == 0x0E) {
-            f.damage = tgt.max_hp
-            f.note = "KO"
+            // KO: the forecast shows no damage (and 0% on Lezalas, as Toad -
+            // the reason is not known); the undead are healed in full
+            f.healing = is_undead_w(tgt)
+            f.damage = f.healing ? -tgt.max_hp : 0
+            f.note = f.healing ? "heals the undead in full" : "KO"
         } else {
             f.note = inflict_text(ab.inflict)
         }
@@ -751,13 +761,21 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
         if (has_status_w(tgt, ST_PROTECT)) {
             scale(pa, 2, 3, "target's Protect", f.hit_mods)
         }
-        // zodiac scales PA and X (checked: Rend Power 7 + 62 = 69)
-        pa = zodiac_apply(pa, f.zodiac)
-        let wp = fo == 0x25 ? weapon_of(att).wp : 0
-        let x_z = zodiac_apply(y, f.zodiac)
-        let base = min(pa + wp + x_z, 100)
-        let wp_text = fo == 0x25 ? " + WP {wp}" : ""
-        f.hit_mods |> push("PA {pa}{wp_text} + {x_z} = {base}")
+        // the zodiac: Rend Power .. Rend MP scale PA and Y apart (checked:
+        // 7 + 62 = 69); Rend Helm .. Weapon the sum PA + WP + Y (checked:
+        // (6 + 7 + 45) x 5 / 4 = 72, x 1 / 2 = 29)
+        var base = 0
+        if (fo == 0x25) {
+            let wp = weapon_of(att).wp
+            let sum = pa + wp + y
+            base = min(zodiac_apply(sum, f.zodiac), 100)
+            f.hit_mods |> push("(PA {pa} + WP {wp} + {y}) = {sum}, zodiac: {base}")
+        } else {
+            pa = zodiac_apply(pa, f.zodiac)
+            let x_z = zodiac_apply(y, f.zodiac)
+            base = min(pa + x_z, 100)
+            f.hit_mods |> push("PA {pa} + {x_z} = {base}")
+        }
         f.hit = physical_hit(att, tgt, side, min(base, 100), f.hit_mods, (ab.f4 & 0x10) != 0)
         f.physical = true
         if (fo == 0x2C) {
@@ -795,12 +813,15 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
         f.hit = miss ? 0 : 100
         f.hit_mods |> push("not evaded")
     } elif (fo == 0x31) {
-        var xa = (att.pa + y) / 2
-        f.mods |> push("[(PA + {y}) / 2] x PA")
+        // PA' x [(PA + Y) / 2]: the modifiers and the zodiac on the first
+        // PA only (checked: Aurablast 7 x 4 = 28, Protect 5 x 4 = 20)
+        var xa = att.pa
+        let ya = (att.pa + y) / 2
+        f.mods |> push("PA' x [(PA + {y}) / 2]")
         physical_mods(att, tgt, xa, ab.element, true, false, f.mods)
         f.xa = xa
-        f.ya = att.pa
-        f.damage = min(xa * att.pa, 999)
+        f.ya = ya
+        f.damage = min(xa * ya, 999)
         f.dmg_min = f.damage
         f.dmg_max = f.damage
         f.physical = true
