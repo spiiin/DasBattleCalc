@@ -196,7 +196,7 @@ def set_unit_param_w(var u : UnitW; key : string; v : Value) : string {
 }
 
 def private action_value_w(id : int) : Value {
-    return vtext(id == ATTACK_W ? "Attack" : ability_name_w(id), double(id))
+    return vtext(action_name_w(id), double(id))
 }
 
 def private has_text_w(vals : array<Value>; name : string) : bool {

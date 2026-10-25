@@ -906,7 +906,9 @@ class WotlGame : GameModule {
             actions |> push(ATTACK_W)
             for (aid in range(1, ABILITY_COUNT_W)) {
                 let k = read_ability_w(aid).kind
-                if ((k == AB_NORMAL || k == AB_ITEM || k == AB_CHARGE) && ability_name_w(aid) != "") {
+                let jump = k == AB_JUMP && aid != 394
+                if ((k == AB_NORMAL || k == AB_ITEM || k == AB_CHARGE || k == AB_THROW || k == AB_JUMP) && !jump &&
+                        ability_name_w(aid) != "") {
                     actions |> push(aid)
                 }
             }
@@ -916,7 +918,7 @@ class WotlGame : GameModule {
         action = 0
         let want = gui_arg("--action", "")
         for (k in range(length(actions))) {
-            if (want != "" && (actions[k] == ATTACK_W ? "Attack" : ability_name_w(actions[k])) == want) {
+            if (want != "" && action_name_w(actions[k]) == want) {
                 action = k
             }
         }
@@ -964,7 +966,7 @@ class WotlGame : GameModule {
         let lx = x + text_width(head) + u(30.0)
         var names : array<string>
         for (a in actions) {
-            names |> push(a == ATTACK_W ? "Attack" : ability_name_w(a))
+            names |> push(action_name_w(a))
         }
         SetCursorScreenPos(ImVec2(lx, y))
         var cur = clamp(action, 0, max(0, length(actions) - 1))
@@ -995,7 +997,7 @@ class WotlGame : GameModule {
             ry += u(21.0)
         }
         text_at_baseline(x + u(8.0), ry + u(15.0),
-            "Checked against 190 forecasts of the game (Attack, Fire, Cure, Arts of War, Umbra, ...); the rest: formulas.md", 0xe0a060ffu)
+            "Matches 239 of the game's own forecasts (Attack, Fire, Cure, Arts of War, Throw, Jump, ...); the rest: formulas.md", 0xe0a060ffu)
         ry += u(28.0)
         var rows : array<tuple<string; string>>
         if (f.formula != 0) {
@@ -1246,6 +1248,8 @@ class WotlGame : GameModule {
                 rows |> push(("Uses", item_name_w(a.item)))
             } elif (a.kind == AB_CHARGE) {
                 rows |> push(("Aim", "+{a.x}, charge {a.ct} ticks"))
+            } elif (a.kind == AB_THROW) {
+                rows |> push(("Throws", KIND_W_NAMES[a.throw_kind]))
             } elif (a.kind == AB_JUMP) {
                 rows |> push(("Jump", "horizontal {a.jump_h}, vertical {a.jump_v}"))
             }
