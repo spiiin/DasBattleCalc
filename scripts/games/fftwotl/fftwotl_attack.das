@@ -602,6 +602,73 @@ def private jump_w(att, tgt : UnitW; var f : FightW) {
     f.note = "jumps (horizontal {r.x}, vertical {r.y}; charge {f.ct} ticks)"
 }
 
+// ------------------------------------------------------------ reach
+
+struct ReachW {
+    ok : bool
+    why : string
+}
+
+// Can the action f of att (from its tile) reach the tile (tx, ty)? The
+// weapon's kind by its attack flags: striking (0x80, bare hands too) its
+// range, 3 h up or down; lunging (0x40: polearms, poles, cloths) a
+// straight line, 3.5 h up, 4 / 3 h down (1 / 2 tiles away); direct (0x20:
+// guns, crossbows, instruments, books) and arcing (0x10: bows, the range
+// + [(the attacker's height - the target's) / 2]) any height, never
+// closer than 3 tiles; the heights of stand_half_w (half the slope, the
+// water's surface). Fitted to the tiles the game lights (reach1.txt: 9
+// weapons from the bridge, sword / polearm / bow from 4 more tiles). Jump: its
+// horizontal and vertical reach; Throw: Move; the other abilities their
+// range at any height.
+def reach_w(att : UnitW; f : FightW; m : MapW; tx, ty : int; t_high : bool) : ReachW {
+    let dist = abs(tx - att.x) + abs(ty - att.y)
+    // the height difference in half h (the target's - the attacker's)
+    let dh = m.w > 0 ? stand_half_w(m, tx, ty, t_high) - stand_half_w(m, att.x, att.y, att.high) : 0
+    let hs = "{dh >= 0 ? "+" : "-"}{abs(dh) / 2}{(abs(dh) & 1) != 0 ? ".5" : ""} h"
+    if (dist < 1) {
+        return ReachW(why = "its own tile")
+    }
+    if (m.w > 0 && tx >= 0 && ty >= 0 && tx < m.w && ty < m.h && m.blocked[ty * m.w + tx]) {
+        return ReachW(why = "a tile the cursor can not select")
+    }
+    let ab = f.ability
+    if (ab.kind == AB_JUMP) {
+        let r = jump_reach_w(att)
+        let ok = dist <= r.x && abs(dh) <= r.y * 2
+        return ReachW(ok = ok, why = "Jump {r.x} tiles, {r.y} h: {dist} tiles, {hs}")
+    }
+    let weapon = ab.id == 0 || ab.kind == AB_CHARGE || (ab.kind == AB_NORMAL && (ab.f1 & 0x20) != 0)
+    if (!weapon || ab.kind == AB_THROW) {
+        return ReachW(ok = dist <= max(f.reach, 1), why = "range {max(f.reach, 1)}: {dist} tiles, {hs} (any height)")
+    }
+    let w = weapon_of(att)
+    let wr = max(w.reach, 1)
+    let fl = w.id == ITEM_NONE ? 128 : w.wflags
+    // the shooting weapons never reach the nearest two tiles (the game:
+    // instruments and books exactly 3, crossbows 3..4, guns 3..8)
+    if ((fl & 0x30) != 0 && dist < 3) {
+        return ReachW(why = "a shooting weapon: not closer than 3 tiles ({dist})")
+    }
+    if ((fl & 0x10) != 0) {
+        let bonus = -dh / 4            // +1 a 2 h lower (checked on 5 tiles)
+        let r = max(wr + bonus, 1)
+        return ReachW(ok = dist <= r, why = "a bow: range {wr} {bonus >= 0 ? "+" : ""}{bonus} for the height = {r}: {dist} tiles, {hs}")
+    }
+    if ((fl & 0x20) != 0) {
+        return ReachW(ok = dist <= wr, why = "range {wr}, any height: {dist} tiles, {hs}")
+    }
+    if ((fl & 0x40) != 0) {
+        // fitted: 3.5 h up; down 4 h next to it, 3 h two tiles away
+        let line = tx == att.x || ty == att.y
+        let down = dist == 1 ? 8 : 6
+        let ok = dist <= wr && line && dh <= 7 && -dh <= down
+        return ReachW(ok = ok, why = "a straight line of {wr}, 3.5 h up / {down / 2} h down: {dist} tiles{line ? "" : " (not in line)"}, {hs}")
+    }
+    // fitted: 2.5 h reached, 4 h not (the guides: 2 up / 3 down)
+    let ok = dist <= wr && abs(dh) <= 6
+    return ReachW(ok = ok, why = "range {wr}, 3 h up or down: {dist} tiles, {hs}")
+}
+
 // ------------------------------------------------------------ the action
 
 def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {

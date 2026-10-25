@@ -819,7 +819,8 @@ class WotlGame : GameModule {
                 alive = un.hp > 0, sprite = spr, sprite_scale = 0.75))
         }
         let bar = u(28.0)
-        // the tiles in reach of the Attack tab's action (flat: by distance)
+        // the tiles in reach of the Attack tab's action (reach_w: the range
+        // and the height limit of the weapon / ability)
         var reach : array<bool>
         self->make_actions()
         if (selected >= 0 && selected < length(units) && length(actions) > 0) {
@@ -828,8 +829,7 @@ class WotlGame : GameModule {
             reach |> resize(field_map.w * field_map.h)
             for (ty in range(field_map.h)) {
                 for (tx in range(field_map.w)) {
-                    let d = abs(tx - units[selected].x) + abs(ty - units[selected].y)
-                    reach[ty * field_map.w + tx] = d >= 1 && d <= max(f.reach, 1)
+                    reach[ty * field_map.w + tx] = reach_w(units[selected], f, map_w, tx, ty, false).ok
                 }
             }
         }
@@ -1009,11 +1009,8 @@ class WotlGame : GameModule {
         }
         rows |> push(("Hit", "{join(f.hit_mods, "; ")} -> {f.hit}%"))
         rows |> push(("Zodiac", "{att.zodiac} vs {tgt.zodiac}: {ZODIAC_REL_NAMES[f.zodiac]}"))
-        let dist = abs(att.x - tgt.x) + abs(att.y - tgt.y)
-        let dh = map_height_w(map_w, tgt.x, tgt.y, tgt.high) - map_height_w(map_w, att.x, att.y, att.high)
-        let reach_s = dist <= f.reach ? "in reach" : "OUT OF REACH"
-        let sign = dh >= 0 ? "+" : ""
-        rows |> push(("Reach", "{dist} tiles, height {sign}{dh} h, range {f.reach}: {reach_s} (the height limit is not modelled)"))
+        let rr = reach_w(att, f, map_w, tgt.x, tgt.y, tgt.high)
+        rows |> push(("Reach", "{rr.ok ? "in reach" : "OUT OF REACH"}: {rr.why}"))
         if (f.mp_cost != 0 || f.ct != 0) {
             rows |> push(("Cost", "MP {f.mp_cost}, charge {f.ct} ticks"))
         }

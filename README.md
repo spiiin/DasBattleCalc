@@ -93,8 +93,10 @@ field) gives the graphics: the units' sprites, the items' icons and the battle m
 - **Explore** with its own parameters (`atk.pa`, `atk.brave`, `tgt.faith`, `tgt.status.protect`, `atk.zodiac`, ...).
 
 - **The battle map** with its heights and water; with the ISO, the map's 3D model and the units' sprites.
+- **Reach with the heights**: the tiles Attack reaches for each weapon kind (melee 3 h, polearms in a line, shooting
+  weapons from 3 tiles, bows farther from above) - the game's highlighted tiles match on 2 battles.
 
-Not yet: the height limits of reach, Arithmeticks. RAM layout and tables:
+Not yet: Arithmeticks; the height limits of abilities other than Attack, Aim and Jump. RAM layout and tables:
 [research/fftwotl/notes.md](research/fftwotl/notes.md), [layouts.md](research/fftwotl/layouts.md).
 
 ## Final Fantasy Tactics (PSX)

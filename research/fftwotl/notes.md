@@ -138,6 +138,24 @@ every ability learned (+0xA3 + job x 3), at Lezalas.
 - **Aurablast (0x31): PA' x [(PA + Y) / 2]** - the modifiers and the zodiac on the first PA only: 7 x 4 = 28, PA 10:
   12 x 6 = 72, the target's Protect: 5 x 4 = 20.
 
+## Reach with the heights (checked)
+
+`fcreach.py`: Ramza (or `--unit`) with a weapon in the right hand, moved to a tile (`--pos`, the record's X / Y: the
+game takes the range from them), the Attack targeting open; **a tile in reach has bit 0x40 in its byte 5** (the
+tile array). `reach1.txt` (the first battle: 9 weapons from the bridge, sword / Javelin / Longbow from 4 more tiles)
+fitted the rules; `reach2.txt` (Gariland, Ganelon: sword, Javelin, Longbow, Romandan Pistol from 4 tiles) was not
+used to fit them and matches tile for tile (`tests/test_fftwotl_reach.das`).
+
+- Heights in half h: the tile's height x 2 + its slope (the middle of a slope) + the water's depth x 2 (its surface).
+- Tiles with **byte 6 bit 0x02** (the tower of Orbonne) are never selectable.
+- Striking weapons (attack flags 0x80; bare hands): their range, **3 h up or down** (2.5 h reached, 4 h not; the guides
+  say 2 up / 3 down). Lunging (0x40: polearms, poles, cloths): a straight line of 2, **3.5 h up, 4 h down next to it,
+  3 h down two tiles away**.
+- Direct (0x20: guns, crossbows, instruments, books) and arcing (0x10: bows): **never closer than 3 tiles** (a harp
+  or a book: exactly 3), any height; **bows +1 tile per 2 h** the target is lower ([(attacker - target) / 2] in h).
+- The units in battle: every record with an ENTD slot (+0x01 != 0xFF); +0x2E is not "on the field" (Gariland: only
+  the unit at its turn has it).
+
 ## Not found yet
 
 - (found, see "Battle map")
