@@ -396,3 +396,22 @@ in the first battle; "Can't throw. None in stock." without). With the
 stock edited (fft_test_throw.State): Broad Sword 24, Defender 96,
 Shuriken 24, Magic Shuriken 42 = Speed 6 x WP, 66% (evaded as Attack).
 The calculator throws the best stocked item of the type.
+
+## The editor (the game)
+
+The inspector edits the job, the skillsets, R/S/M and the equipment
+(`recompute_unit`: the game keeps derived fields in the record - the
+ability bits +0x8B.. from the innate abilities and the set R/S/M, the
+elements +0x6D.. from the job (+41..+44) and the items' attributes, PA /
+MA / Speed / Move / Jump and max HP / MP moved by the items' bonuses, a
+new job's Move / Jump) and the statuses (+0x58; a timed status new in the
+edit gets 32 ticks at +0x5D + its number - 24). The jobs' names: the list
+from "Squire", "Chemist" is 0x4A..; the story jobs before it (Ramza's
+Squire is job 2, his skillset Guts 26), the monsters after. Skillsets:
+"Basic Skill", "Item" are 5, 6.
+
+Exported, each edit alone, Ramza's Attack at Lezales (42, 66%) in the
+game: without his Mythril Shield 42 85% (the model: left hand 22% gone);
+Ramza with the Attack UP support (id 465, bit +0x90 0x10) 56; with
+Defender (a Squire can't wear it - the game uses it anyway) 48; Lezales
+as an Archer 42 66% (his sprite stays a Knight); Lezales with Protect 28.

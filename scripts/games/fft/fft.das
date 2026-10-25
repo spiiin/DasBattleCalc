@@ -39,6 +39,54 @@ def private turn_end_text(how : TurnEnd) : string {
     return how == TurnEnd.MoveAndAct ? "Move + Act" : (how == TurnEnd.ActOnly ? "Act" : (how == TurnEnd.MoveOnly ? "Move" : "Wait"))
 }
 
+// an item's line in the picker: WP / evades / bonuses
+def private item_text(item : int) : string {
+    let f = item_flags(item)
+    var parts : array<string>
+    if ((f & 0x80) != 0) {
+        let w = WEAPON_TABLE + item_index(item) * 8u
+        parts |> push("WP {int(gba_read8(w + 4u))}")
+        let el = int(gba_read8(w + 6u))
+        if (el != 0) {
+            parts |> push(element_text(el))
+        }
+    } elif ((f & 0x40) != 0) {
+        let sh = SHIELD_TABLE + item_index(item) * 2u
+        parts |> push("evade {int(gba_read8(sh))} / {int(gba_read8(sh + 1u))}")
+    } elif ((f & 0x08) != 0) {
+        let ac = ACCESSORY_TABLE + item_index(item) * 2u
+        if (gba_read8(ac) != 0u || gba_read8(ac + 1u) != 0u) {
+            parts |> push("evade {int(gba_read8(ac))} / {int(gba_read8(ac + 1u))}")
+        }
+    }
+    let b = item_bonus(item)
+    if (b.hp != 0 || b.mp != 0) {
+        parts |> push("HP +{b.hp} MP +{b.mp}")
+    }
+    let stat_names = fixed_array<string>("PA", "MA", "Speed", "Move", "Jump")
+    for (k in range(5)) {
+        if (b.stat[k] != 0) {
+            parts |> push("{stat_names[k]} +{b.stat[k]}")
+        }
+    }
+    return join(parts, ", ")
+}
+
+// any edit of the unit (for the Revert button)
+def private unit_changed(a, b : FftUnit) : bool {
+    var same = (a.job_id == b.job_id && a.primary == b.primary && a.secondary == b.secondary && a.reaction == b.reaction
+        && a.support == b.support && a.movement == b.movement && a.hp == b.hp && a.max_hp == b.max_hp && a.mp == b.mp
+        && a.pa == b.pa && a.ma == b.ma && a.speed == b.speed && a.ct == b.ct && a.brave == b.brave && a.faith == b.faith
+        && a.move == b.move && a.jump == b.jump && a.x == b.x && a.y == b.y && a.facing == b.facing)
+    for (k in range(EQUIP_SLOTS)) {
+        same = same && a.equip[k] == b.equip[k]
+    }
+    for (k in range(5)) {
+        same = same && a.status[k] == b.status[k]
+    }
+    return !same
+}
+
 class FftGame : GameModule {
     units : array<FftUnit>
     saved : array<FftUnit>            // as read from the state: Revert
@@ -60,6 +108,10 @@ class FftGame : GameModule {
     disc_serial : uint                // psx_disc_serial() when we opened it
     from_args : bool
     equip_open : bool = true
+    status_open : bool = false
+    pick_slot : int = 0
+    item_filter : ImGuiInputTextBuffer
+    item_all : bool = false
     message : string = "Load a BizHawk state (Nymashock core) of Final Fantasy Tactics (USA)"
 
     def FftGame {
@@ -214,13 +266,159 @@ class FftGame : GameModule {
         if (selected < 0 || selected >= length(units)) {
             return y
         }
-        var bottom = inspect("fft_unit{selected}", units[selected], saved[selected], x, y, w)
-        bottom = self->equip_rows(units[selected], x, bottom + u(6.0), w)
+        var by = y
+        if (unit_changed(units[selected], saved[selected])) {
+            SetCursorScreenPos(ImVec2(x, by))
+            if (bl_tool_button("fft_revert_unit", "Revert unit", ICON_TURN_CCW, w)) {
+                units[selected] := saved[selected]
+            }
+            by += u(27.0)
+        }
+        by = self->job_row(units[selected], saved[selected], x, by, w)
+        by = self->skillset_row(units[selected], saved[selected], false, x, by, w)
+        by = self->skillset_row(units[selected], saved[selected], true, x, by, w)
+        for (k in range(3)) {
+            by = self->rsm_row(units[selected], saved[selected], k, x, by, w)
+        }
+        var bottom = inspect("fft_unit{selected}", units[selected], saved[selected], x, by, w)
+        bottom = self->equip_rows(units[selected], saved[selected], x, bottom + u(6.0), w)
+        bottom = self->status_rows(units[selected], saved[selected], x, bottom + u(6.0), w)
         update_unit(units[selected])
         return bottom
     }
 
-    def equip_rows(un : FftUnit; x, y, w : float) : float {
+    // the job: any job with a name; Move / Jump, elements and the
+    // innate abilities follow (recompute_unit)
+    def job_row(var unit : FftUnit; saved_u : FftUnit; x, y, w : float) : float {
+        let lw = floor(w * 0.4)
+        let bw = u(24.0)
+        SetCursorScreenPos(ImVec2(x, y))
+        bl_label("Job:", -1, lw)
+        var names : array<string>
+        var ids : array<int>
+        var sel = 0
+        for (j in range(1, 155)) {
+            let n = job_name(j)
+            if (n != "" && !starts_with(n, "#")) {
+                if (j == unit.job_id) {
+                    sel = length(names)
+                }
+                names |> push("{n} ({j})")
+                ids |> push(j)
+            }
+        }
+        SetCursorScreenPos(ImVec2(x + lw, y))
+        if (length(names) > 0 && bl_choice("fft_job", names, sel, w - lw - bw)) {
+            let before = unit
+            unit.job_id = ids[sel]
+            unit.job = job_name(unit.job_id)
+            for (k in range(4)) {
+                unit.innate[k] = int(gba_read16(JOB_TABLE + uint(unit.job_id) * JOB_SIZE_PSX + 1u + uint(k) * 2u))
+            }
+            recompute_unit(unit, before)
+        }
+        if (unit.job_id != saved_u.job_id && bl_revert_button("fft_job_revert", x + w - u(22.0), y)) {
+            let before = unit
+            unit.job_id = saved_u.job_id
+            unit.job = saved_u.job
+            unit.innate = saved_u.innate
+            recompute_unit(unit, before)
+        }
+        return y + u(26.0)
+    }
+
+    // primary / secondary skillset: any with a name
+    def skillset_row(var unit : FftUnit; saved_u : FftUnit; second : bool; x, y, w : float) : float {
+        let lw = floor(w * 0.4)
+        let bw = u(24.0)
+        SetCursorScreenPos(ImVec2(x, y))
+        bl_label(second ? "Secondary:" : "Primary:", -1, lw)
+        var names <- ["none"]
+        var ids <- [0]
+        var sel = 0
+        let cur = second ? unit.secondary : unit.primary
+        for (ss in range(1, 176)) {
+            let n = skillset_name(ss)
+            if (n != "" && !starts_with(n, "#")) {
+                if (ss == cur) {
+                    sel = length(names)
+                }
+                names |> push("{n} ({ss})")
+                ids |> push(ss)
+            }
+        }
+        SetCursorScreenPos(ImVec2(x + lw, y))
+        if (bl_choice(second ? "fft_secondary" : "fft_primary", names, sel, w - lw - bw)) {
+            if (second) {
+                unit.secondary = ids[sel]
+            } else {
+                unit.primary = ids[sel]
+            }
+        }
+        let old = second ? saved_u.secondary : saved_u.primary
+        if (cur != old && bl_revert_button(second ? "fft_secondary_revert" : "fft_primary_revert", x + w - u(22.0), y)) {
+            if (second) {
+                unit.secondary = old
+            } else {
+                unit.primary = old
+            }
+        }
+        return y + u(26.0)
+    }
+
+    // reaction (0), support (1), movement (2): their bits follow
+    def rsm_row(var unit : FftUnit; saved_u : FftUnit; k : int; x, y, w : float) : float {
+        let lw = floor(w * 0.4)
+        let bw = u(24.0)
+        let labels = fixed_array<string>("Reaction:", "Support:", "Movement:")
+        let lo = fixed_array<int>(422, 454, 486)
+        let hi = fixed_array<int>(454, 486, 510)
+        SetCursorScreenPos(ImVec2(x, y))
+        bl_label(labels[k], -1, lw)
+        var names <- ["none"]
+        var ids <- [0]
+        var sel = 0
+        let cur = k == 0 ? unit.reaction : (k == 1 ? unit.support : unit.movement)
+        for (aid in range(lo[k], hi[k])) {
+            let n = ability_name(aid)
+            if (n != "") {
+                if (aid == cur) {
+                    sel = length(names)
+                }
+                names |> push(n)
+                ids |> push(aid)
+            }
+        }
+        SetCursorScreenPos(ImVec2(x + lw, y))
+        if (bl_choice("fft_rsm{k}", names, sel, w - lw - bw)) {
+            let before = unit
+            if (k == 0) {
+                unit.reaction = ids[sel]
+            } elif (k == 1) {
+                unit.support = ids[sel]
+            } else {
+                unit.movement = ids[sel]
+            }
+            recompute_unit(unit, before)
+        }
+        let old = k == 0 ? saved_u.reaction : (k == 1 ? saved_u.support : saved_u.movement)
+        if (cur != old && bl_revert_button("fft_rsm_revert{k}", x + w - u(22.0), y)) {
+            let before = unit
+            if (k == 0) {
+                unit.reaction = old
+            } elif (k == 1) {
+                unit.support = old
+            } else {
+                unit.movement = old
+            }
+            recompute_unit(unit, before)
+        }
+        return y + u(26.0)
+    }
+
+    // the seven slots: a button opens the item list (what the job can
+    // wear, or all); the stats follow by the items' bonuses
+    def equip_rows(var un : FftUnit; saved_u : FftUnit; x, y, w : float) : float {
         SetCursorScreenPos(ImVec2(x, y))
         var ry = y + u(23.0)
         if (!bl_section("fft_equip_section", "Equipment", equip_open)) {
@@ -228,18 +426,117 @@ class FftGame : GameModule {
         }
         let fg = bt.regular.text | 0xffu
         let dim = offset_color(fg, 60)
-        let lw = floor(w * 0.4)
-        for (k in range(EQUIP_SLOTS)) {
-            let iid = un.equip[k]
-            text_at_baseline(x + u(8.0), ry + u(15.0), EQUIP_LABELS[k], dim)
-            let icon = iid > 0 && iid < 0xFF ? psx_item_icon(shell_renderer(), iid) : -1
+        let bw = u(24.0)
+        let iw = u(20.0)
+        for (slot in range(EQUIP_SLOTS)) {
+            let iid = un.equip[slot]
+            let has = iid > 0 && iid < 0xFF
+            let icon = has ? psx_item_icon(shell_renderer(), iid) : -1
             if (icon >= 0) {
-                gba_gfx_draw(icon, x + lw, ry + u(2.0), u(16.0), u(16.0), 1.0)
+                gba_gfx_draw(icon, x, ry + u(2.0), u(16.0), u(16.0), 1.0)
             }
-            text_at_baseline(x + lw + (icon >= 0 ? u(20.0) : 0.0), ry + u(15.0), iid == 0xFF || iid == 0 ? "-" : item_name(iid), fg)
-            ry += u(21.0)
+            SetCursorScreenPos(ImVec2(x + iw, ry))
+            let bad = has && !job_can_wear(un.job_id, iid) ? " (!)" : ""
+            let caption = has ? "{item_name(iid)}{bad}" : "({EQUIP_LABELS[slot]}: empty)"
+            if (bl_tool_button("fft_equip{slot}", caption, -1, w - bw - iw - u(4.0))) {
+                OpenPopup("##fft_item_pick")
+                pick_slot = slot
+                item_filter = ImGuiInputTextBuffer("", 64)
+            }
+            if (un.equip[slot] != saved_u.equip[slot] && bl_revert_button("fft_equip_revert{slot}", x + w - u(22.0), ry)) {
+                let before = un
+                un.equip[slot] = saved_u.equip[slot]
+                recompute_unit(un, before)
+            }
+            ry += u(22.0)
         }
-        return ry
+        self->item_picker(un, x, w)
+        return ry + u(4.0)
+    }
+
+    def item_picker(var un : FftUnit; x, w : float) : void {
+        SetNextWindowSize(ImVec2(max(w, u(360.0)), u(380.0)), ImGuiCond.Always)
+        bl_push_popup_style()
+        PushStyleColor(ImGuiCol.PopupBg, abgr(bt.menu.inner | 0xffu))
+        if (BeginPopup("##fft_item_pick")) {
+            let pw = GetContentRegionAvail().x
+            let p = GetCursorScreenPos()
+            SetCursorScreenPos(ImVec2(p.x + u(6.0), p.y + u(3.0)))
+            bl_label("Name:", -1, u(52.0), bt.menu_item.text)
+            SetCursorScreenPos(ImVec2(p.x + u(58.0), p.y + u(3.0)))
+            if (!IsAnyItemActive()) {
+                SetKeyboardFocusHere(0)
+            }
+            bl_text_field("fft_item_filter", item_filter, pw - u(64.0))
+            SetCursorScreenPos(ImVec2(p.x + u(6.0), p.y + u(28.0)))
+            bl_option("fft_item_all", "All items (not only what {un.job} can wear)", item_all)
+            SetCursorScreenPos(ImVec2(p.x, p.y + u(56.0)))
+            let filter = to_lower(to_string(item_filter))
+            PushStyleColor(ImGuiCol.ChildBg, abgr(bt.menu.inner | 0xffu))
+            BeginChild("fft_item_list", ImVec2(pw, GetContentRegionAvail().y), ImGuiChildFlags.None, ImGuiWindowFlags.None)
+            bl_popup_rows() {
+                if (bl_menu_item("(empty)")) {
+                    let before = un
+                    un.equip[pick_slot] = 0xFF
+                    recompute_unit(un, before)
+                    CloseCurrentPopup()
+                }
+                for (iid in range(1, 254)) {
+                    let name = item_name(iid)
+                    if (name == "" || !item_fits(iid, pick_slot) || (!item_all && !job_can_wear(un.job_id, iid))) {
+                        continue
+                    }
+                    if (filter != "" && find(to_lower(name), filter) < 0) {
+                        continue
+                    }
+                    let icon = psx_item_icon(shell_renderer(), iid)
+                    if (bl_menu_item("{name}   {item_text(iid)}", icon >= 0 ? 65536 + icon : -1)) {
+                        let before = un
+                        un.equip[pick_slot] = iid
+                        recompute_unit(un, before)
+                        CloseCurrentPopup()
+                    }
+                }
+            }
+            EndChild()
+            PopStyleColor(1)
+            EndPopup()
+        }
+        PopStyleColor(1)
+        bl_pop_popup_style()
+    }
+
+    // statuses (record +0x58) as check boxes in two columns
+    def status_rows(var unit : FftUnit; saved_u : FftUnit; x, y, w : float) : float {
+        var changed = false
+        for (k in range(5)) {
+            changed = changed || unit.status[k] != saved_u.status[k]
+        }
+        if (changed && bl_revert_button("fft_status_revert", x + w - u(22.0), y)) {
+            unit.status = saved_u.status
+        }
+        SetCursorScreenPos(ImVec2(x, y))
+        var ry = y + u(23.0)
+        if (!bl_section("fft_status_section", "Status: {unit.status_text}", status_open)) {
+            return ry
+        }
+        let cw = floor(w * 0.5)
+        var col = 0
+        for (n in range(1, 40)) {
+            let name = STATUS_NAMES[n]
+            SetCursorScreenPos(ImVec2(x + u(6.0) + float(col) * cw, ry))
+            var on = has_status(unit, n)
+            let caption = on != has_status(saved_u, n) ? "{name} *" : name
+            if (bl_option("fft_status{n}", caption, on)) {
+                let m = 0x80u >> uint(n & 7)
+                unit.status[n >> 3] = uint8(on ? (uint(unit.status[n >> 3]) | m) : (uint(unit.status[n >> 3]) & ~m))
+            }
+            col = 1 - col
+            if (col == 0) {
+                ry += u(21.0)
+            }
+        }
+        return ry + (col == 1 ? u(25.0) : u(4.0))
     }
 
     def override draw_scene(x, y, w, h : float) : void {

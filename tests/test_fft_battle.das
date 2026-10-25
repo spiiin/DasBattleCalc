@@ -58,6 +58,24 @@ def main() : int {
     for (un in units) {
         print("{un.slot} {un.name} ({un.job}) Lv{un.level} HP {un.hp}/{un.max_hp} MP {un.mp}/{un.max_mp} Br {un.brave} Fa {un.faith} PA {un.pa} MA {un.ma} Sp {un.speed} CT {un.ct} Mv {un.move} Jp {un.jump} {un.position} team {un.team} eq {un.equip}\n")
     }
+    // the editor's names and its recompute: unchanged, it gives the record's
+    // derived fields back (the ability bits, the elements, the stats)
+    check("job names: {job_name(74)}, {job_name(76)}, {job_name(78)}",
+        job_name(74) == "Squire" && job_name(76) == "Knight" && job_name(78) == "Monk")
+    check("skillset names: {skillset_name(5)}, {skillset_name(7)}, {skillset_name(20)}",
+        skillset_name(5) == "Basic Skill" && skillset_name(7) == "Battle Skill" && skillset_name(20) == "Throw")
+    for (un in units) {
+        var c = un
+        recompute_unit(c, un)
+        var same = c.pa == un.pa && c.ma == un.ma && c.speed == un.speed && c.move == un.move && c.jump == un.jump
+        for (k in range(11)) {
+            same = same && c.skills[k] == un.skills[k]
+        }
+        for (k in range(5)) {
+            same = same && c.elements[k] == un.elements[k]
+        }
+        check("{un.name}: the recompute gives the record back", same)
+    }
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
     return failed == 0 ? 0 : 1
 }

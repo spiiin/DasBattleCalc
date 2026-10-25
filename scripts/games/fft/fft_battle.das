@@ -97,7 +97,7 @@ enum TurnEnd {
 
 struct FftUnit {
     @readonly name : string
-    @readonly job : string
+    @hide job : string
     @readonly record : uint
     @hide slot : int                // 0..20 in the battle table
     @hide job_id : int              // +0x03
@@ -132,6 +132,7 @@ struct FftUnit {
     @hide charge_ability : int      // +0x170 u16: that ability (+0x16F its skillset)
     @hide gender : int              // +0x06: 0x80 male, 0x40 female, 0x20 monster
     @hide zodiac : int              // +0x09 high nibble: 0 Aries .. 11 Pisces, 12 Serpentarius
+    @hide innate : int[4]           // +0x0A 4 x u16: the job's innate abilities (Throw Item)
     @hide primary : int             // +0x12 skillset
     @hide secondary : int           // +0x13
     @hide reaction : int            // +0x14 u16 ability id (0x1BF Weapon Guard)
@@ -210,6 +211,9 @@ def read_unit(slot : int) : FftUnit {
     u.flags = int(gba_read8(rec + 0x05u))
     u.gender = int(gba_read8(rec + 0x06u))
     u.zodiac = int(gba_read8(rec + 0x09u)) >> 4
+    for (k in range(4)) {
+        u.innate[k] = int(gba_read16(rec + 0x0Au + uint(k) * 2u))
+    }
     u.primary = int(gba_read8(rec + 0x12u))
     u.secondary = int(gba_read8(rec + 0x13u))
     u.reaction = int(gba_read16(rec + 0x14u))
@@ -386,7 +390,8 @@ def private fft_encode(s : string) : array<uint8> {
     return <- res
 }
 
-def private text_list(var list : TextList; first, second : string; count : int; id : int) : string {
+// first_id: the id of `first` (the list is walked back to id 0 from it)
+def private text_list(var list : TextList; first, second : string; count : int; id : int; first_id : int = 1) : string {
     if (list.serial != gba_state_serial()) {
         list.serial = gba_state_serial()
         list.names |> clear()
@@ -403,6 +408,14 @@ def private text_list(var list : TextList; first, second : string; count : int; 
         let at = find_text(anchor)
         if (at != 0u) {
             var a = at + 1u
+            // back to the start of id 1: first_id - 1 names before
+            for (_ in range(first_id - 1)) {
+                a -= 2u
+                while (gba_read8(a) != 0xFEu) {
+                    a--
+                }
+                a++
+            }
             list.names |> push("")
             for (_ in range(1, count)) {
                 list.names |> push(fft_text(a, 24))
@@ -425,6 +438,143 @@ def item_name(id : int) : string {
 
 def ability_name(id : int) : string {
     return text_list(ability_names, "Cure", "Cure 2", 512, id)
+}
+
+var private job_names : TextList
+var private skillset_names : TextList
+
+// the jobs' names: "Squire", "Chemist" are 0x4A, 0x4B (the story jobs
+// before them, the monsters after)
+def job_name(id : int) : string {
+    return text_list(job_names, "Squire", "Chemist", 160, id, 74)
+}
+
+// the skillsets': 1 Attack .. 5 Basic Skill, 6 Item, ...
+def skillset_name(id : int) : string {
+    return text_list(skillset_names, "Basic Skill", "Item", 176, id, 5)
+}
+
+// ------------------------------------------------------------ jobs and items for the editor
+
+// the job table: 48 B a job at 0x800610B8 (War of the Lions' layout with
+// a 4-byte equip field): +0 skillset, +1 4 x u16 innate abilities, +9
+// the item types it can wear (bit 0x80 >> t % 8 of byte t / 8), +23
+// Move, +24 Jump, +25 class evade, +26 / +31 / +36 always / immune /
+// starting statuses, +41..+44 absorb, cancel, half, weak elements
+let JOB_TABLE = 0x800610B8u
+let JOB_SIZE_PSX = 48u
+// the items (12 B: +3 kind flags, +4 index, +5 type, +7 attribute id),
+// the head / body table (HP, MP), the attributes (25 B: PA, MA, Speed,
+// Move, Jump, 3 x 5 statuses, absorb, cancel, half, weak, strengthen)
+let ITEM_TABLE_PSX = 0x80062EB8u
+let ARMOR_TABLE_PSX = 0x80063ED8u
+let ATTRIBUTE_TABLE = 0x800642C4u
+
+def job_skillset(job : int) : int {
+    return int(gba_read8(JOB_TABLE + uint(job) * JOB_SIZE_PSX))
+}
+
+def job_can_wear(job, item : int) : bool {
+    if (item <= 0 || item >= 0xFF) {
+        return true
+    }
+    let t = int(gba_read8(ITEM_TABLE_PSX + uint(item) * 12u + 5u))
+    return (int(gba_read8(JOB_TABLE + uint(job) * JOB_SIZE_PSX + 9u + uint(t / 8))) & (0x80 >> (t % 8))) != 0
+}
+
+// an item's bonuses: PA, MA, Speed, Move, Jump (its attribute), max HP /
+// MP (head and body)
+struct ItemBonus {
+    stat : int[5]
+    hp : int
+    mp : int
+    elements : int[5]
+}
+
+def item_bonus(item : int) : ItemBonus {
+    var b = ItemBonus()
+    if (item <= 0 || item >= 0xFF) {
+        return b
+    }
+    let e = ITEM_TABLE_PSX + uint(item) * 12u
+    let flags = int(gba_read8(e + 3u))
+    if ((flags & 0x30) != 0) {
+        let a = ARMOR_TABLE_PSX + uint(gba_read8(e + 4u)) * 2u
+        b.hp = int(gba_read8(a))
+        b.mp = int(gba_read8(a + 1u))
+    }
+    let attr = int(gba_read8(e + 7u))
+    if (attr != 0) {
+        let t = ATTRIBUTE_TABLE + uint(attr) * 25u
+        for (k in range(5)) {
+            b.stat[k] = int(gba_read8(t + uint(k)))
+            b.elements[k] = int(gba_read8(t + 20u + uint(k)))
+        }
+    }
+    return b
+}
+
+// an item fits an equipment slot: 0 head, 1 body, 2 accessory, 3 / 5
+// the hands (weapons), 4 / 6 their shields
+def item_fits(item, slot : int) : bool {
+    if (item <= 0 || item >= 0xFF) {
+        return true
+    }
+    let f = int(gba_read8(ITEM_TABLE_PSX + uint(item) * 12u + 3u))
+    return (slot == 0 ? (f & 0x20) != 0 : (slot == 1 ? (f & 0x10) != 0 : (slot == 2 ? (f & 0x08) != 0
+        : (slot == 3 || slot == 5 ? (f & 0x80) != 0 : (f & 0x40) != 0))))
+}
+
+// After an edit of the job, the equipment or the R/S/M: the derived
+// fields the game keeps in the record, again - the ability bits (the
+// innate ones and the set R/S/M), the elements (the job's and the
+// equipment's), PA / MA / Speed / Move / Jump and max HP / MP moved by
+// the equipment's bonuses (from `before`, the unit before the edit).
+def recompute_unit(var u : FftUnit; before : FftUnit) {
+    for (k in range(11)) {
+        u.skills[k] = uint8(0)
+    }
+    for (id in [u.innate[0], u.innate[1], u.innate[2], u.innate[3], u.reaction, u.support, u.movement]) {
+        let n = id - 0x1A6
+        if (n >= 0 && n < 88) {
+            u.skills[n >> 3] = uint8(uint(u.skills[n >> 3]) | (0x80u >> uint(n & 7)))
+        }
+    }
+    var el : int[5]
+    let j = JOB_TABLE + uint(u.job_id) * JOB_SIZE_PSX
+    for (k in range(4)) {
+        el[k] = int(gba_read8(j + 41u + uint(k)))
+    }
+    var dstat : int[5]
+    var dhp = 0
+    var dmp = 0
+    for (s in range(EQUIP_SLOTS)) {
+        let nb = item_bonus(u.equip[s])
+        let ob = item_bonus(before.equip[s])
+        for (k in range(5)) {
+            el[k] |= nb.elements[k]
+            dstat[k] += nb.stat[k] - ob.stat[k]
+        }
+        dhp += nb.hp - ob.hp
+        dmp += nb.mp - ob.mp
+    }
+    for (k in range(5)) {
+        u.elements[k] = uint8(el[k])
+    }
+    u.pa = max(before.pa + dstat[0], 0)
+    u.ma = max(before.ma + dstat[1], 0)
+    u.speed = max(before.speed + dstat[2], 1)
+    // a new job: its own Move / Jump (+ the equipment's)
+    let jb = JOB_TABLE + uint(before.job_id) * JOB_SIZE_PSX
+    let dmove = int(gba_read8(j + 23u)) - int(gba_read8(jb + 23u))
+    let djump = int(gba_read8(j + 24u)) - int(gba_read8(jb + 24u))
+    u.move = max(before.move + dstat[3] + (u.job_id != before.job_id ? dmove : 0), 0)
+    u.jump = max(before.jump + dstat[4] + (u.job_id != before.job_id ? djump : 0), 0)
+    u.max_hp = max(before.max_hp + dhp, 1)
+    u.max_mp = max(before.max_mp + dmp, 0)
+    u.hp = min(u.hp, u.max_hp)
+    u.mp = min(u.mp, u.max_mp)
+    update_unit(u)
 }
 
 // ------------------------------------------------------------ export
@@ -453,6 +603,36 @@ def write_unit(u : FftUnit) {
     gba_edit8(r + 0x39u, uint(clamp(u.ct, 0, 255)))
     gba_edit8(r + 0x3Au, uint(clamp(u.move, 0, 255)))
     gba_edit8(r + 0x3Bu, uint(clamp(u.jump, 0, 255)))
+    // the job, skillsets, R/S/M and their bits, equipment, elements and
+    // statuses (a timed status new in the edit gets 32 ticks: without a
+    // timer the game drops it at the next check)
+    gba_edit8(r + 0x03u, uint(u.job_id))
+    gba_edit8(r + 0x12u, uint(u.primary))
+    gba_edit8(r + 0x13u, uint(u.secondary))
+    gba_edit16(r + 0x14u, uint(u.reaction))
+    gba_edit16(r + 0x16u, uint(u.support))
+    gba_edit16(r + 0x18u, uint(u.movement))
+    for (k in range(EQUIP_SLOTS)) {
+        gba_edit8(r + 0x1Au + uint(k), uint(u.equip[k] <= 0 ? 255 : u.equip[k]))
+    }
+    for (k in range(11)) {
+        gba_edit8(r + 0x8Bu + uint(k), uint(u.skills[k]))
+    }
+    for (k in range(5)) {
+        gba_edit8(r + 0x6Du + uint(k), uint(u.elements[k]))
+        gba_edit8(r + 0x58u + uint(k), uint(u.status[k]))
+    }
+    // the timers from +0x5D: Poison, Regen, Protect, Shell, Haste, Slow,
+    // Stop, Wall, Faith, Innocent, Charm, Sleep, Don't Move, Don't Act,
+    // Reflect, Death Sentence
+    let timed = fixed_array<int>(24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39)
+    for (k in range(16)) {
+        let n = timed[k]
+        let was = (gba_read8(r + 0x58u + uint(n >> 3)) & (0x80u >> uint(n & 7))) != 0u
+        if (has_status(u, n) && !was && gba_read8(r + 0x5Du + uint(k)) == 0u) {
+            gba_edit8(r + 0x5Du + uint(k), 32u)
+        }
+    }
     // not the tile (+0x47 / +0x48) nor the facing: the game takes them
     // (its Move range follows), but the sprite stays where it was - its
     // object keeps its own position (not found yet)

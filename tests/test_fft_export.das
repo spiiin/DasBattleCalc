@@ -84,6 +84,31 @@ def main() : int {
         }
     }
     check("the other units unchanged", same)
+    // the editor (recompute_unit): Lezales without his Mythril Shield,
+    // Protect; Ramza with Defender and the Attack UP support. In the game
+    // (each edit alone): 42 85%, 28, 48, 56 at Lezales
+    check("reload the source", gba_load_state(src) == "")
+    var ed : array<FftUnit>
+    read_battle(ed)
+    var lb = ed[li]
+    ed[li].equip[6] = 0xFF
+    ed[li].status[3] = uint8(uint(ed[li].status[3]) | 0x20u)
+    recompute_unit(ed[li], lb)
+    var rb = ed[ri]
+    ed[ri].equip[3] = 33
+    ed[ri].support = 465
+    recompute_unit(ed[ri], rb)
+    check("Ramza's Attack UP bit set", (uint(ed[ri].skills[5]) & 0x10u) != 0u)
+    check("editor export", export_battle(ed, out) == "")
+    check("editor reload", gba_load_state(out) == "")
+    var ea : array<FftUnit>
+    read_battle(ea)
+    let er = ea[ri]
+    let el = ea[li]
+    check("Ramza: Defender {er.equip[3]}, support {er.support}, bit {gba_read8(er.record + 0x90u)}",
+        er.equip[3] == 33 && er.support == 465 && (gba_read8(er.record + 0x90u) & 0x10u) != 0u)
+    check("Lezales: no shield {el.equip[6]}, Protect with timer {gba_read8(el.record + 0x5Fu)}",
+        el.equip[6] == 0xFF && has_status(el, 26) && gba_read8(el.record + 0x5Fu) == 32u)
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
     return failed == 0 ? 0 : 1
 }
