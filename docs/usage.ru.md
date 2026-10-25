@@ -40,6 +40,7 @@ build\bin\battlecalc.exe tests\test_ffta_explore.das --state <ffta_test_battle1.
 build\bin\battlecalc.exe tests\test_ffta_battle2.das --state <ffta_test_battle2.State> --start <ffta_test_battle2_start.State> --rom <FFTA (USA).zip>
 build\bin\battlecalc.exe tests\test_explore.das
 build\bin\battlecalc.exe tests\test_ffta2_export.das --state <ffta2_test_battle1.State> --rom <FFTA2 (USA).zip> --out <new.State>
+build\bin\battlecalc.exe tests\test_ffta2_reaction.das --state <сейв FFTA2: Luso рядом с Sasarr> --rom <FFTA2 (USA).zip>
 build\bin\battlecalc.exe tests\test_ffta2_reach.das --state <сейв FFTA2: Luso рядом с Sasarr> --rom <FFTA2 (USA).zip>
 build\bin\battlecalc.exe tests\test_ffta2_status.das --state <сейв FFTA2: Luso рядом с Sasarr> --rom <FFTA2 (USA).zip>
 build\bin\battlecalc.exe tests\test_ffta2_explore.das --state <сейв FFTA2: Luso рядом с Sasarr> --rom <FFTA2 (USA).zip>

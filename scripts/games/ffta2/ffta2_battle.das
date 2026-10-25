@@ -108,11 +108,12 @@ struct Unit2 {
     @hide job_hit : int             // job +41: the base of a hit on this unit (100)
     @hide job_50 : int              // job +50: 2 - never hit from the back
     @hide flying : bool             // job +66 bit 3 (native 2875)
-    @caption = "Support" @readonly support_name : string
+    @hide support_name : string
     @hide support : int             // record +0x50: ability id (851 Attack+ .. 881 Elusion), 0 none
-    @hide reaction : int            // record +0x4E
+    @hide reaction : int            // record +0x4E: ability id (822 Critical: Quicken .. 844), 0 none
     @hide status : uint8[9]         // record +0x28: status n = bit n & 7 of byte n >> 3 (JD_message 12)
     @caption = "RNG seed" @readonly rng_seed : uint   // its generator (rolls hits on it), 0: not found
+    @hide actor : uint              // its battle actor (0xF8 bytes, +0x0C the record; +0x30 x, height, y), 0: not found
     @hide items : int[5]            // record +0x44, item ids (0 empty)
     @hide equip : Item2[5]
     @hide stat_base : int[8]        // raw / 4, Speed, job Move / Jump
@@ -241,8 +242,14 @@ def ability_count() : int {
 // (0..179), two bits per status the target has: bit 0 - the effect
 // can land on it, bit 1 - (another rule, seen in the hit script 784)
 def status_rule(apply, status : int) : int {
+    return status_rule_row(clamp(apply, 0, 179), status)
+}
+
+// a row of the same file: 0..179 apply functions, 180 + reaction - 822
+// the reactions (0x020CB50C, read by 0x020635EC)
+def status_rule_row(row, status : int) : int {
     let buf = nds_pak_file(SYSDATA_IDX, SYSDATA_PAK, STATUS_RULE_FILE)
-    let base = clamp(apply, 0, 179) * STATUS_RULE_SIZE
+    let base = max(row, 0) * STATUS_RULE_SIZE
     if (buf < 0 || status < 0 || base + STATUS_RULE_SIZE > nds_buf_size(buf)) {
         return 1
     }
@@ -442,6 +449,33 @@ def class_jobs(job : int) : array<int> {
     return <- res
 }
 
+// the reaction (822..844) and support (851..884) abilities, by name
+def reaction_ids() : array<int> {
+    var res : array<int>
+    for (id in range(822, 845)) {
+        let n = ffta2_message(ABILITY_NAMES, id)
+        if (n != "" && n != "-") {
+            res |> push(id)
+        }
+    }
+    return <- res
+}
+
+def support_ids() : array<int> {
+    var res : array<int>
+    for (id in range(851, 885)) {
+        let n = ffta2_message(ABILITY_NAMES, id)
+        if (n != "" && n != "-") {
+            res |> push(id)
+        }
+    }
+    return <- res
+}
+
+def ability_name2(id : int) : string {
+    return id == 0 ? "none" : ffta2_message(ABILITY_NAMES, id)
+}
+
 def is_magick2(a : Ability2) : bool {
     return (a.flags & 8u) != 0u
 }
@@ -639,6 +673,7 @@ def read_battle2(var units : array<Unit2>) : string {
     var a = RAM_LO + 0x4u
     battle_rng = 0u
     var seeds : table<uint; uint>
+    var actors : table<uint; uint>
     while (a < RAM_HI) {
         // a generator: +0x14 multiplier, +0x18 increment, +0x10 seed, +0x0C its unit's record (0: the battle's)
         if (gba_read32(a + 0x14u) == RNG_MUL && gba_read32(a + 0x18u) == RNG_INC) {
@@ -647,6 +682,7 @@ def read_battle2(var units : array<Unit2>) : string {
                 battle_rng = gba_read32(a + 0x10u)
             } elif (in_ram(owner)) {
                 seeds |> insert(owner, gba_read32(a + 0x10u))
+                actors |> insert(owner, a)
             }
         }
         let rec = gba_read32(a)
@@ -661,6 +697,18 @@ def read_battle2(var units : array<Unit2>) : string {
     ensure(length(units) > 0, "no battle in this state")
     for (u in units) {
         u.rng_seed = seeds?[u.record] ?? 0u
+        u.actor = actors?[u.record] ?? 0u
+        // the actor has the position at once (the object gets it at the
+        // end of the turn): world x / y = tile x 32 + 16
+        if (u.actor != 0u) {
+            let wx = int(gba_read16(u.actor + 0x30u))
+            let wy = int(gba_read16(u.actor + 0x34u))
+            if (wx >= 16 && wy >= 16 && (wx & 31) == 16 && (wy & 31) == 16) {
+                u.x = wx >> 5
+                u.y = wy >> 5
+                recompute_unit(u)
+            }
+        }
     }
     return ""
 }
@@ -671,7 +719,7 @@ def read_battle2(var units : array<Unit2>) : string {
 // battle object fields the calculator reads (read_unit2) and edits. The
 // game computes with them at once; the bottom screen's HP / MP panel
 // shows its own copy until it is redrawn.
-def write_unit2(u : Unit2) {
+def write_unit2(u : Unit2; m : Map2) {
     let rec = u.record
     let obj = u.object
     gba_edit8(rec + 0x06u, uint(u.job_id))
@@ -695,8 +743,33 @@ def write_unit2(u : Unit2) {
         gba_edit8(rec + 0x52u + uint(k), uint(u.learned[k]))
     }
     gba_edit16(obj + 0x08u, uint(u.hp))
-    // the position and facing are not written: the game draws the unit
-    // from another structure (not found), which would disagree
+    // the position: the object and the actor the game draws (world x / y =
+    // tile x 32 + 16, height x 16; +0x36.. a copy). The facing is not
+    // written (the actor's angle +0x8C is not decoded).
+    gba_edit8(obj + 0x0Cu, uint(u.x))
+    gba_edit8(obj + 0x0Du, uint(u.y))
+    if (u.actor != 0u) {
+        let ac = u.actor
+        let wx = u.x * 32 + 16
+        let wy = u.y * 32 + 16
+        let wh = max(map_height(m, u.x, u.y), 0) * 16
+        let old = int(gba_read16(ac + 0x30u)) + int(gba_read16(ac + 0x34u))
+        for (o in [0x30u, 0x36u, 0xD2u]) {
+            gba_edit16(ac + o, uint(wx))
+            gba_edit16(ac + o + 2u, uint(wh))
+            gba_edit16(ac + o + 4u, uint(wy))
+        }
+        // screen position (+0x3C, +0x3E; a copy at +0xC8) and the depth
+        // key (+0x40, + 0xCC = it - 3: for a one-tile unit wx + wy + 128,
+        // so shifted by the change of wx + wy)
+        let depth = int(int16(gba_read16(ac + 0x40u))) + wx + wy - old
+        for (o in [0x3Cu, 0xC8u]) {
+            gba_edit16(ac + o, uint((wx - wy) / 2 + 512))
+            gba_edit16(ac + o + 2u, uint((wx + wy) / 4 - wh / 2 + 256))
+        }
+        gba_edit16(ac + 0x40u, uint(depth) & 0xFFFFu)
+        gba_edit16(ac + 0xCCu, uint(depth - 3) & 0xFFFFu)
+    }
     gba_edit16(obj + 0x14u, uint(u.speed))
     gba_edit16(obj + 0x16u, uint(u.ct))
 }
@@ -704,13 +777,13 @@ def write_unit2(u : Unit2) {
 // Writes the loaded state (BizHawk, melonDS) with the units to path:
 // the main RAM pages of the waterbox image (gba_save_state). "" or the
 // error.
-def export_battle2(units : array<Unit2>; path : string) : string {
+def export_battle2(units : array<Unit2>; m : Map2; path : string) : string {
     if (!gba_has_state()) {
         return "no state loaded"
     }
     gba_edit_begin()
     for (u in units) {
-        write_unit2(u)
+        write_unit2(u, m)
     }
     return gba_save_state(path)
 }

@@ -1,0 +1,25 @@
+# Real attacks of Luso (Shortsword, at 9, 8) on Sasarr (10, 8) with the
+# reaction given to Sasarr (record +0x4E), exec_probe.lua with the seeds
+# of the battle and Sasarr's generators varied: reaction, Sasarr's HP
+# after (77 before), Luso's HP after (90 before).
+829 62 84
+829 61 84
+829 61 83
+829 60 84
+829 58 85
+829 48 84
+829 60 79
+828 77 84
+828 77 84
+828 77 83
+828 77 84
+831 62 84
+831 61 84
+831 61 83
+831 60 84
+826 77 90
+826 77 90
+826 77 90
+838 63 90
+838 62 90
+838 61 90

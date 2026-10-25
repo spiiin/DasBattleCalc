@@ -3,17 +3,18 @@
 **Try it in the browser: https://spiiin.github.io/DasBattleCalc/** (you load your own save and ROM; the files stay in
 the browser).
 
-A battle calculator for **Final Fantasy Tactics Advance** (GBA, USA). It reads a BizHawk save state from the
-middle of a battle and shows what the game is about to do: turn order, damage, hit and critical chances, abilities and
-reactions. The formulas were taken from the ROM and checked against the game itself. You can edit units and write the
-changes back into a new save, or run parameter experiments and plot the results.
+A battle calculator for **Final Fantasy Tactics Advance** (GBA, USA) and **Final Fantasy Tactics A2: Grimoire of the
+Rift** (NDS, USA). It reads a BizHawk save state from the middle of a battle and shows what the game is about to do:
+turn order, damage, hit and critical chances, abilities and reactions. The formulas were taken from the ROM and
+checked against the game itself. You can edit units and write the changes back into a new save, or run parameter
+experiments and plot the results.
 
 Written in [daslang](https://github.com/GaijinEntertainment/daScript) with [dasSDL3](https://github.com/spiiin/dasSDL3)
 and Dear ImGui (Blender 2.7-style widgets). Runs on the desktop (Windows) and in the browser (standalone AOT, WebAssembly).
 
 ![Battle in the browser: roster, the isometric field with the game's sprites, the attack calculator, inspector](docs/images/field.png)
 
-## What it does
+## What it does (Final Fantasy Tactics Advance)
 
 - **Battle from a save**: units, their stats and equipment as on the game's Status screen, the map with heights.
 - **Turn order**: the next N turns, computed with the game's CT tick model.
@@ -27,16 +28,6 @@ and Dear ImGui (Blender 2.7-style widgets). Runs on the desktop (Windows) and in
 - **Game graphics** (on by default, View menu): the units' map sprites and the item icons, decoded from your ROM.
 - **Explore**: a short query language for parameter studies. Results go into a sortable table, a chart (lines, bars,
   points, log scales) and CSV export.
-- **Final Fantasy Tactics A2** (NDS, USA; Game menu), early stage: the units of a battle from a BizHawk melonDS save
-  (names, jobs, races, HP / MP, CT, position, team), their stats as on the Unit Info screen, equipment, the battle map
-  with its heights, the reach of the chosen action (heights and weapon types as the game checks them) and the turn order (the game's CT rules, checked against 17 turns). The forecast of Attack and abilities (physical and magick damage, healing; sides,
-  elements, statuses, support abilities) comes from the game's own formula scripts, run from your ROM by a small
-  interpreter of its script VM (245 abilities checked against the game), with a step-by-step explanation; also the
-  real hit chance, criticals and damage spread, and the next attack's outcome from the save's random generators
-  (200 real attacks predicted exactly). Status abilities (Sleep, Poison, Doom, Charm, ...) show their chance to land,
-  as the game forecasts it (70 cases checked). The field shows the units' sprites from the ROM (not the big monsters yet). The inspector edits the equipment (a list of what the job can wear, with the item icons), statuses and learned abilities by job; the Attack tab lists the abilities the unit knows (or all). **Export state with edits** writes a new melonDS save (not the positions).
-  Explore works for FFTA2 too (its own parameters: `atk.attack`,
-  `tgt.status.protect`, `action`, `privilege`, ...). See [research/ffta2/notes.md](research/ffta2/notes.md).
 
 ![Attack calculator: damage breakdown, hit and critical chances](docs/images/attack.png)
 
@@ -50,10 +41,36 @@ plot avg by atk.watk per tgt.wdef title "Average damage per Fight"
 
 ![Explore: a script, its table and chart](docs/images/explore.png)
 
+## Final Fantasy Tactics A2
+
+Choose it in the **Game** menu (or `--game ffta2`); the save is a BizHawk quick save made with the melonDS core.
+
+![FFTA2: the field with the game's sprites and the reach of the action, the attack calculator, inspector](docs/images/ffta2.png)
+
+- **Battle from a save**: the units (names, jobs, races, HP / MP, CT, positions, teams), their stats as on the Unit
+  Info screen, the equipment, the battle map with its heights; the units' sprites and item icons from the ROM.
+- **Turn order**: the next N turns by the game's CT rules (17 recorded turns match).
+- **Attack calculator**: the forecast of Attack and of the abilities (physical and magick damage, healing; sides,
+  elements, statuses, support abilities) comes from the game's own formula scripts: a small interpreter of its script
+  VM runs them from your ROM (245 abilities match the game), with a step-by-step explanation. Also the real hit
+  chance, criticals and damage spread, and the next attack's outcome from the save's random generators (200 real
+  attacks predicted exactly). Status abilities show their chance to land (70 forecasts match).
+- **Reach** as the game's own reach builder computes it: weapon types, height limits, the tiles that can be targeted
+  (91 highlight lists match).
+- **The target's reaction** (Counter, Strike Back, Reflex, Evade Magick, ...): whether it triggers by the game's rule,
+  and the counter-attack's damage.
+- **Editor**: job, base stats, support and reaction, HP / MP / CT, equipment (a list of what the job can wear), statuses
+  and learned abilities by job; drag units on the field. The Attack tab lists the abilities the unit knows (or all).
+  **Export state with edits** writes a new melonDS save; the game computes with the edits at once.
+- **Explore** with its own parameters (`atk.attack`, `tgt.status.protect`, `action`, `privilege`, ...).
+
+Not yet: area effects, effects other than damage, healing and statuses (Rend, steals, ...), the big monsters' sprites.
+The formulas, RAM layout and ROM files: [research/ffta2/notes.md](research/ffta2/notes.md).
+
 ## Checked against the game
 
 The model is compared with the game's own numbers in BizHawk. The Lua probes in [research/](research/) read the
-forecast values straight from the game's functions. Tests:
+forecast values straight from the game's functions. Tests (FFTA; the FFTA2 checks are listed above):
 
 | | |
 |---|---|

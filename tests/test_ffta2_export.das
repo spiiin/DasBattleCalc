@@ -36,7 +36,7 @@ def find_unit(units : array<Unit2>; name : string) : int {
 // what the export writes, as text
 def key(u : Unit2) : string {
     return ("{u.job_id} {u.level} {u.base_speed} {u.hp} {u.max_hp} {u.mp} {u.max_mp} {u.raw} {u.items} {u.reaction} " +
-        "{u.support} {u.status} {u.learned} {u.speed} {u.ct}")
+        "{u.support} {u.status} {u.learned} {u.speed} {u.ct} {u.x} {u.y}")
 }
 
 [export]
@@ -64,7 +64,11 @@ def main() : int {
     u.learned[0x98] = 0x80u8                                                       // First Aid mastered
     u.ct = 77
     units[cid].hp = 1
-    let err = export_battle2(units, out)
+    var m : Map2
+    check("map read", read_map2(m))
+    u.x = 5
+    u.y = 9
+    let err = export_battle2(units, m, out)
     check("export: {err}", err == "")
     check("the exported state loads", gba_load_state(out) == "")
     var back : array<Unit2>

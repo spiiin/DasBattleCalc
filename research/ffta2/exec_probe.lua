@@ -11,6 +11,12 @@ local RUNS = tonumber(os.getenv("PROBE_RUNS") or "40")
 local STEP = tonumber(os.getenv("PROBE_STEP") or "1")
 local HP = tonumber(os.getenv("PROBE_HP") or "212A104", 16)        -- Sasarr record +0x34 (the object updates later)
 local EDITS = os.getenv("PROBE_EDITS") or ""
+-- PROBE_HP2: another HP to log (e.g. the attacker's, record +0x34:
+-- Luso 0x0212B154 - a counter-attack); PROBE_SHOTS: frames after the
+-- second A to screenshot in run 0 (shots/exec_<frame>.png)
+local HP2 = tonumber(os.getenv("PROBE_HP2") or "0", 16)
+local SHOTS = {}
+for f in string.gmatch(os.getenv("PROBE_SHOTS") or "", "%d+") do SHOTS[tonumber(f)] = true end
 -- the battle RNG (0x0206F264): seed = seed x 0x5D588B65 + 0x269EC3, value =
 -- seed >> 16; the seed at [0x02129A74] + 0xC944 (0x022F3F64 in this state).
 -- PROBE_SEED_ADDR set: run k starts from seed k x 0x9E3779B1 + 1.
@@ -67,10 +73,15 @@ for k = 0, RUNS - 1 do
   local before = rd16(HP)
   frames(2, { A = true })
   frames(45)
+  local before2 = HP2 ~= 0 and rd16(HP2) or 0
   frames(2, { A = true })
-  frames(320)
+  for f = 1, 320 do
+    if k == 0 and SHOTS[f] then client.screenshot(string.format("%sshots/exec_%03d.png", OUT, f)) end
+    emu.frameadvance()
+  end
   if k == 0 then client.screenshot(OUT .. "shots/exec_000.png") end
-  log:write(string.format("%d %d %d %d %d %d\n", k, before, rd16(HP), rd16(0x0212A104), seed, hseed))
+  log:write(string.format("%d %d %d %d %d %d %d %d\n", k, before, rd16(HP), rd16(0x0212A104), seed, hseed,
+    before2, HP2 ~= 0 and rd16(HP2) or 0))
   log:flush()
 end
 log:close()

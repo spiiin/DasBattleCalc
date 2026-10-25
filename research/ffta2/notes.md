@@ -520,7 +520,52 @@ loads it (the hash after "ActivatedMemoryBlock" is not of these pages).
 `write_unit2` writes the record and battle object fields the calculator
 edits. In the loaded state the game computes with them at once (Luso's
 Attack 200: the forecast 17 -> 38, as the model); the bottom screen's
-HP / MP panel keeps its copy until redrawn. Positions and facings are
-not written: the game draws a unit from another structure (not found),
-and moving the object only would make them disagree.
+HP / MP panel keeps its copy until redrawn. Positions: the object and
+the battle actor (below); facings are not written (the actor's angle
++0x8C is not decoded).
 `tests/test_ffta2_export.das` (+ `--forecast` with vary_probe.lua).
+
+## Battle actors (2026-10-25)
+
+0xF8 bytes per unit, an array from 0x022F13D8 in the first battle; the
+unit's generator lives in it (+0x0C its record, +0x10 seed, +0x14 / +0x18
+the LCG constants: read_battle2 finds it by them). +0x30 / +0x32 / +0x34
+world x / height / y (tile x 32 + 16, height x 16; copies at +0x36 and
++0xD2), +0x3C screen x = (wx - wy) / 2 + 512, +0x3E screen y = (wx + wy)
+/ 4 - wh / 2 + 256 (a copy at +0xC8), +0x40 a depth key (a one-tile
+unit: wx + wy + 128; +0xCC = it - 3), +0x8C / +0x98 angles. Found by a
+Move diff (`move1_before.bin` / `move1_after.bin`, Luso 8,7 -> 7,7).
+The actor has the position at once (the object gets it at the end of
+the turn): the calculator reads it from there. A state exported with
+Luso moved to 5, 9 shows him there and the turn goes on.
+
+## Reactions (2026-10-25)
+
+Reaction ids 822..844 (no ability records), the record's +0x4E.
+0x020636DC (attacker, target, ..., ability, out id, statuses) decides
+whether the target's reaction triggers, no roll (Counter 24 of 24
+attacks with the generators varied):
+
+- status Counter (58) on the target: Counter; KO: none; a status the
+  reaction's row of sysdata 20 (180 + id - 822, bits 2s, the same file
+  as native 1699) forbids: none; the action's +0x20 bit 6: none.
+- 825 Sticky Fingers: +0x20 bit 13 (thrown items). 826 Reflex: Attack
+  (+0x0B 7) with a melee weapon or a card. 827 Archer's Bane: Attack with
+  a bow (kinds 15 / 16). 830 Return Fire: Attack with a bow. 832 Magick
+  Counter: +0x20 bit 12 and the MP. 833 Dragonheart: not a magick. 834 MP
+  Shield: MP left. 836 Absorb MP: +0x20 bit 14. 837 Blur: Attack with a
+  gun (17) or a hand cannon (19 / 20). 839 Evade Magick: a magick. 840
+  Critical: Evasion up: not Evasion up yet. 842 Gil Snapper: Attack.
+  The rest (Critical: ..., 835, 838, 844): always (critical HP elsewhere).
+- 828 Strike Back / 831 Bonecrusher (Attack only), 829 Counter, 841
+  Blink Counter (0x02063B20): the action's +0x20 bit 29 set and bit 18
+  clear (Attack 0x31200E21, Fire 0x21085DAA too), and the target reaches
+  the attacker with Attack (0x020455FC; a shooting weapon: bare hands).
+- Seen (`reaction1.txt`, exec_probe.lua with PROBE_HP2): Counter and
+  Bonecrusher counter-attack after the hit (Sasarr's Attack on Luso: 5..7,
+  11 critical, as the model's spread), Strike Back evades and counters,
+  Reflex evades, Absorb Damage takes 1 less (HP back). Counter against
+  Fire: by the code, not seen.
+
+`reaction2` (ffta2_attack.das), the Attack tab's Reaction / Counter
+rows; `tests/test_ffta2_reaction.das`.

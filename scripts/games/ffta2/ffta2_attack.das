@@ -773,3 +773,128 @@ def roll_attack(f : Fight2; battle_seed, target_seed : uint) : AttackRoll {
     r.damage = r.hit ? d : 0
     return r
 }
+
+// ------------------------------------------------------------ reactions
+
+// What the target's reaction does when an action hits it (0x020636DC
+// decides whether it triggers; research/ffta2/notes.md, "Reactions").
+struct Reaction2 {
+    id : int                        // 0: none
+    name : string
+    triggers : bool
+    why : string                    // why it does not trigger / the condition
+    effect : string                 // what it does (when it triggers)
+    evades : bool                   // the action misses (Strike Back, Reflex, ...)
+    counter : bool                  // the target attacks back (Attack)
+    counter_fight : Fight2          // that attack
+}
+
+let private REACTION_EFFECTS = fixed_array<string>(
+    "Quicken at critical HP", "Haste at critical HP", "Berserk at critical HP", "catches the thrown item",
+    "evades the attack", "evades the arrow", "evades and counter-attacks", "counter-attacks",
+    "returns the arrow", "counter-attacks", "casts the magick back", "Reraise", "damage to MP",
+    "Regen", "absorbs the ability's MP", "evades the shot", "recovers HP from the damage", "evades the magick",
+    "Evasion up at critical HP", "counter-attacks", "steals gil", "Vanish at critical HP", "recovers MP")
+
+def private weapon_kind(it : Item2; a, b : int) : bool {
+    return it.kind == a || it.kind == b
+}
+
+def reaction2(att, tgt : Unit2; ab : Ability2; m : Map2; privilege : int = 0) : Reaction2 {
+    var res = Reaction2(id = tgt.reaction)
+    if (has_status2(tgt, 58)) {
+        res.id = 829                                 // status Counter: Counter
+    }
+    if (res.id == 0) {
+        return <- res
+    }
+    res.name = ability_name2(res.id)
+    let k = res.id - 822
+    res.effect = k >= 0 && k < length(REACTION_EFFECTS) ? REACTION_EFFECTS[k] : "?"
+    if (has_status2(tgt, 1)) {
+        res.why = "the target is KO"
+        return <- res
+    }
+    for (s in range(1, 72)) {
+        if (has_status2(tgt, s) && (status_rule_row(180 + k, s) & 1) == 0) {
+            res.why = "blocked by {status_name(s)}"
+            return <- res
+        }
+    }
+    if ((ab.flags & 0x40u) != 0u) {
+        res.why = "{ab.name} ignores reactions"
+        return <- res
+    }
+    let attack = ab.id == ATTACK_ABILITY && ab.range_kind == 7
+    let w = att.equip[0]
+    var ok = true
+    var cond = ""
+    var fail = ""
+    if (res.id == 825) {
+        ok = (ab.flags & 0x2000u) != 0u
+        cond = "a thrown item"
+    } elif (res.id == 826) {
+        ok = attack && (weapon_kind(w, 24, 24) || !shooting_weapon(w))
+        cond = "Attack with a melee weapon or a card"
+    } elif (res.id == 827) {
+        ok = attack && weapon_kind(w, 15, 16)
+        cond = "Attack with a bow"
+    } elif (res.id == 830) {
+        ok = ab.id == ATTACK_ABILITY && weapon_kind(w, 15, 16)
+        cond = "Attack with a bow"
+    } elif (res.id == 832) {
+        ok = (ab.flags & 0x1000u) != 0u && tgt.mp >= ab.mp
+        cond = "a magick, MP {ab.mp}"
+    } elif (res.id == 833) {
+        ok = !is_magick2(ab)
+        cond = "not a magick"
+    } elif (res.id == 834) {
+        ok = tgt.mp > 0
+        cond = "MP left"
+    } elif (res.id == 836) {
+        ok = (ab.flags & 0x4000u) != 0u
+        cond = "an ability with MP"
+    } elif (res.id == 837) {
+        ok = attack && !is_magick2(ab) && (weapon_kind(w, 17, 17) || weapon_kind(w, 19, 20))
+        cond = "Attack with a gun or a hand cannon"
+    } elif (res.id == 839) {
+        ok = is_magick2(ab)
+        cond = "a magick"
+    } elif (res.id == 840) {
+        ok = !has_status2(tgt, 57)
+        cond = "no Evasion up yet"
+    } elif (res.id == 842) {
+        ok = ab.id == ATTACK_ABILITY
+        cond = "Attack"
+    } elif (res.id == 828 || res.id == 829 || res.id == 831 || res.id == 841) {
+        // a counter-attack (0x02063B20): an ability that can be
+        // countered (+0x20 bit 29, not bit 18), the target reaches the
+        // attacker with Attack (a shooting weapon counts as bare hands)
+        ok = (res.id != 828 && res.id != 831) || ab.id == ATTACK_ABILITY
+        cond = res.id == 828 || res.id == 831 ? "Attack" : "a physical action"
+        if (ok && ((ab.flags & 0x20000000u) == 0u || (ab.flags & 0x40000u) != 0u)) {
+            ok = false
+            fail = "{ab.name} can not be countered"
+        }
+        var t2 = tgt
+        let ws = weapon_slot2(t2)
+        if (ws >= 0 && shooting_weapon(t2.equip[ws])) {
+            t2.equip[ws] = Item2()
+        }
+        let atk = read_ability2(ATTACK_ABILITY)
+        if (ok && !in_reach_on(t2, atk, m, att.x, att.y)) {
+            ok = false
+            fail = "{att.name} is out of {tgt.name}'s reach"
+        }
+        if (ok) {
+            res.counter = true
+            res.counter_fight <- action2(t2, att, atk, side_of2(t2, att), privilege)
+        }
+    } else {
+        cond = res.id >= 822 && res.id <= 824 || res.id == 843 ? "at critical HP" : ""
+    }
+    res.triggers = ok
+    res.evades = ok && (res.id == 826 || res.id == 827 || res.id == 828 || res.id == 837 || res.id == 839)
+    res.why = ok ? cond : (fail != "" ? fail : "only on {cond}")
+    return <- res
+}

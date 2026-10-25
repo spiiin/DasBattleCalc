@@ -135,6 +135,7 @@ class Ffta2Game : GameModule {
     pick_slot : int = 0
     item_filter = ImGuiInputTextBuffer("", 64)
     item_all : bool = false           // the item list: every item, not only what the job can wear
+    turns_ahead : int = 24            // Turn order: how many turns to predict
     known_only : bool = true          // the Attack tab's actions: only what the attacker knows (unit_knows)
     rom_sprites2 : bool = true        // the units' sprites from the ROM on the field (View menu, local.cfg)
     rom_icons2 : bool = true          // item icons from the ROM
@@ -268,7 +269,7 @@ class Ffta2Game : GameModule {
         if (export_path == "" || export_path == state_path) {
             err = "choose a path other than the loaded state"
         } else {
-            err = export_battle2(units, export_path)
+            err = export_battle2(units, map2, export_path)
         }
         message = err != "" ? "Export: {err}" : "exported to {export_path}"
         log_line(message)
@@ -323,13 +324,84 @@ class Ffta2Game : GameModule {
             }
             by += u(27.0)
         }
+        by = self->job_row(units[selected], saved[selected], x, by, w)
+        by = self->ability_row2(units[selected], saved[selected], true, x, by, w)
+        by = self->ability_row2(units[selected], saved[selected], false, x, by, w)
         var bottom = inspect("unit2_{selected}", units[selected], saved[selected], x, by, w)
-        bottom = self->stat_rows(units[selected], x, bottom + u(6.0), w)
+        bottom = self->stat_rows(units[selected], saved[selected], x, bottom + u(6.0), w)
         bottom = self->equip_rows(units[selected], saved[selected], x, bottom + u(6.0), w)
         bottom = self->status_rows(units[selected], saved[selected], x, bottom + u(6.0), w)
         bottom = self->ability_rows(units[selected], saved[selected], x, bottom + u(6.0), w)
         recompute_unit(units[selected])
         return bottom
+    }
+
+    // the job: a list of the jobs of the unit's class (a monster: its own)
+    def job_row(var unit : Unit2; saved_u : Unit2; x, y, w : float) : float {
+        let lw = floor(w * 0.4)
+        let bw = u(24.0)
+        SetCursorScreenPos(ImVec2(x, y))
+        bl_label("Job:", -1, lw)
+        SetCursorScreenPos(ImVec2(x + lw, y))
+        let jobs <- class_jobs(saved_u.job_id)
+        var names : array<string>
+        var sel = -1
+        for (k in range(length(jobs))) {
+            names |> push(job_name(jobs[k]))
+            if (jobs[k] == unit.job_id) {
+                sel = k
+            }
+        }
+        if (sel < 0) {
+            names |> push(unit.job)
+            sel = length(names) - 1
+        }
+        if (bl_choice("unit2_job", names, sel, w - lw - bw) && sel < length(jobs)) {
+            set_job2(unit, jobs[sel])
+        }
+        if (unit.job_id != saved_u.job_id && bl_revert_button("job2_revert", x + w - u(22.0), y)) {
+            set_job2(unit, saved_u.job_id)
+        }
+        return y + u(26.0)
+    }
+
+    // Support / Reaction: any of the game's (whether the unit learned it
+    // is not checked)
+    def ability_row2(var unit : Unit2; saved_u : Unit2; support : bool; x, y, w : float) : float {
+        let lw = floor(w * 0.4)
+        let bw = u(24.0)
+        SetCursorScreenPos(ImVec2(x, y))
+        bl_label(support ? "Support:" : "Reaction:", -1, lw)
+        let list <- support ? support_ids() : reaction_ids()
+        var names <- ["none"]
+        var sel = 0
+        let cur = support ? unit.support : unit.reaction
+        for (k in range(length(list))) {
+            names |> push(ability_name2(list[k]))
+            if (list[k] == cur) {
+                sel = k + 1
+            }
+        }
+        SetCursorScreenPos(ImVec2(x + lw, y))
+        if (bl_choice(support ? "unit2_support" : "unit2_reaction", names, sel, w - lw - bw)) {
+            let aid = sel == 0 ? 0 : list[sel - 1]
+            if (support) {
+                unit.support = aid
+                unit.support_name = names[sel]
+            } else {
+                unit.reaction = aid
+            }
+        }
+        let saved_id = support ? saved_u.support : saved_u.reaction
+        if (cur != saved_id && bl_revert_button(support ? "support2_revert" : "reaction2_revert", x + w - u(22.0), y)) {
+            if (support) {
+                unit.support = saved_u.support
+                unit.support_name = saved_u.support_name
+            } else {
+                unit.reaction = saved_u.reaction
+            }
+        }
+        return y + u(26.0)
     }
 
     // statuses 1..71 (record +0x28 bits) as check boxes in two columns;
@@ -441,7 +513,7 @@ class Ffta2Game : GameModule {
     }
 
     // Unit Info stats: base (raw / 4, Speed, job Move / Jump) + equipment
-    def stat_rows(un : Unit2; x, y, w : float) : float {
+    def stat_rows(var un : Unit2; saved_u : Unit2; x, y, w : float) : float {
         SetCursorScreenPos(ImVec2(x, y))
         var ry = y + u(23.0)
         if (!bl_section("stats2_section", "Stats", stats_open)) {
@@ -459,7 +531,30 @@ class Ffta2Game : GameModule {
         for (i in range(STAT2_COUNT)) {
             let b = ry + u(15.0)
             text_at_baseline(x + u(8.0), b, STAT2_LABELS[i], fg)
-            right2(c_base, b, "{un.stat_base[i]}", fg)
+            if (i < 5) {
+                // Attack .. Resistance: the record holds raw = shown x 4; Speed
+                let nw = u(78.0)
+                SetCursorScreenPos(ImVec2(c_base - nw, ry))
+                var v = float(un.stat_base[i])
+                if (bl_number("stat2_{i}", "", v, 0.2, 0, nw)) {
+                    let n = clamp(int(round(v)), 0, i < 4 ? 16383 : 255)
+                    if (i < 4) {
+                        un.raw[i] = n * 4 + (un.raw[i] & 3)
+                    } else {
+                        un.base_speed = n
+                    }
+                }
+                let changed = i < 4 ? un.raw[i] != saved_u.raw[i] : un.base_speed != saved_u.base_speed
+                if (changed && bl_revert_button("stat2_revert{i}", c_base - nw - u(24.0), ry)) {
+                    if (i < 4) {
+                        un.raw[i] = saved_u.raw[i]
+                    } else {
+                        un.base_speed = saved_u.base_speed
+                    }
+                }
+            } else {
+                right2(c_base, b, "{un.stat_base[i]}", fg)
+            }
             let items = un.stat_items[i]
             if (items != 0) {
                 right2(c_items, b, signed2(items), items > 0 ? 0x70c070ffu : 0xe07070ffu)
@@ -1039,6 +1134,18 @@ class Ffta2Game : GameModule {
         let reach_text = in_reach_on(att, ab, map2, tgt.x, tgt.y) ? "in reach" : "OUT OF REACH"
         let dh = map2.w > 0 ? ", height {map_height(map2, tgt.x, tgt.y) - map_height(map2, att.x, att.y)}" : ""
         rows |> push(("Reach", "{dist} tiles{dh}: {reach_text} ({rr.x}..{rr.y})"))
+        // the target's reaction (0x020636DC) and its counter-attack
+        let re <- reaction2(att, tgt, ab, map2, privilege)
+        if (re.id != 0) {
+            let when = re.why != "" ? " ({re.why})" : ""
+            rows |> push(("Reaction", re.triggers ? "{re.name}: {re.effect}{when}" : "{re.name}: does not trigger{when}"))
+            if (re.counter) {
+                let cf & = unsafe(re.counter_fight)
+                rows |> push(("Counter", "{tgt.name} -> {att.name}: {cf.damage} damage, {cf.hit}% hit, {cf.dmg_min}..{cf.dmg_max}, ~{fmt(":.1f", cf.expected)}"))
+            }
+        } else {
+            rows |> push(("Reaction", "none"))
+        }
         for (r in rows) {
             text_at_baseline(x + u(8.0), ry + u(15.0), r._0, dim)
             text_at_baseline(col, ry + u(15.0), r._1, fg)
@@ -1072,11 +1179,18 @@ class Ffta2Game : GameModule {
     // the next turns (ffta2_turns.das): each unit ends its turns as its
     // Assumed turn (Inspector)
     def turn_view(x, y, w, h : float) : void {
-        let turns <- predict_turns2(units, 24, privilege)
+        let turns <- predict_turns2(units, turns_ahead, privilege)
         let fg = bt.regular.text | 0xffu
         let dim = offset_color(fg, 60)
+        let nw = u(180.0)
         SetCursorScreenPos(ImVec2(x, y))
-        bl_label("Turn order  (CT 100+ acts; a tick adds Speed; a turn: 50, +30 moved, +20 acted)", ICON_TURNS)
+        bl_label("Turn order  (CT 100+ acts; a tick adds Speed; a turn: 50, +30 moved, +20 acted)", ICON_TURNS,
+            w - nw - u(8.0))
+        SetCursorScreenPos(ImVec2(x + w - nw - u(4.0), y))
+        var ahead = float(turns_ahead)
+        if (bl_number("turns2_ahead", "Turns ahead", ahead, 0.1, 0, nw)) {
+            turns_ahead = clamp(int(round(ahead)), 1, 200)
+        }
         let row_h = u(21.0)
         let cols = fixed_array<float>(12.0, 44.0, 150.0, 260.0, 330.0, 390.0)
         let heads = fixed_array<string>("#", "Unit", "Job", "In ticks", "Turn", "CT", "Ends with")
@@ -1179,6 +1293,7 @@ class Ffta2Game : GameModule {
 // any field of the unit differs from the loaded one
 def private inspect_changed(a, b : Unit2) : bool {
     return (a.hp != b.hp || a.max_hp != b.max_hp || a.mp != b.mp || a.max_mp != b.max_mp || a.ct != b.ct ||
-        a.x != b.x || a.y != b.y || a.facing != b.facing || "{a.items} {a.status}" != "{b.items} {b.status}" ||
+        a.x != b.x || a.y != b.y || a.facing != b.facing || a.job_id != b.job_id || a.support != b.support ||
+        a.reaction != b.reaction || a.base_speed != b.base_speed || "{a.raw}" != "{b.raw}" || "{a.items} {a.status}" != "{b.items} {b.status}" ||
         "{a.learned}" != "{b.learned}")
 }
