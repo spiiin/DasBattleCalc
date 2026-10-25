@@ -28,6 +28,11 @@ let ABILITY_COMMON = 0x8005EBF0u
 let ABILITY_ACTION = 0x8005FBF0u
 let ABILITY_ITEM = 0x80061010u          // ABILITY_COMMON + 0x2420
 let ABILITY_CHARGE = 0x80061044u        // ABILITY_COMMON + 0x2454
+let ABILITY_THROW = 0x80061020u         // + 0x2430: the item type thrown (Shuriken 0x20, Knife 1, Sword 3, ...)
+let ABILITY_JUMP = 0x8006102Cu          // + 0x243C: 2 B, horizontal / vertical reach
+// the party's items: a count per item id (Potion 5 at 0xF0 in the first
+// battle; Throw lists the stocked items of its types)
+let INVENTORY = 0x800596E0u
 let SKILLSET_TABLE = 0x80064A94u
 let CHEMIST_ITEMS = 0x80063F98u
 let INFLICT_TABLE = 0x80063FC4u
@@ -55,7 +60,8 @@ struct FftAbility {
     inflict : int
     ct : int
     mp : int
-    item : int                      // kind 2: the item used
+    item : int                      // kind 2: the item used; kind 3: the item type thrown
+    jump : int2                     // kind 4: horizontal, vertical reach
     charge : int                    // kind 5: the power added to XA
 }
 
@@ -87,6 +93,13 @@ def read_ability(id : int) : FftAbility {
         ab.x = int(gba_read8(it + 1u))
         ab.inflict = int(gba_read8(it + 2u))
         ab.reach = 1
+    } elif (id >= 0x17E && id < 0x18A) {
+        ab.item = int(gba_read8(ABILITY_THROW + uint(id - 0x17E)))
+        ab.formula = 0x63
+    } elif (id >= 0x18A && id < 0x196) {
+        let j = ABILITY_JUMP + uint(id - 0x18A) * 2u
+        ab.jump = int2(int(gba_read8(j)), int(gba_read8(j + 1u)))
+        ab.formula = 0x64
     } elif (id >= 0x196 && id < 0x19E) {
         ab.ct = int(gba_read8(ABILITY_CHARGE + uint(id - 0x196) * 2u))
         ab.charge = int(gba_read8(ABILITY_CHARGE + uint(id - 0x196) * 2u + 1u))
@@ -102,6 +115,40 @@ def grasped(ab : FftAbility) : bool {
 
 def evadable(ab : FftAbility) : bool {
     return (uint(ab.flags[3]) & 0x02u) != 0u
+}
+
+// the stocked item of an item type with the best WP (Throw), 0 none
+def best_thrown(item_type : int) : int {
+    var best = 0
+    var best_wp = -1
+    for (item in range(1, 254)) {
+        if (int(gba_read8(INVENTORY + uint(item))) > 0 && int(gba_read8(ITEM_TABLE + uint(item) * 12u + 5u)) == item_type) {
+            let wp = int(gba_read8(WEAPON_TABLE + item_index(item) * 8u + 4u))
+            if (wp > best_wp) {
+                best = item
+                best_wp = wp
+            }
+        }
+    }
+    return best
+}
+
+// Throw's and Jump's factor: Speed / PA with the target's Defense UP,
+// Protect, Charging / Sleep / Chicken / Frog and the zodiac - not Attack
+// UP, Martial Arts nor Berserk (the Guide; Jump's Protect: 28 in the
+// game)
+def private tj_factor(v0 : int; a, t : FftUnit) : int {
+    var v = v0
+    if (has_ability(t, AB_DEFENSE_UP)) {
+        v = v * 2 / 3
+    }
+    if (has_status(t, ST_PROTECT)) {
+        v = v * 2 / 3
+    }
+    if (has_status(t, ST_CHARGING) || has_status(t, ST_SLEEP) || has_status(t, ST_CHICKEN) || has_status(t, ST_FROG)) {
+        v = v * 3 / 2
+    }
+    return zodiac_xa(v, a, t)
 }
 
 struct UnitAbility {
@@ -235,7 +282,44 @@ def ability_forecast(a, t : FftUnit; ab : FftAbility) : AbilityForecast {
     var ev = ""
     let fo = ab.formula
     let st = inflict_text(ab.inflict)
-    if (ab.kind == 5) {
+    if (fo == 0x63) {
+        // Throw: Speed' x the thrown item's WP, evaded as Attack (the
+        // game: Speed 6 x Broad Sword 4 = 24, Defender 16 = 96, Shuriken
+        // 4 = 24, Magic Shuriken 7 = 42; 66%)
+        let item = best_thrown(ab.item)
+        if (item == 0) {
+            f.effect = "none in stock"
+            f.hit = 0
+        } else {
+            let wi = WEAPON_TABLE + item_index(item) * 8u
+            let wp = int(gba_read8(wi + 4u))
+            let el = int(gba_read8(wi + 6u))
+            var healed = false
+            var cancelled = false
+            f.effect = "damage ({item_name(item)} x {gba_read8(INVENTORY + uint(item))})"
+            f.amount_min = min(element_damage(tj_factor(a.speed, a, t) * wp, el, t, healed, cancelled), 999)
+            f.amount_max = f.amount_min
+            f.heal = healed
+            f.formula = "Speed x WP {wp} ({item_name(item)}, the best in stock)"
+            f.hit = cancelled ? 0 : physical_hit(a, t, 100, ev, true)
+            f.notes |> push("evades, {ev}")
+        }
+    } elif (fo == 0x64) {
+        // Jump: PA' (a spear x 3 / 2) x WP, bare PA' x (PA x Br / 100);
+        // never evaded (the game: sword 42, Spear 9 x 9 = 81, bare 6 x 3
+        // = 18, Protect 28; 100%)
+        let w = unit_weapon(a)
+        var pa = a.pa
+        if (w.kind == IT_SPEAR) {
+            pa = pa * 3 / 2
+        }
+        pa = tj_factor(pa, a, t)
+        let ya = w.item == 0 ? a.pa * a.brave / 100 : w.wp
+        f.effect = "damage"
+        f.amount_min = min(pa * ya, 999)
+        f.amount_max = f.amount_min
+        f.formula = w.item == 0 ? "PA x (PA x Br / 100)" : (w.kind == IT_SPEAR ? "PA x 3 / 2 x WP" : "PA x WP")
+    } elif (ab.kind == 5) {
         // Charge: Attack with the power added to XA
         let at = attack_forecast(a, t, ab.charge)
         f.effect = "damage"

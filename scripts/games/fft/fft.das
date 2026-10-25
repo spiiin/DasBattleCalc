@@ -433,10 +433,15 @@ class FftGame : GameModule {
         var shown : array<int>                        // ability ids in the choice after Attack
         var items : array<string>
         items |> push("Attack")
+        var jump_listed = false
         for (ua in abilities) {
-            if (ua.learned || all_abilities) {
+            // the Jump abilities (their reach) make one Jump command
+            let jump = ua.id >= 0x18A && ua.id < 0x196
+            if ((ua.learned || all_abilities) && !(jump && jump_listed)) {
                 shown |> push(ua.id)
-                items |> push(ua.learned ? ability_name(ua.id) : "{ability_name(ua.id)} (not learned)")
+                let name = jump ? "Jump" : ability_name(ua.id)
+                items |> push(ua.learned ? name : "{name} (not learned)")
+                jump_listed = jump_listed || jump
             }
         }
         action_sel = clamp(action_sel, 0, length(items) - 1)

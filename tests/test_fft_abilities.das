@@ -9,7 +9,7 @@ options indenting = 4
 // Dash and Throw Stone: the forecast shows one roll of rand(1..Y) - 3 and
 // 2 in this state - so the game's number is PA' x that roll. Also Wish
 // (caster's max HP / 5 x 2), Chakra, Potion, Charge with a bow at Viggs.
-//   battlecalc tests/test_fft_abilities.das --state <fft_test_ramza2.State>
+//   battlecalc tests/test_fft_abilities.das --state <fft_test_ramza2.State> [--throw <fft_test_throw.State>]
 require gba_mem
 require gui_common
 require math
@@ -124,6 +124,41 @@ def main() : int {
         let f = ability_forecast(a, t, read_ability(16))
         check("Fire, element field {ec._0}: {f.amount_min} {f.hit}% heal {f.heal}, the game: {ec._1} {ec._2}%",
             (ec._2 == 0 || f.amount_min == ec._1) && f.hit == ec._2 && f.heal == ec._3)
+    }
+    // Jump (Ramza given Jump in RAM; no evade): Mythril Sword 42, Spear
+    // (WP 9) 81 = PA 6 x 3 / 2 x 9, bare hands 18 = 6 x (6 x 56 / 100),
+    // Lezales with Protect 28
+    let jump = read_ability(394)
+    for (jc in fixed_array<tuple<string; int>>(("sword", 42), ("spear", 81), ("bare", 18), ("protect", 28))) {
+        var a = ramza
+        var t = lez
+        if (jc._0 == "spear") {
+            a.equip[3] = 100
+        } elif (jc._0 == "bare") {
+            a.equip[3] = 0xFF
+        } elif (jc._0 == "protect") {
+            t.status[3] = uint8(uint(t.status[3]) | 0x20u)
+        }
+        let f = ability_forecast(a, t, jump)
+        check("Jump, {jc._0}: {f.amount_min} {f.hit}%, the game: {jc._1} 100%", f.amount_min == jc._1 && f.hit == 100)
+    }
+    // --throw: the stock with Broad Sword, Defender, Shuriken, Magic
+    // Shuriken; the game: Speed 6 x WP - 24, 96, 24, 42 at 66%. Throw by
+    // type takes the best in stock: Shuriken -> Magic Shuriken 42, Sword
+    // -> Broad Sword 24, Knight Sword -> Defender 96
+    let throw_state = gui_arg("--throw", "")
+    if (throw_state != "") {
+        check("throw state loads", gba_load_state(throw_state) == "")
+        var tu : array<FftUnit>
+        read_battle(tu)
+        let tr = tu[find_unit(tu, "Ramza")]
+        let tl = tu[find_unit(tu, "Lezales")]
+        for (tc in fixed_array<tuple<int; int>>((382, 42), (384, 24), (391, 96))) {
+            let ab = read_ability(tc._0)
+            let f = ability_forecast(tr, tl, ab)
+            check("Throw {ab.name}: {f.effect} {f.amount_min} {f.hit}%, the game: {tc._1} 66%",
+                f.amount_min == tc._1 && f.hit == 66)
+        }
     }
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
     return failed == 0 ? 0 : 1

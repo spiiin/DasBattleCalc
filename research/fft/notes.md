@@ -379,3 +379,20 @@ down-left - a mirror, no rotation of the camera gives it. FieldMap.mirror
 monastery's tower now stands top-left with its door to the right, as in
 the game. The units' frames follow the facing as drawn
 (field_view_facing).
+
+## Throw and Jump (the game)
+
+**Jump** (the Lancer skillset 0x12 given to Ramza; the command opens the
+targeting at once, the Level / Vertical Jump abilities only set its reach:
+2 B each at ABILITY_COMMON + 0x243C) at Lezales, never evaded (100%):
+Mythril Sword 42 = PA 6 x WP 7; Spear (WP 9) 81 = PA 6 x 3 / 2 x 9; bare
+hands 18 = 6 x (6 x 56 / 100); Lezales with Protect 28.
+
+**Throw** (the Ninja skillset 0x14): the list holds the stocked items of
+the learned types (each ability's item type: + 0x2430 - Shuriken 0x20,
+Knife 1, Sword 3, ...). **The party's stock is a count per item id at
+0x800596E0** (Potion 5, Hi-Potion 2, X-Potion, Ether, Hi-Ether, Elixir 1
+in the first battle; "Can't throw. None in stock." without). With the
+stock edited (fft_test_throw.State): Broad Sword 24, Defender 96,
+Shuriken 24, Magic Shuriken 42 = Speed 6 x WP, 66% (evaded as Attack).
+The calculator throws the best stocked item of the type.
