@@ -12,6 +12,7 @@ require strings
 require ../../core/teams.das public
 require ../../core/result_try.das
 require fftwotl_data
+require ../../core/util.das
 
 let UNIT_BASE_W = 0x092E5CB4u
 let UNIT_SIZE_W = 0x1E8u
@@ -135,7 +136,7 @@ def has_ability_w(u : UnitW; id : int) : bool {
     if (n < 0 || n >= 88) {
         return false
     }
-    return (uint(u.rsm_mask[n >> 3]) & (0x80u >> uint(n & 7))) != 0u
+    return msb_bit(u.rsm_mask, n)
 }
 
 // the masks again from the job's innate abilities and the chosen
@@ -147,7 +148,7 @@ def rebuild_rsm_mask(var u : UnitW) {
     for (id in [u.innate[0], u.innate[1], u.innate[2], u.innate[3], u.reaction, u.support, u.movement]) {
         let n = id - 0x1A6
         if (n >= 0 && n < 88) {
-            u.rsm_mask[n >> 3] = uint8(uint(u.rsm_mask[n >> 3]) | (0x80u >> uint(n & 7)))
+            set_msb_bit(u.rsm_mask, n, true)
         }
     }
 }

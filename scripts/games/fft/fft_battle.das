@@ -15,6 +15,7 @@ require strings
 require ../../core/teams.das public
 require ../../core/result_try.das
 require daslib/strings_boost
+require ../../core/util.das
 
 let FFT_CODE = "SCUS"
 let UNIT_TABLE = 0x801908CCu
@@ -149,7 +150,7 @@ struct FftUnit {
 }
 
 def has_status(u : FftUnit; n : int) : bool {
-    return n >= 0 && n < 40 && (uint(u.status[n >> 3]) & (0x80u >> uint(n & 7))) != 0u
+    return n >= 0 && n < 40 && msb_bit(u.status, n)
 }
 
 // the battle sprite (BATTLE.BIN's table): +0x00 below 0x80; 0x80 / 0x81
@@ -172,7 +173,7 @@ def unit_sprite(u : FftUnit) : int {
 // +0x14..+0x18 (an Attack UP id alone changed nothing, its bit did).
 def has_ability(u : FftUnit; id : int) : bool {
     let i = id - 0x1A6
-    return i >= 0 && i < 88 && (uint(u.skills[i >> 3]) & (0x80u >> uint(i & 7))) != 0u
+    return i >= 0 && i < 88 && msb_bit(u.skills, i)
 }
 
 // elements: 0x80 Fire, 0x40 Lightning, 0x20 Ice, 0x10 Wind, 0x08 Earth,
@@ -196,7 +197,7 @@ def element_text(element : int) : string {
             names |> push(ELEMENT_NAMES[k])
         }
     }
-    return length(names) > 0 ? join(names, ", ") : "none"
+    return join_or(names, ", ", "none")
 }
 
 def unit_present(rec : uint) : bool {
@@ -274,7 +275,7 @@ def update_unit(var u : FftUnit) {
             names |> push(n == ST_STOP ? "Stop ({u.stop_timer})" : STATUS_NAMES[n])
         }
     }
-    u.status_text = length(names) > 0 ? join(names, ", ") : "none"
+    u.status_text = join_or(names, ", ", "none")
     let sex = (u.gender & 0x20) != 0 ? "monster" : ((u.gender & 0x40) != 0 ? "female" : "male")
     u.zodiac_text = "{u.zodiac < 13 ? ZODIAC_NAMES[u.zodiac] : "?"}, {sex}"
     var abil : array<string>
@@ -283,7 +284,7 @@ def update_unit(var u : FftUnit) {
             abil |> push(ability_name(id))
         }
     }
-    u.ability_text = length(abil) > 0 ? join(abil, ", ") : "none"
+    u.ability_text = join_or(abil, ", ", "none")
     let kinds = fixed_array<string>("absorbs", "cancels", "halves", "weak to", "strengthens")
     var els : array<string>
     for (k in range(5)) {
@@ -291,7 +292,7 @@ def update_unit(var u : FftUnit) {
             els |> push("{kinds[k]} {element_text(int(u.elements[k]))}")
         }
     }
-    u.element_info = length(els) > 0 ? join(els, "; ") : "none"
+    u.element_info = join_or(els, "; ", "none")
 }
 
 // the battle's units in slot order; "" or the error
@@ -551,7 +552,7 @@ def recompute_unit(var u : FftUnit; before : FftUnit) {
     for (id in [u.innate[0], u.innate[1], u.innate[2], u.innate[3], u.reaction, u.support, u.movement]) {
         let n = id - 0x1A6
         if (n >= 0 && n < 88) {
-            u.skills[n >> 3] = uint8(uint(u.skills[n >> 3]) | (0x80u >> uint(n & 7)))
+            set_msb_bit(u.skills, n, true)
         }
     }
     var el : int[5]

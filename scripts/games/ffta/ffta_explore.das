@@ -24,6 +24,7 @@ require daslib/strings_boost
 require ../../core/explore.das
 require ffta_battle
 require ffta_attack
+require ../../core/util.das
 
 let MAX_POINTS = 20000
 
@@ -222,7 +223,7 @@ def axis_values(sc : Scene; ax : Axis; var vals : array<Value>) : string {
         let want = length(n.args) > 0 ? eval_const(e, n.args[0]).text : ""
         for (iid in range(1, ITEM_COUNT)) {
             let it = read_item(uint(iid))
-            if (it.kind >= 1 && it.kind <= 19 && it.name != "" && it.name != "-"
+            if (it.kind >= 1 && it.kind <= 19 && named(it.name)
                     && (want == "" || item_kind_name(it.kind) == want)) {
                 vals |> push(item_value(it))
             }

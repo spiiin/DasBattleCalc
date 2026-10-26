@@ -38,6 +38,7 @@ require fft_reach
 require fft_abilities
 require fft_reactions
 require fft_explore
+require ../../core/util.das
 
 def private turn_end_text(how : TurnEnd) : string {
     return how == TurnEnd.MoveAndAct ? "Move + Act" : (how == TurnEnd.ActOnly ? "Act" : (how == TurnEnd.MoveOnly ? "Move" : "Wait"))
@@ -528,8 +529,7 @@ class FftGame : GameModule {
             var on = has_status(unit, n)
             let caption = on != has_status(saved_u, n) ? "{name} *" : name
             if (bl_option("fft_status{n}", caption, on)) {
-                let m = 0x80u >> uint(n & 7)
-                unit.status[n >> 3] = uint8(on ? (uint(unit.status[n >> 3]) | m) : (uint(unit.status[n >> 3]) & ~m))
+                set_msb_bit(unit.status, n, on)
             }
             col = 1 - col
             if (col == 0) {

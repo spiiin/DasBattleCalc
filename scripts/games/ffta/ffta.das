@@ -31,6 +31,7 @@ require ffta_attack
 require ffta_field
 require ffta_explore
 require ffta_gfx
+require ../../core/util.das
 
 let MAX_TURNS = 200
 
@@ -83,7 +84,7 @@ def unit_key(u : BattleUnit) : string {
 
 def bonus_text(it : Item) : string {
     let parts <- [for (i in range(STAT_COUNT)); "{STAT_SHORT[i]} {signed_text(it.bonus[i])}"; where it.bonus[i] != 0]
-    return length(parts) > 0 ? join(parts, "  ") : "no stat bonus"
+    return join_or(parts, "  ", "no stat bonus")
 }
 
 def signed_text(v : int) : string {
@@ -205,7 +206,7 @@ class FftaGame : GameModule {
         item_catalog |> clear()
         for (iid in range(1, ITEM_COUNT)) {
             let it = read_item(uint(iid))
-            if (it.kind >= 1 && it.kind <= 29 && it.name != "" && it.name != "-") {
+            if (it.kind >= 1 && it.kind <= 29 && named(it.name)) {
                 item_catalog |> push(it)
             }
         }

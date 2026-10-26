@@ -556,30 +556,21 @@ def private eval_call(e : Expr; row : array<Value>; n : ExprNode) : Value {
         return vnum(r)
     }
     let b = num_arg(e, row, n, 1)
-    if (f == "abs") {
-        return vnum(abs(a))
-    } elif (f == "clamp") {
-        return vnum(clamp(a, b, num_arg(e, row, n, 2)))
-    } elif (f == "round") {
-        return vnum(round(a))
-    } elif (f == "floor") {
-        return vnum(floor(a))
-    } elif (f == "ceil") {
-        return vnum(ceil(a))
-    } elif (f == "sqrt") {
-        return vnum(sqrt(a))
-    } elif (f == "pow") {
-        return vnum(pow(a, b))
-    } elif (f == "exp") {
-        return vnum(exp(a))
-    } elif (f == "log") {
-        return vnum(log(a))
-    } elif (f == "log10") {
-        return vnum(log(a) / log(10.0lf))
-    } elif (f == "log2") {
-        return vnum(log(a) / log(2.0lf))
+    let r = match (f) {
+        "abs" => abs(a)
+        "clamp" => clamp(a, b, num_arg(e, row, n, 2))
+        "round" => round(a)
+        "floor" => floor(a)
+        "ceil" => ceil(a)
+        "sqrt" => sqrt(a)
+        "pow" => pow(a, b)
+        "exp" => exp(a)
+        "log" => log(a)
+        "log10" => log10(a)
+        "log2" => log2(a)
+        _ => 0.0lf
     }
-    return vnum(0.0lf)
+    return vnum(r)
 }
 
 def private vbool(b : bool) : Value => vnum(b ? 1.0lf : 0.0lf)

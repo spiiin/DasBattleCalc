@@ -31,6 +31,7 @@ require fft_battle
 require fft_attack
 require fft_abilities
 require fft_reach
+require ../../core/util.das
 
 let MAX_POINTS_F = 20000
 
@@ -218,8 +219,7 @@ def set_unit_param_f(var u : FftUnit; key : string; v : Value) : string {
         if (i < 0) {
             return "no status '{slice(key, 7)}'"
         }
-        let m = 0x80u >> uint(i & 7)
-        u.status[i >> 3] = uint8(n != 0 ? (uint(u.status[i >> 3]) | m) : (uint(u.status[i >> 3]) & ~m))
+        set_msb_bit(u.status, i, n != 0)
     } else {
         return "'{key}' can not be varied"
     }

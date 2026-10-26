@@ -33,6 +33,7 @@ require ffta2_attack
 require ffta2_forecast
 require ffta2_turns
 require ffta2_explore
+require ../../core/util.das
 
 let private STAT2_SHORT = fixed_array<string>("Atk", "Def", "Mag", "Res", "Spd", "Eva", "Move", "Jump")
 
@@ -42,7 +43,7 @@ def private signed2(v : int) : string {
 
 def private bonus2_text(it : Item2) : string {
     let parts <- [for (i in range(STAT2_COUNT)); "{STAT2_SHORT[i]} {signed2(it.bonus[i])}"; where it.bonus[i] != 0]
-    return length(parts) > 0 ? join(parts, "  ") : "no stat bonus"
+    return join_or(parts, "  ", "no stat bonus")
 }
 
 // equipment kinds (equipment +0), by their items
@@ -353,7 +354,7 @@ class Ffta2Game : GameModule {
             unit.status = saved_u.status
         }
         SetCursorScreenPos(ImVec2(x, y))
-        let now = length(names) > 0 ? join(names, ", ") : "none"
+        let now = join_or(names, ", ", "none")
         var ry = y + u(23.0)
         if (!bl_section("status2_section", "Status: {now}", status_open)) {
             return ry
@@ -369,9 +370,7 @@ class Ffta2Game : GameModule {
             var on = has_status2(unit, n)
             let caption = on != has_status2(saved_u, n) ? "{name} *" : name
             if (bl_option("status2_{n}", caption, on)) {
-                let mask = 1u << uint(n & 7)
-                let b = uint(unit.status[n >> 3])
-                unit.status[n >> 3] = uint8(on ? (b | mask) : (b & ~mask))
+                set_lsb_bit(unit.status, n, on)
             }
             col = 1 - col
             if (col == 0) {

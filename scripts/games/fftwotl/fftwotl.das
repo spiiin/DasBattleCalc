@@ -34,6 +34,7 @@ require fftwotl_attack
 require fftwotl_turns
 require fftwotl_explore
 require fftwotl_map
+require ../../core/util.das
 
 let private STAT_W_LABELS = fixed_array<string>("PA", "MA", "Speed")
 
@@ -95,7 +96,7 @@ def item_text_w(it : ItemW) : string {
             parts |> push("{elw[k]} {element_text(el[k])}")
         }
     }
-    return length(parts) > 0 ? join(parts, ", ") : "no bonus"
+    return join_or(parts, ", ", "no bonus")
 }
 
 // Explore editor colors: what a word of the script is
@@ -502,7 +503,7 @@ class WotlGame : GameModule {
                 ep |> push("{eln[k]} {element_text(el[k])}")
             }
         }
-        rows |> push(("Elements", length(ep) > 0 ? join(ep, "; ") : "-"))
+        rows |> push(("Elements", join_or(ep, "; ", "-")))
         for (r in rows) {
             text_at_baseline(x + u(8.0), ry + u(15.0), r._0, dim)
             text_at_baseline(x + floor(w * 0.36), ry + u(15.0), r._1, fg)
@@ -622,7 +623,7 @@ class WotlGame : GameModule {
             unit.status = saved_u.status
         }
         SetCursorScreenPos(ImVec2(x, y))
-        let now = length(names) > 0 ? join(names, ", ") : "none"
+        let now = join_or(names, ", ", "none")
         var ry = y + u(23.0)
         if (!bl_section("statusw_section", "Status: {now}", status_open)) {
             return ry

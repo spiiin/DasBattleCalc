@@ -28,6 +28,7 @@ require ../../core/explore.das
 require ffta2_battle
 require ffta2_attack
 require ffta2_forecast
+require ../../core/util.das
 
 let MAX_POINTS2 = 20000
 
@@ -201,9 +202,7 @@ def set_unit_param2(var u : Unit2; key : string; v : Value) : string {
         if (i < 0) {
             return "no status '{slice(key, 7)}'"
         }
-        let mask = 1u << uint(i & 7)
-        let b = uint(u.status[i >> 3])
-        u.status[i >> 3] = uint8(n != 0 ? (b | mask) : (b & ~mask))
+        set_lsb_bit(u.status, i, n != 0)
     } else {
         return "'{key}' can not be varied"
     }
@@ -267,14 +266,14 @@ def axis_values2(sc : Scene2; ax : Axis; var vals : array<Value>) : string {
     } elif (n.kind == NodeKind.Call && n.text == "jobs") {
         for (j in range(1, 249)) {
             let name = job_name(j)
-            if (name != "" && name != "-" && !has_text2(vals, name)) {
+            if (named(name) && !has_text2(vals, name)) {
                 vals |> push(vtext(name, double(j)))
             }
         }
     } elif (n.kind == NodeKind.Call && n.text == "weapons") {
         for (iid in range(1, item_count())) {
             let it = read_item2(iid)
-            if (is_weapon2(it) && it.name != "" && it.name != "-") {
+            if (is_weapon2(it) && named(it.name)) {
                 vals |> push(item_value2(it))
             }
         }

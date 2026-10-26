@@ -11,6 +11,7 @@ require gba_mem
 require math
 require strings
 require daslib/strings_boost
+require ../../core/util.das
 
 let WOTL_GAME_ID = "ULUS10297"
 let private GAME_ID_AT = 0x08B18354u
@@ -216,12 +217,11 @@ def is_wotl_state() : bool {
 // 40 statuses, bit n = byte n / 8, mask 0x80 >> n % 8 (as the unit
 // record and the tables keep them)
 def status_bit(sts : uint8[5]; n : int) : bool {
-    return n >= 0 && n < STATUS_COUNT_W && (uint(sts[n >> 3]) & (0x80u >> uint(n & 7))) != 0u
+    return n >= 0 && n < STATUS_COUNT_W && msb_bit(sts, n)
 }
 
 def set_status_bit(var sts : uint8[5]; n : int; on : bool) {
-    let m = 0x80u >> uint(n & 7)
-    sts[n >> 3] = uint8(on ? (uint(sts[n >> 3]) | m) : (uint(sts[n >> 3]) & ~m))
+    set_msb_bit(sts, n, on)
 }
 
 def read_statuses(a : uint) : uint8[5] {
@@ -448,7 +448,7 @@ def element_text(mask : int) : string {
             parts |> push(ELEMENT_W_NAMES[e])
         }
     }
-    return length(parts) > 0 ? join(parts, ", ") : "-"
+    return join_or(parts, ", ", "-")
 }
 
 def status_text(sts : uint8[5]) : string {
@@ -458,7 +458,7 @@ def status_text(sts : uint8[5]) : string {
             parts |> push(status_name_w(n))
         }
     }
-    return length(parts) > 0 ? join(parts, ", ") : "-"
+    return join_or(parts, ", ", "-")
 }
 
 // an inflict-status record: 0x80 all or nothing, 0x40 random one, 0x20
@@ -632,7 +632,7 @@ def read_job_w(job : int) : JobW {
 }
 
 def job_can_equip(j : JobW; kind : int) : bool {
-    return kind >= 0 && kind < 40 && (uint(j.equip[kind >> 3]) & (0x80u >> uint(kind & 7))) != 0u
+    return kind >= 0 && kind < 40 && msb_bit(j.equip, kind)
 }
 
 // ------------------------------------------------------------ skillsets

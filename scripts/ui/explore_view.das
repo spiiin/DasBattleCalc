@@ -156,7 +156,7 @@ def chart_color(i : int) : uint {
 }
 
 def private tr(v : double; logv : bool) : double {
-    return logv ? log(v) / log(10.0lf) : v
+    return logv ? log10(v) : v
 }
 
 // 1-2-5 steps for about `count` ticks
@@ -165,7 +165,7 @@ def private nice_step(span : double; count : int) : double {
     if (raw <= 0.0lf || is_nan(raw)) {
         return 1.0lf
     }
-    let mag = pow(10.0lf, floor(log(raw) / log(10.0lf)))
+    let mag = pow(10.0lf, floor(log10(raw)))
     let k = raw / mag
     return (k < 1.5lf ? 1.0lf : (k < 3.0lf ? 2.0lf : (k < 7.0lf ? 5.0lf : 10.0lf))) * mag
 }
@@ -177,7 +177,7 @@ def private tick_text(v, step : double) : string {
     if (step >= 1.0lf) {
         return value_text(vnum(round(v)))
     }
-    let digits = clamp(int(ceil(-log(step) / log(10.0lf))), 1, 6)
+    let digits = clamp(int(ceil(-log10(step))), 1, 6)
     return fmt(":.{digits}f", v)
 }
 
@@ -191,7 +191,7 @@ def private axis_ticks(lo, hi : double; logv : bool; count : int; var at : array
         var v = ceil(a / step) * step
         while (v <= b + step * 1.0e-9lf) {
             if (v > 0.0lf) {
-                at |> push(log(v) / log(10.0lf))
+                at |> push(log10(v))
                 labels |> push(tick_text(v, step))
             }
             v += step

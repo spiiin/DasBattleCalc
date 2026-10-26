@@ -14,6 +14,7 @@ require strings
 require ../../core/teams.das public
 require ../../core/result_try.das
 require ffta2_charset
+require ../../core/util.das
 
 let FFTA2_CODE = "A6FE"
 let RECORD_SIZE = 0x11Cu
@@ -168,7 +169,7 @@ def status_name(n : int) : string {
 }
 
 def has_status2(u : Unit2; n : int) : bool {
-    return n >= 0 && n < 72 && (uint(u.status[n >> 3]) & (1u << uint(n & 7))) != 0u
+    return n >= 0 && n < 72 && lsb_bit(u.status, n)
 }
 
 def race_name(race : int) : string {
@@ -358,7 +359,7 @@ def private job_number_slow(job : int) : int {
     var names : array<string>
     for (j in range(1, JOB_COUNT)) {
         let n = job_name(j)
-        if (n != "" && n != "-" && find_index(names, n) < 0) {
+        if (named(n) && find_index(names, n) < 0) {
             names |> push(n)
         }
         if (j == job) {
@@ -384,7 +385,7 @@ def job_abilities(job : int) : array<int> {
         if (cls >= 10) {
             for (aid in range(1, ability_count())) {
                 let ab = read_ability2(aid)
-                if (ab.name != "" && ab.name != "-" && learn_slot(ab, cls) >= 0) {
+                if (named(ab.name) && learn_slot(ab, cls) >= 0) {
                     list |> push(aid)
                 }
             }
@@ -442,7 +443,7 @@ def class_jobs(job : int) : array<int> {
     }
     for (j in range(1, JOB_COUNT)) {
         let n = job_name(j)
-        if (n != "" && n != "-" && job_class(j) == cls) {
+        if (named(n) && job_class(j) == cls) {
             res |> push(j)
         }
     }
@@ -454,7 +455,7 @@ def reaction_ids() : array<int> {
     var res : array<int>
     for (id in range(822, 845)) {
         let n = ffta2_message(ABILITY_NAMES, id)
-        if (n != "" && n != "-") {
+        if (named(n)) {
             res |> push(id)
         }
     }
@@ -465,7 +466,7 @@ def support_ids() : array<int> {
     var res : array<int>
     for (id in range(851, 885)) {
         let n = ffta2_message(ABILITY_NAMES, id)
-        if (n != "" && n != "-") {
+        if (named(n)) {
             res |> push(id)
         }
     }
