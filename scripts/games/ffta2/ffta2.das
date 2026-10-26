@@ -26,6 +26,7 @@ require ../../core/config.das
 require ../../core/result_try.das
 require ../../core/explore.das
 require ../../ui/explore_view.das
+require ../../ui/explore_panel.das
 require ../../app/shell.das
 require ffta2_battle
 require ffta2_attack
@@ -65,51 +66,6 @@ def private magick_text(ab : Ability2) : string {
 }
 
 // Explore editor colors: what a word of the script is
-def private explore2_color(sp : HlSpan; defs : array<string>; att : Unit2) : uint {
-    if (sp.kind == HL_STMT) {
-        return 0xf0c040ffu              // vary where sort plot scene
-    } elif (sp.kind == HL_WORD) {
-        return 0x80b8f0ffu              // by per step log bar ...
-    } elif (sp.kind == HL_NUM) {
-        return 0xf0a060ffu
-    } elif (sp.kind == HL_STR) {
-        return 0xb0e090ffu
-    } elif (sp.kind == HL_COMMENT) {
-        return 0x8c8c8cffu
-    } elif (sp.kind == HL_FUNC) {
-        return 0xc8a0f0ffu
-    } elif (sp.kind == HL_OP) {
-        return 0xc8c8c8ffu
-    } elif (sp.kind == HL_DEF) {
-        return 0xf0e0a0ffu              // a new column
-    } elif (sp.kind != HL_NAME) {
-        return 0xdcdcdcffu
-    }
-    let name = sp.text
-    if (find_index(EXPLORE2_GENERATORS, name) >= 0) {
-        return 0xc8a0f0ffu
-    }
-    if (find_index(METRICS2, name) >= 0) {
-        return 0x60d0d0ffu              // a column of every point
-    }
-    if (find_index(defs, name) >= 0) {
-        return 0xf0e0a0ffu
-    }
-    if (name == "side" || name == "action" || name == "privilege") {
-        return 0x90d070ffu
-    }
-    let dot = find(name, ".")
-    if (dot > 0) {
-        let owner = slice(name, 0, dot)
-        var v : Value
-        if ((owner == "atk" || owner == "tgt" || owner == "attacker" || owner == "target") &&
-                unit_param2(att, slice(name, dot + 1), v)) {
-            return 0x90d070ffu          // a parameter
-        }
-    }
-    return 0xff7070ffu                  // nothing by this name: a typo?
-}
-
 class Ffta2Game : GameModule {
     units : array<Unit2>
     saved : array<Unit2>              // as read from the state: Revert
@@ -147,16 +103,8 @@ class Ffta2Game : GameModule {
     from_args : bool
     message : string = "Load a BizHawk state (melonDS core) and the FFTA2 (USA) ROM"
     // Explore: the script, its table and chart
-    explore_src : ImGuiInputTextBuffer = ImGuiInputTextBuffer(EXPLORE2_EXAMPLES[0], 8192)
-    explore_example : int = 0
-    explore_table : ETable = ETable()
-    explore_chart : Chart = Chart()
-    explore_error : string
-    explore_info : string
-    explore_version : int = 0
-    explore_ran : bool = false
-    explore_tview : TableView = TableView()
-    explore_split : float = 0.42      // the editor's share of the width (the bar drags it)
+    explore : ExplorePanel = make_explore_panel("explore2", EXPLORE2_NAMES, EXPLORE2_EXAMPLES,
+        EXPLORE2_GENERATORS, METRICS2)
 
     def Ffta2Game {
         state_path = config_get("ffta2_state")
@@ -675,7 +623,10 @@ class Ffta2Game : GameModule {
         } elif (scene_tab == 1) {
             self->screen_view(x, ty, w, y + h - ty)
         } else {
-            self->chart_view(x + u(8.0), ty, w - u(16.0), y + h - ty - u(6.0))
+            let have_units = length(units) > 0
+            explore |> explore_chart_view(x + u(8.0), ty, w - u(16.0), y + h - ty - u(6.0), have_units) $(s; var t) {
+                return self->explore_points(s, t)
+            }
         }
     }
 
@@ -782,7 +733,17 @@ class Ffta2Game : GameModule {
         if (calc_tab == 1) {
             self->attack_view(x, ty, w, y + h - ty)
         } elif (calc_tab == 2) {
-            self->explore_view(x, ty, w, y + h - ty)
+            let att = units[clamp(selected, 0, length(units) - 1)]
+            let msg = explore_view(explore, x, ty, w, y + h - ty, state_path, $(key) {
+                var v : Value
+                return unit_param2(att, key, v)
+            }, $(s; var t) {
+                return self->explore_points(s, t)
+            })
+            if (msg != "") {
+                message = msg
+                log_line(msg)
+            }
         } elif (calc_tab == 3) {
             self->unit_table(x, ty, w, y + h - ty)
         } else {
@@ -843,133 +804,11 @@ class Ffta2Game : GameModule {
         return ""
     }
 
-    def explore_run() : void {
-        explore_ran = true
-        let t0 = ref_time_ticks()
-        var s = Script()
+    // Explore: a parsed script -> the table of its points
+    def explore_points(var s : Script; var t : ETable) : string {
         var sc = Scene2()
-        var err = parse_script(to_string(explore_src), s)
-        if (err == "") {
-            err = self->explore_scene(s, sc)
-        }
-        if (err == "") {
-            err = run_experiment2(sc, s, explore_table)
-        }
-        if (err == "") {
-            let xn = length(explore_table.names) > 0 ? explore_table.names[0] : "damage"
-            err = build_chart(s, explore_table, xn, "damage", explore_chart)
-        }
-        if (err != "") {
-            explore_table = ETable()
-            explore_chart = Chart()
-        }
-        explore_error = err
-        explore_version++
-        let ms = get_time_usec(t0) / 1000
-        explore_info = err == "" ? "{length(explore_table.rows)} rows x {length(explore_table.names)} columns, {ms} ms" : ""
-    }
-
-    // Calculation > Explore: examples, Run; the script; the table
-    def explore_view(x, y, w, h : float) : void {
-        if (!explore_ran) {
-            self->explore_run()
-        }
-        let ew = floor(w * explore_split)
-        // the bar between the editor and the table: drag to resize
-        SetCursorScreenPos(ImVec2(x + ew + u(1.0), y + u(26.0)))
-        InvisibleButton("##explore2_split", ImVec2(u(6.0), max(u(10.0), h - u(26.0))))
-        if (IsItemHovered() || IsItemActive()) {
-            SetMouseCursor(ImGuiMouseCursor.ResizeEW)
-            *GetWindowDrawList() |> AddRectFilled(ImVec2(x + ew + u(3.0), y + u(26.0)), ImVec2(x + ew + u(5.0), y + h),
-                abgr(bt.menu_item.inner_sel), 0.0, ImDrawFlags.None)
-        }
-        if (IsItemActive()) {
-            explore_split = clamp((GetMousePos().x - x - u(4.0)) / w, 0.15, 0.85)
-        }
-        SetCursorScreenPos(ImVec2(x, y))
-        var pick = explore_example
-        var names <- [for (n in EXPLORE2_NAMES); n]
-        if (bl_choice("explore2_example", names, pick, ew - u(88.0))) {
-            explore_example = pick
-            explore_src = ImGuiInputTextBuffer(EXPLORE2_EXAMPLES[pick], 8192)
-            self->explore_run()
-        }
-        SetCursorScreenPos(ImVec2(x + ew - u(80.0), y))
-        let run_click = bl_tool_button("explore2_run", "Run", ICON_CHART, u(80.0))
-        let eh = h - u(26.0) - (explore_error != "" ? u(22.0) : 0.0)
-        SetCursorScreenPos(ImVec2(x, y + u(26.0)))
-        // the columns the script makes (name = ...), the line of the error
-        var defs : array<string>
-        for (line in split(to_string(explore_src), "\n")) {
-            var spans : array<HlSpan>
-            highlight_line(line, spans)
-            if (length(spans) > 0 && spans[0].kind == HL_DEF) {
-                defs |> push(spans[0].text)
-            }
-        }
-        var error_line = 0
-        if (starts_with(explore_error, "line ")) {
-            error_line = to_int(slice(explore_error, 5, max(5, find(explore_error, ":"))))
-        }
-        let att = units[clamp(selected, 0, length(units) - 1)]
-        bl_code_area("explore2_src", explore_src, ew, max(u(40.0), eh), error_line) $(line; var out) {
-            var spans : array<HlSpan>
-            highlight_line(line, spans)
-            for (sp in spans) {
-                out |> push(CodeSpan(start = sp.start, stop = sp.stop, color = explore2_color(sp, defs, att)))
-            }
-        }
-        let editing = IsItemActive()
-        // Ctrl+Enter in the editor runs it too
-        if (run_click || (editing && GetIO().KeyCtrl && IsKeyPressed(ImGuiKey.Enter, false))) {
-            self->explore_run()
-        }
-        if (explore_error != "") {
-            SetCursorScreenPos(ImVec2(x, y + h - u(21.0)))
-            bl_label(explore_error, ICON_INFO, ew, 0xff8080ffu)
-            if (IsItemHovered()) {
-                bl_tooltip(explore_error)
-            }
-        }
-        let tx = x + ew + u(8.0)
-        let tw = w - ew - u(8.0)
-        let cw = u(70.0)
-        SetCursorScreenPos(ImVec2(tx, y))
-        bl_label(explore_info != "" ? "{explore_info}; chart: Battle > Chart" : "", ICON_INFO, tw - cw - u(4.0))
-        SetCursorScreenPos(ImVec2(tx + tw - cw, y))
-        if (bl_tool_button("explore2_csv", "CSV", ICON_EXPORT, cw) && length(explore_table.names) > 0) {
-            self->explore_csv()
-        }
-        draw_etable("explore2_table", explore_table, explore_version, explore_tview, tx, y + u(26.0), tw, h - u(26.0))
-    }
-
-    // the table as CSV in the order it is shown, next to the state: on the
-    // desktop a file, in the browser a download (gui_save_text)
-    def explore_csv() : void {
-        let dot = find(state_path, ".", max(0, length(state_path) - 6))
-        let base = dot >= 0 ? slice(state_path, 0, dot) : state_path
-        let path = "{base}.explore.csv"
-        let err = gui_save_text(path, table_csv(explore_table, explore_tview.order))
-        message = err != "" ? "CSV: {err}" : "table saved to {path}"
-        log_line(message)
-    }
-
-    // Battle > Chart: the chart of the last Explore run
-    def chart_view(x, y, w, h : float) : void {
-        if (!explore_ran && length(units) > 0) {
-            self->explore_run()
-        }
-        if (explore_error != "") {
-            SetCursorScreenPos(ImVec2(x + u(4.0), y + u(6.0)))
-            bl_label("Explore: {explore_error}", ICON_INFO)
-            return
-        }
-        if (length(explore_chart.series) == 0) {
-            SetCursorScreenPos(ImVec2(x + u(4.0), y + u(6.0)))
-            bl_label("No data: write an experiment in Calculation > Explore", ICON_INFO)
-            return
-        }
-        draw_chart("explore2_chart", explore_chart, x, y, w, h)
+        try_ok(self->explore_scene(s, sc))
+        return run_experiment2(sc, s, t)
     }
 
     // the selected unit attacks the target (right click on the field;
