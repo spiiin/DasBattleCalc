@@ -238,11 +238,11 @@ def private action_value(id : int) : Value {
 
 // the values of `vary path src`; "" or the error
 def axis_values2(sc : Scene2; ax : Axis; var vals : array<Value>) : string {
-    let e & = unsafe(ax.src)
+    assume e = ax.src
     if (e.root < 0) {
         return "line {ax.line}: no values"
     }
-    let n & = unsafe(e.nodes[e.root])
+    assume n = e.nodes[e.root]
     if (n.kind == NodeKind.List) {
         for (a in n.args) {
             vals |> push(eval_const(e, a))

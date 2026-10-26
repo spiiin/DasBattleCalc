@@ -362,7 +362,7 @@ def draw_chart(id : string; c : Chart; x, y, w, h : float) : ChartHover {
     let slot = categorical ? (right - left) / float(max(1, length(c.categories))) : 0.0
     let bar_w = slot * 0.8 / float(max(1, nser))
     for (i in range(nser)) {
-        let s & = unsafe(c.series[i])
+        assume s = c.series[i]
         let col = abgr(chart_color(i))
         let n = length(s.xs)
         // points of a line in x order
@@ -410,7 +410,7 @@ def draw_chart(id : string; c : Chart; x, y, w, h : float) : ChartHover {
         return ChartHover()
     }
     if (hover.series >= 0) {
-        let s & = unsafe(c.series[hover.series])
+        assume s = c.series[hover.series]
         let k = hover.point
         let xs = categorical ? c.categories[int(s.xs[k])] : value_text(vnum(s.xs[k]))
         if (c.kind != ChartKind.Bar) {

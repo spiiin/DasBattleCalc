@@ -182,11 +182,11 @@ def private race_ability_values(u : BattleUnit; kind : int; var vals : array<Val
 
 // the values of `for (path in src)`; "" or the error
 def axis_values(sc : Scene; ax : Axis; var vals : array<Value>) : string {
-    let e & = unsafe(ax.src)
+    assume e = ax.src
     if (e.root < 0) {
         return "line {ax.line}: no values"
     }
-    let n & = unsafe(e.nodes[e.root])
+    assume n = e.nodes[e.root]
     var owner = ""
     var key = ""
     split_path(ax.path, owner, key)

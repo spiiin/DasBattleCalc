@@ -24,6 +24,7 @@ module explore shared public
 
 require math
 require daslib/match
+require daslib/option
 require strings
 require daslib/strings_boost
 require peg/peg
@@ -1164,9 +1165,14 @@ def private binary_power(op : string) : int {
     }
 }
 
-def private plot_flag(s : Script; name : string) : bool {
+// the value of a constant argument of plot( ): kind, title, log_x ...
+def private plot_const(s : Script; name : string) : Option<Value> {
     let i = find_arg(s.plot, name)
-    return i >= 0 && length(s.plot[i].exprs) > 0 && is_true(eval_const(s.plot[i].exprs[0], s.plot[i].exprs[0].root))
+    if (i < 0 || length(s.plot[i].exprs) == 0) {
+        return none(type<Value>)
+    }
+    assume e = s.plot[i].exprs[0]
+    return some(eval_const(e, e.root))
 }
 
 // The chart of plot( ) over the table (after the steps); without plot( ):
@@ -1215,20 +1221,14 @@ def build_chart(var s : Script; t : ETable; default_x, default_y : string; var c
     if (err != "") {
         return err
     }
-    let ki = find_arg(s.plot, "kind")
-    var kind = ""
-    if (ki >= 0) {
-        kind = eval_const(s.plot[ki].exprs[0], s.plot[ki].exprs[0].root).text
-        if (kind != "line" && kind != "bar" && kind != "scatter") {
-            return "line {s.plot[ki].line}: kind = \"line\", \"bar\" or \"scatter\""
-        }
+    let kind_arg = plot_const(s, "kind")
+    let kind = (kind_arg ?? Value()).text
+    if (is_some(kind_arg) && kind != "line" && kind != "bar" && kind != "scatter") {
+        return "line {s.plot[find_arg(s.plot, "kind")].line}: kind = \"line\", \"bar\" or \"scatter\""
     }
-    let ti = find_arg(s.plot, "title")
-    if (ti >= 0) {
-        c.title = eval_const(s.plot[ti].exprs[0], s.plot[ti].exprs[0].root).text
-    }
-    c.log_x = plot_flag(s, "log_x")
-    c.log_y = plot_flag(s, "log_y")
+    c.title = (plot_const(s, "title") ?? Value()).text
+    c.log_x = is_true(plot_const(s, "log_x") ?? Value())
+    c.log_y = is_true(plot_const(s, "log_y") ?? Value())
     c.x_name = expr_text(xe)
     c.y_name = join([for (e in ys); expr_text(e)], ", ")
     c.series_name = se.root >= 0 ? expr_text(se) : ""
@@ -1246,7 +1246,7 @@ def build_chart(var s : Script; t : ETable; default_x, default_y : string; var c
     let categorical = text_x || c.kind == ChartKind.Bar
     var keys : array<string>
     for (r in range(length(t.rows))) {
-        let row & = unsafe(t.rows[r])
+        assume row = t.rows[r]
         let xv = eval_expr(xe, row)
         var x = xv.num
         if (categorical) {

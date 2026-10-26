@@ -35,18 +35,20 @@ def main() : int {
     var units := orig
     let mi = find_named(units, "Marc")
     let ni = find_named(units, "Montblanc")
-    units[mi].hp = 7
-    units[mi].mp = 3
-    units[mi].stat_base[int(Stat.WAtk)] = 150
-    units[mi].stat_base[int(Stat.Speed)] = 120
-    units[mi].ct = 42
-    units[mi].equip[1] = read_item(2u)
-    units[mi].status[2] |= 0x20u
-    set_ability(units[mi], 3, 13)   // Concentrate (human support)
-    set_ability(units[ni], 2, 8)    // Counter (moogle reaction)
-    units[mi].learned[6] = true     // Mug (human list entry 6)
-    units[mi].learned[58] = true    // Cure (White Mage)
-    units[mi].learned[11] = false   // Combat Combo
+    with_(units[mi]) $(m) {
+        m.hp = 7
+        m.mp = 3
+        m.stat_base[int(Stat.WAtk)] = 150
+        m.stat_base[int(Stat.Speed)] = 120
+        m.ct = 42
+        m.equip[1] = read_item(2u)
+        m.status[2] |= 0x20u
+        set_ability(m, 3, 13)           // Concentrate (human support)
+        m.learned[6] = true             // Mug (human list entry 6)
+        m.learned[58] = true            // Cure (White Mage)
+        m.learned[11] = false           // Combat Combo
+    }
+    set_ability(units[ni], 2, 8)        // Counter (moogle reaction)
     units[ni].facing = (units[ni].facing + 1) & 3
     // a free tile next to Montblanc
     for (d in range(4)) {

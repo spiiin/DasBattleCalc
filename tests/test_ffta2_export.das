@@ -13,6 +13,8 @@ require daslib/strings_boost
 require ../scripts/games/ffta2/ffta2_battle.das
 require ../scripts/games/ffta2/ffta2_attack.das
 require ./test_check.das
+require daslib/with_boost
+require ../scripts/core/util.das
 
 
 // what the export writes, as text
@@ -35,21 +37,22 @@ def main() : int {
         print("FAIL {failed + 1} of {total + 1}\n")
         return 1
     }
-    var u & = unsafe(units[luso])
-    u.hp = 33
-    u.max_hp = 99
-    u.mp = 5
-    u.raw[0] = gui_arg_int("--attack", 200)
-    u.items[0] = 16
-    u.equip[0] = read_item2(16)
-    u.status[26 >> 3] = uint8(uint(u.status[26 >> 3]) | (1u << uint(26 & 7)))    // Protect
-    u.learned[0x98] = 0x80u8                                                       // First Aid mastered
-    u.ct = 77
-    units[cid].hp = 1
     var m : Map2
     check("map read", read_map2(m))
-    u.x = 5
-    u.y = 9
+    with_(units[luso]) $(u) {
+        u.hp = 33
+        u.max_hp = 99
+        u.mp = 5
+        u.raw[0] = gui_arg_int("--attack", 200)
+        u.items[0] = 16
+        u.equip[0] = read_item2(16)
+        set_lsb_bit(u.status, 26, true)     // Protect
+        u.learned[0x98] = 0x80u8            // First Aid mastered
+        u.ct = 77
+        u.x = 5
+        u.y = 9
+    }
+    units[cid].hp = 1
     let err = export_battle2(units, m, out)
     check("export: {err}", err == "")
     check("the exported state loads", gba_load_state(out) == "")

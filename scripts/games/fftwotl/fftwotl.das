@@ -999,7 +999,7 @@ class WotlGame : GameModule {
             let roll = re.chance < 100 ? " on Brave {re.chance}%" : ""
             rows |> push(("Reaction", re.triggers ? "{re.name}: {re.effect}{roll}{when}" : "{re.name}: does not trigger{when}"))
             if (re.counter) {
-                let cf & = unsafe(re.counter_fight)
+                assume cf = re.counter_fight
                 rows |> push(("Counter", "{tgt.name} -> {att.name}: {cf.damage} damage, {cf.hit}% hit ({join(cf.mods, "; ")})"))
             }
         } else {

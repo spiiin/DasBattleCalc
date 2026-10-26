@@ -949,7 +949,7 @@ class Ffta2Game : GameModule {
             let when = re.why != "" ? " ({re.why})" : ""
             rows |> push(("Reaction", re.triggers ? "{re.name}: {re.effect}{when}" : "{re.name}: does not trigger{when}"))
             if (re.counter) {
-                let cf & = unsafe(re.counter_fight)
+                assume cf = re.counter_fight
                 rows |> push(("Counter", "{tgt.name} -> {att.name}: {cf.damage} damage, {cf.hit}% hit, {cf.dmg_min}..{cf.dmg_max}, ~{fmt(":.1f", cf.expected)}"))
             }
         } else {
