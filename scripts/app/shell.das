@@ -241,3 +241,21 @@ def shell_background() : uint4 {
 def shell_shutdown() {
     pass
 }
+
+// Field > Screen: the game's screen stored in the state, scaled by whole
+// steps; message when the state has none
+def screen_view(x, y, w, h : float; message : string) {
+    if (!gba_frame_update(shell_renderer())) {
+        SetCursorScreenPos(ImVec2(x + u(12.0), y + u(12.0)))
+        bl_label(message, ICON_INFO)
+        return
+    }
+    let fw = gba_frame_width()
+    let fh = gba_frame_height()
+    let k = max(1.0, floor(min((w - u(16.0)) / fw, (h - u(40.0)) / fh)))
+    let dx = x + floor((w - fw * k) * 0.5)
+    let dy = y + u(8.0)
+    gba_frame_draw(dx, dy, fw * k, fh * k)
+    SetCursorScreenPos(ImVec2(dx, dy + fh * k + u(4.0)))
+    bl_label("Screen stored in the state", ICON_SCREEN)
+}

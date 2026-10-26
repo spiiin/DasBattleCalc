@@ -69,7 +69,6 @@ def private magick_text(ab : Ability2) : string {
 class Ffta2Game : GameModule {
     units : array<Unit2>
     saved : array<Unit2>              // as read from the state: Revert
-    selected : int = -1
     target : int = -1
     field = FieldState()
     field_map : FieldMap
@@ -95,18 +94,16 @@ class Ffta2Game : GameModule {
     known_only : bool = true          // the Attack tab's actions: only what the attacker knows (unit_knows)
     rom_sprites2 : bool = true        // the units' sprites from the ROM on the field (View menu, local.cfg)
     rom_icons2 : bool = true          // item icons from the ROM
-    state_path : string
     rom_path : string
     loaded_state : string
     loaded_rom : string
-    export_path : string              // Export: the state with the edits
     from_args : bool
-    message : string = "Load a BizHawk state (melonDS core) and the FFTA2 (USA) ROM"
     // Explore: the script, its table and chart
     explore : ExplorePanel = make_explore_panel("explore2", EXPLORE2_NAMES, EXPLORE2_EXAMPLES,
         EXPLORE2_GENERATORS, METRICS2)
 
     def Ffta2Game {
+        message = "Load a BizHawk state (melonDS core) and the FFTA2 (USA) ROM"
         state_path = config_get("ffta2_state")
         rom_sprites2 = config_get("ffta2_rom_sprites", "1") == "1"
         rom_icons2 = config_get("ffta2_rom_icons", "1") == "1"
@@ -199,10 +196,7 @@ class Ffta2Game : GameModule {
         field.cell = 0.0
         selected = length(units) > 0 ? length(units) - 1 : -1
         target = -1
-        message = "{length(units)} units in battle"
-        let dot = find(state_path, ".", max(0, length(state_path) - 6))
-        export_path = dot >= 0 ? "{slice(state_path, 0, dot)}.edited{slice(state_path, dot)}" : "{state_path}.edited"
-        log_line("loaded {state_path}: {message}")
+        self->loaded(length(units))
         if (remember) {
             config_set("ffta2_state", state_path)
             config_set("ffta2_rom", rom_path)
@@ -212,17 +206,9 @@ class Ffta2Game : GameModule {
     // the battle map (heights shown as the game shows them); a flat field
     // around the units when the state has none
     // the loaded state with the edited units as a new file
-    def export_state() : void {
-        var err = ""
-        if (export_path == "" || export_path == state_path) {
-            err = "choose a path other than the loaded state"
-        } else {
-            err = export_battle2(units, map2, export_path)
-        }
-        message = err != "" ? "Export: {err}" : "exported to {export_path}"
-        log_line(message)
+    def override export_to(path : string; var notes : string&) : string {
+        return export_battle2(units, map2, path)
     }
-
     def make_map() : void {
         if (read_map2(map2)) {
             field_map = FieldMap(w = map2.w, h = map2.h, shown_shift = -1)
@@ -621,7 +607,7 @@ class Ffta2Game : GameModule {
         if (scene_tab == 0) {
             self->field_view(x, ty, w, y + h - ty)
         } elif (scene_tab == 1) {
-            self->screen_view(x, ty, w, y + h - ty)
+            screen_view(x, ty, w, y + h - ty, message)
         } else {
             let have_units = length(units) > 0
             explore |> explore_chart_view(x + u(8.0), ty, w - u(16.0), y + h - ty - u(6.0), have_units) $(s; var t) {
@@ -686,21 +672,6 @@ class Ffta2Game : GameModule {
         }
     }
 
-    def screen_view(x, y, w, h : float) : void {
-        if (!gba_frame_update(shell_renderer())) {
-            SetCursorScreenPos(ImVec2(x + u(12.0), y + u(12.0)))
-            bl_label(message, ICON_INFO)
-            return
-        }
-        let fw = gba_frame_width()
-        let fh = gba_frame_height()
-        let k = max(1.0, floor(min((w - u(16.0)) / fw, (h - u(40.0)) / fh)))
-        let dx = x + floor((w - fw * k) * 0.5)
-        let dy = y + u(8.0)
-        gba_frame_draw(dx, dy, fw * k, fh * k)
-        SetCursorScreenPos(ImVec2(dx, dy + fh * k + u(4.0)))
-        bl_label("Screen stored in the state", ICON_SCREEN)
-    }
 
     // the units with their Unit Info stats, the one with the highest CT first
     def override draw_calc(x, y, w, h : float) : void {

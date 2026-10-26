@@ -108,7 +108,6 @@ class FftaGame : GameModule {
     item_filter = ImGuiInputTextBuffer("", 64)
     item_kind_filter : int = 0
     turns : array<Turn>
-    selected : int = -1
     turns_ahead : int = 24
     // Explore: the script, its table and chart
     explore : ExplorePanel = make_explore_panel("explore", EXPLORE_NAMES, EXPLORE_EXAMPLES,
@@ -126,10 +125,7 @@ class FftaGame : GameModule {
     status_open : bool = true
     abilities_open : bool = true
     job_open : table<string; bool>    // "race job": an open job block
-    state_path : string
     rom_path : string
-    export_path : string              // Export: the state with the edits
-    message : string = "Load a BizHawk state (mGBA core) and the FFTA (USA) ROM"
 
     cfg_state : string                // the files local.cfg remembers
     cfg_rom : string
@@ -138,6 +134,7 @@ class FftaGame : GameModule {
     loaded_rom : string
 
     def FftaGame {
+        message = "Load a BizHawk state (mGBA core) and the FFTA (USA) ROM"
         cfg_state = config_get("state")
         cfg_rom = config_get("rom")
         rom_sprites = config_get("rom_sprites", "1") == "1"
@@ -218,10 +215,7 @@ class FftaGame : GameModule {
         if (attacker >= 0) {
             selected = attacker
         }
-        message = "{length(units)} units in battle"
-        let dot = find(state_path, ".", max(0, length(state_path) - 6))
-        export_path = dot >= 0 ? "{slice(state_path, 0, dot)}.edited{slice(state_path, dot)}" : "{state_path}.edited"
-        log_line("loaded {state_path}: {message}")
+        self->loaded(length(units))
         if (remember) {
             cfg_state = state_path
             cfg_rom = rom_path
@@ -277,17 +271,8 @@ class FftaGame : GameModule {
 
     // the loaded state with the edited units, as a new file; "" or the
     // error, notes: what could not be written
-    def export_files(var notes : string&) : string {
-        ensure(export_path != "" && export_path != state_path, "choose a path other than the loaded state")
-        try_ok(export_battle(battle_map, units, saved, export_path, notes))
-        return ""
-    }
-
-    def export_state() : void {
-        var notes = ""
-        let err = self->export_files(notes)
-        message = err != "" ? "Export: {err}" : "exported to {export_path}"
-        log_line(notes != "" ? "{message}; {notes}" : message)
+    def override export_to(path : string; var notes : string&) : string {
+        return export_battle(battle_map, units, saved, path, notes)
     }
 
     def override draw_roster(x, y, w, h : float) : void {
@@ -674,7 +659,7 @@ class FftaGame : GameModule {
                 return self->explore_points(s, t)
             }
         } else {
-            self->screen_view(x, ty, w, y + h - ty)
+            screen_view(x, ty, w, y + h - ty, message)
         }
     }
 
@@ -755,21 +740,6 @@ class FftaGame : GameModule {
         return run_experiment(battle_map, sc, s, t)
     }
 
-    def screen_view(x, y, w, h : float) : void {
-        if (!gba_frame_update(shell_renderer())) {
-            SetCursorScreenPos(ImVec2(x + u(12.0), y + u(12.0)))
-            bl_label(message, ICON_INFO)
-            return
-        }
-        let fw = gba_frame_width()
-        let fh = gba_frame_height()
-        let k = max(1.0, floor(min((w - u(16.0)) / fw, (h - u(40.0)) / fh)))
-        let dx = x + floor((w - fw * k) * 0.5)
-        let dy = y + u(8.0)
-        gba_frame_draw(dx, dy, fw * k, fh * k)
-        SetCursorScreenPos(ImVec2(dx, dy + fh * k + u(4.0)))
-        bl_label("Screen stored in the state", ICON_SCREEN)
-    }
 
     def override draw_calc(x, y, w, h : float) : void {
         SetCursorScreenPos(ImVec2(x, y))

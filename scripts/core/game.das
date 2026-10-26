@@ -6,7 +6,15 @@ options indenting = 4
 // menus, style and the log; a game only fills rectangles it is given.
 module game shared public
 
+require math
+require strings
+
 class GameModule {
+    state_path : string
+    export_path : string            // Export: the state with the edits
+    message : string                // the last thing that happened (the status bar)
+    selected : int = -1             // the unit in the inspector
+
     def abstract id() : string
     def abstract title() : string
     // left panel: the list of units / items to pick from
@@ -37,6 +45,30 @@ class GameModule {
     }
     def view_pick(i : int) : void {
         pass
+    }
+    // Export: the loaded state with the edits as a new file at path; ""
+    // or the error, notes: what could not be written
+    def export_to(path : string; var notes : string&) : string {
+        return "this game can not export"
+    }
+    // what the message after an export adds (how to load the file)
+    def export_hint() : string {
+        return ""
+    }
+    def export_state() : void {
+        var notes = ""
+        let same = export_path == "" || export_path == state_path
+        let err = same ? "choose a path other than the loaded state" : self->export_to(export_path, notes)
+        message = err != "" ? "Export: {err}" : "exported to {export_path}{self->export_hint()}"
+        log_line(notes != "" ? "{message}; {notes}" : message)
+    }
+    // a state was loaded with count units: the message, the export path
+    // next to it (name.edited.ext), the log
+    def loaded(count : int) : void {
+        message = "{count} units in battle"
+        let dot = find(state_path, ".", max(0, length(state_path) - 6))
+        export_path = dot >= 0 ? "{slice(state_path, 0, dot)}.edited{slice(state_path, dot)}" : "{state_path}.edited"
+        log_line("loaded {state_path}: {message}")
     }
 }
 

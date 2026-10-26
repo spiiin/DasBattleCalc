@@ -95,7 +95,6 @@ def private unit_changed(a, b : FftUnit) : bool {
 class FftGame : GameModule {
     units : array<FftUnit>
     saved : array<FftUnit>            // as read from the state: Revert
-    selected : int = -1
     field = FieldState()
     field_map : FieldMap
     map : FftMap
@@ -109,9 +108,7 @@ class FftGame : GameModule {
     math_num : int = 0                // Prime Number, 5, 4, 3
     math_spell : int = 0              // in math_spells
     turns_ahead : int = 24
-    state_path : string
     rom_path : string                 // the disc (.cue / .bin): the graphics
-    export_path : string
     disc_path : string                // the disc opened
     disc_serial : uint                // psx_disc_serial() when we opened it
     from_args : bool
@@ -123,9 +120,9 @@ class FftGame : GameModule {
     // Explore
     explore : ExplorePanel = make_explore_panel("fft_explore", EXPLORE_F_NAMES, EXPLORE_F_EXAMPLES,
         EXPLORE_F_GENERATORS, METRICS_F)
-    message : string = "Load a BizHawk state (Nymashock core) of Final Fantasy Tactics (USA)"
 
     def FftGame {
+        message = "Load a BizHawk state (Nymashock core) of Final Fantasy Tactics (USA)"
         state_path = config_get("fft_state")
         rom_path = config_get("fft_rom")
         if (gui_arg("--game", "") == "fft") {
@@ -206,27 +203,19 @@ class FftGame : GameModule {
         self->make_map()
         field.cell = 0.0
         selected = length(units) > 0 ? 0 : -1
-        message = "{length(units)} units in battle"
-        let dot = find(state_path, ".", max(0, length(state_path) - 6))
-        export_path = dot >= 0 ? "{slice(state_path, 0, dot)}.edited{slice(state_path, dot)}" : "{state_path}.edited"
-        log_line("loaded {state_path}: {message}")
+        self->loaded(length(units))
         if (remember) {
             config_set("fft_state", state_path)
             config_set("fft_rom", rom_path)
         }
     }
 
-    def export_state() : void {
-        var err = ""
-        if (export_path == "" || export_path == state_path) {
-            err = "choose a path other than the loaded state"
-        } else {
-            err = export_battle(units, export_path)
-        }
-        message = err != "" ? "Export: {err}" : "exported to {export_path} (BizHawk: File > Load State)"
-        log_line(message)
+    def override export_to(path : string; var notes : string&) : string {
+        return export_battle(units, path)
     }
-
+    def override export_hint() : string {
+        return " (BizHawk: File > Load State)"
+    }
     // the field: the shown height (half units rounded down) + 1, 0 no tile
     def make_map() : void {
         if (read_map(map)) {
@@ -568,7 +557,7 @@ class FftGame : GameModule {
         if (scene_tab == 0) {
             self->field_view(x, ty, w, y + h - ty)
         } elif (scene_tab == 1) {
-            self->screen_view(x, ty, w, y + h - ty)
+            screen_view(x, ty, w, y + h - ty, message)
         } else {
             let have_units = length(units) > 0
             explore |> explore_chart_view(x + u(8.0), ty, w - u(16.0), y + h - ty - u(6.0), have_units) $(s; var t) {
@@ -627,21 +616,6 @@ class FftGame : GameModule {
         }
     }
 
-    def screen_view(x, y, w, h : float) : void {
-        if (!gba_frame_update(shell_renderer())) {
-            SetCursorScreenPos(ImVec2(x + u(12.0), y + u(12.0)))
-            bl_label(message, ICON_INFO)
-            return
-        }
-        let fw = gba_frame_width()
-        let fh = gba_frame_height()
-        let k = max(1.0, floor(min((w - u(16.0)) / fw, (h - u(40.0)) / fh)))
-        let dx = x + floor((w - fw * k) * 0.5)
-        let dy = y + u(8.0)
-        gba_frame_draw(dx, dy, fw * k, fh * k)
-        SetCursorScreenPos(ImVec2(dx, dy + fh * k + u(4.0)))
-        bl_label("Screen stored in the state", ICON_SCREEN)
-    }
 
     def override draw_calc(x, y, w, h : float) : void {
         SetCursorScreenPos(ImVec2(x, y))

@@ -102,7 +102,6 @@ def item_text_w(it : ItemW) : string {
 class WotlGame : GameModule {
     units : array<UnitW>
     saved : array<UnitW>              // as read from the state: Revert
-    selected : int = -1
     target : int = -1
     field = FieldState()
     field_map : FieldMap
@@ -126,13 +125,10 @@ class WotlGame : GameModule {
     arith_alg : int = 1               // the Attack tab's Arithmeticks: algorithm, number, magick
     arith_num : int = 3
     arith_spell : int = 0
-    state_path : string
     iso_path : string                 // the ISO (optional): the graphics - sprites, icons, the map's mesh
     disc_serial : uint = 0xFFFFFFFFu // psx_disc_serial() after opening iso_path (another game may open its disc)
     loaded_state : string
-    export_path : string
     from_args : bool
-    message : string = "Load a PPSSPP save state (.ppst) of FFT: The War of the Lions (USA)"
     // the Items / Abilities tabs: the game's tables
     table_filter = ImGuiInputTextBuffer("", 64)
     table_pick : int = -1
@@ -141,6 +137,7 @@ class WotlGame : GameModule {
         EXPLORE_W_GENERATORS, METRICS_W)
 
     def WotlGame {
+        message = "Load a PPSSPP save state (.ppst) of FFT: The War of the Lions (USA)"
         state_path = config_get("wotl_state")
         iso_path = config_get("wotl_iso")
         if (gui_arg("--game", "") == "fftwotl") {
@@ -250,27 +247,19 @@ class WotlGame : GameModule {
         }
         target = -1
         actions_of = -1
-        message = "{length(units)} units in battle"
-        let dot = find(state_path, ".", max(0, length(state_path) - 6))
-        export_path = dot >= 0 ? "{slice(state_path, 0, dot)}.edited{slice(state_path, dot)}" : "{state_path}.edited"
-        log_line("loaded {state_path}: {message}")
+        self->loaded(length(units))
         if (remember) {
             config_set("wotl_state", state_path)
             config_set("wotl_iso", iso_path)
         }
     }
 
-    def export_state() : void {
-        var err = ""
-        if (export_path == "" || export_path == state_path) {
-            err = "choose a path other than the loaded state"
-        } else {
-            err = export_battle_w(units, export_path)
-        }
-        message = err != "" ? "Export: {err}" : "exported to {export_path} (PPSSPP: File > Load State...)"
-        log_line(message)
+    def override export_to(path : string; var notes : string&) : string {
+        return export_battle_w(units, path)
     }
-
+    def override export_hint() : string {
+        return " (PPSSPP: File > Load State...)"
+    }
     // the battle map with its heights (water: depth); a flat field around
     // the units when the state has none
     def make_map() : void {
