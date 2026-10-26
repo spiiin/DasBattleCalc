@@ -116,15 +116,11 @@ def field_view_point(v : FieldView; p : float2) : float2 {
     var h = v.h
     if (v.mirror) {
         q = float2(float(h - 1) - q.y, float(w - 1) - q.x)
-        let t = w
-        w = h
-        h = t
+        swap(w, h)
     }
     for (k in range(v.rot & 3)) {
         q = float2(float(h - 1) - q.y, q.x)
-        let t = w
-        w = h
-        h = t
+        swap(w, h)
     }
     return q
 }
@@ -135,16 +131,12 @@ def field_game_tile(v : FieldView; vx, vy : int) : int2 {
     var w = v.mirror ? v.h : v.w
     var h = v.mirror ? v.w : v.h
     for (k in range(v.rot & 3)) {
-        let t = w
-        w = h
-        h = t
+        swap(w, h)
     }
     var q = int2(vx, vy)
     for (k in range(v.rot & 3)) {
         // q was (h - 1 - y, x) with the sides (h, w) -> back to (w, h)
-        let t = w
-        w = h
-        h = t
+        swap(w, h)
         q = int2(q.y, h - 1 - q.x)
     }
     if (v.mirror) {
@@ -153,16 +145,17 @@ def field_game_tile(v : FieldView; vx, vy : int) : int2 {
     return int2(q.x + v.x0, q.y + v.y0)
 }
 
-// by team (TEAM_*): player, enemy, guest, judge
+// by team (TEAM_*): player, enemy, guest, judge (any other: the judge's)
+let private SIDE_COLORS = fixed_array<uint>(0x3f86ffffu, 0xe8423cffu, 0x3fbf5fffu, 0xe6b422ffu)
+// a name in a list, in the team's color (light: on the grey panels)
+let private TEAM_TEXT_COLORS = fixed_array<uint>(0xd8e6ffffu, 0xffc4c0ffu, 0xc8f0d0ffu, 0xfff0b0ffu)
+
 def side_color(side : int) : uint {
-    return side == TEAM_PLAYER ? 0x3f86ffffu : (side == TEAM_ENEMY ? 0xe8423cffu : (side == TEAM_GUEST ? 0x3fbf5fffu :
-        0xe6b422ffu))
+    return SIDE_COLORS[side >= TEAM_PLAYER && side <= TEAM_GUEST ? side : TEAM_JUDGE]
 }
 
-// a name in a list, in the team's color (light: on the grey panels)
 def team_text_color(side : int) : uint {
-    return side == TEAM_PLAYER ? 0xd8e6ffffu : (side == TEAM_ENEMY ? 0xffc4c0ffu : (side == TEAM_GUEST ? 0xc8f0d0ffu :
-        0xfff0b0ffu))
+    return TEAM_TEXT_COLORS[side >= TEAM_PLAYER && side <= TEAM_GUEST ? side : TEAM_JUDGE]
 }
 
 // the unit on a tile: a living one first
@@ -189,11 +182,8 @@ def field_height(m : FieldMap; x, y : int) : int {
 // a flat map of w x h at height 1 (no heights known)
 def flat_field(w, h : int) : FieldMap {
     var m = FieldMap(w = w, h = h)
-    m.height |> resize(w * h)
+    m.height <- [for (_ in range(w * h)); 1]
     m.water |> resize(w * h)
-    for (i in range(w * h)) {
-        m.height[i] = 1
-    }
     return <- m
 }
 
@@ -214,13 +204,13 @@ struct private IsoView {
 }
 
 // the center of the top face of tile (tx, ty) at height hgt (map coords)
-def private iso_point(v : IsoView; tx, ty : int; hgt : float) : float2 {
-    return float2(v.ox + (float(tx - ty) + v.rows) * v.cell,
-        v.oy + (float(tx + ty) * 0.5 + v.top + 0.5 - (hgt - float(v.base)) * 0.5) * v.cell)
+def private iso_pointf(v : IsoView; p : float3) : float2 {
+    return float2(v.ox + (p.x - p.y + v.rows) * v.cell,
+        v.oy + ((p.x + p.y) * 0.5 + v.top + 0.5 - (p.z - float(v.base)) * 0.5) * v.cell)
 }
 
-def private iso_pointf(v : IsoView; p : float3) : float2 {
-    return float2(v.ox + (p.x - p.y + v.rows) * v.cell, v.oy + ((p.x + p.y) * 0.5 + v.top + 0.5 - (p.z - float(v.base)) * 0.5) * v.cell)
+def private iso_point(v : IsoView; tx, ty : int; hgt : float) : float2 {
+    return iso_pointf(v, float3(float(tx), float(ty), hgt))
 }
 
 // the mesh's polygons back to front: by the diagonal of the center, then

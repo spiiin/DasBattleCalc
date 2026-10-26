@@ -14,6 +14,7 @@ require bl_imgui
 require battle_field
 require gui_common
 require strings
+require daslib/strings_boost
 
 let ROSTER_LOAD = 1
 let ROSTER_EXPORT = 2
@@ -58,27 +59,9 @@ def source_fields(var state_path : string&; var rom_path : string&; var export_p
     let bw = dialogs ? u(26.0) : 0.0
     let fw = w - lw - u(12.0) - bw
     var yy = y
-    SetCursorScreenPos(ImVec2(x + u(6.0), yy))
-    bl_label("State:", -1, lw)
-    SetCursorScreenPos(ImVec2(x + u(6.0) + lw, yy))
-    bl_string("state_path", state_path, fw)
-    if (dialogs) {
-        SetCursorScreenPos(ImVec2(x + u(6.0) + lw + fw, yy))
-        if (bl_tool_button("state_pick", "...", -1, bw)) {
-            gui_file_dialog(DIALOG_STATE, false, "Save states", STATE_EXTS, state_path)
-        }
-    }
+    path_row("State:", "state", state_path, DIALOG_STATE, false, "Save states", STATE_EXTS, x, yy, lw, fw, bw)
     yy += u(23.0)
-    SetCursorScreenPos(ImVec2(x + u(6.0), yy))
-    bl_label("ROM:", -1, lw)
-    SetCursorScreenPos(ImVec2(x + u(6.0) + lw, yy))
-    bl_string("rom_path", rom_path, fw)
-    if (dialogs) {
-        SetCursorScreenPos(ImVec2(x + u(6.0) + lw + fw, yy))
-        if (bl_tool_button("rom_pick", "...", -1, bw)) {
-            gui_file_dialog(DIALOG_ROM, false, "ROMs and discs", ROM_EXTS, rom_path)
-        }
-    }
+    path_row("ROM:", "rom", rom_path, DIALOG_ROM, false, "ROMs and discs", ROM_EXTS, x, yy, lw, fw, bw)
     yy += u(25.0)
     SetCursorScreenPos(ImVec2(x + u(6.0), yy))
     if (bl_tool_button("load", "Load", ICON_LOAD, w - u(12.0))) {
@@ -88,16 +71,7 @@ def source_fields(var state_path : string&; var rom_path : string&; var export_p
         return yy + u(30.0)
     }
     yy += u(30.0)
-    SetCursorScreenPos(ImVec2(x + u(6.0), yy))
-    bl_label("Export:", -1, lw)
-    SetCursorScreenPos(ImVec2(x + u(6.0) + lw, yy))
-    bl_string("export_path", export_path, fw)
-    if (dialogs) {
-        SetCursorScreenPos(ImVec2(x + u(6.0) + lw + fw, yy))
-        if (bl_tool_button("export_pick", "...", -1, bw)) {
-            gui_file_dialog(DIALOG_EXPORT, true, "Save states", STATE_EXTS, export_path)
-        }
-    }
+    path_row("Export:", "export", export_path, DIALOG_EXPORT, true, "Save states", STATE_EXTS, x, yy, lw, fw, bw)
     yy += u(25.0)
     SetCursorScreenPos(ImVec2(x + u(6.0), yy))
     if (bl_tool_button("export", "Export state with edits", ICON_EXPORT, w - u(12.0))) {
@@ -124,10 +98,26 @@ let private ROM_EXTS = "gba;nds;zip;cue;bin;iso"
 def private dropped_kind(path : string) : int {
     let dot = rfind(path, ".")
     let ext = dot >= 0 ? to_lower(slice(path, dot + 1)) : ""
-    if (ext == "state" || ext == "ppst") {
+    if (find_index(split(to_lower(STATE_EXTS), ";"), ext) >= 0) {
         return 1
     }
-    return ext == "gba" || ext == "nds" || ext == "zip" || ext == "cue" || ext == "bin" || ext == "iso" ? 2 : 0
+    return find_index(split(ROM_EXTS, ";"), ext) >= 0 ? 2 : 0
+}
+
+// a label, the path field and its "..." (the system's file dialog; bw 0:
+// there is none)
+def private path_row(caption, id : string; var path : string&; dialog : int; save : bool; title, exts : string;
+                     x, yy, lw, fw, bw : float) {
+    SetCursorScreenPos(ImVec2(x + u(6.0), yy))
+    bl_label(caption, -1, lw)
+    SetCursorScreenPos(ImVec2(x + u(6.0) + lw, yy))
+    bl_string("{id}_path", path, fw)
+    if (bw > 0.0) {
+        SetCursorScreenPos(ImVec2(x + u(6.0) + lw + fw, yy))
+        if (bl_tool_button("{id}_pick", "...", -1, bw)) {
+            gui_file_dialog(dialog, save, title, exts, path)
+        }
+    }
 }
 
 let ROSTER_ROW_H = 20.0

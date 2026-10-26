@@ -230,12 +230,52 @@ def bl_option(id, caption : string; var value : bool&) : bool {
     return clicked
 }
 
+// A field edited in place: ImGui's InputText over a text field's frame,
+// one field at a time (id: the one being edited, "" none).
+struct private InlineEdit {
+    id : string
+    buf : ImGuiInputTextBuffer
+    focus : bool                    // focus the editor once (refocusing selects all)
+    age : int                       // frames since editing started (focus lands a frame later)
+}
+
+def private start_edit(var ed : InlineEdit; id, text : string; size : int) {
+    ed.id = id
+    ed.focus = true
+    ed.buf = ImGuiInputTextBuffer(text, size)
+}
+
+// true when the edit ends (Enter, or the focus left): the text is in ed.buf
+def private inline_edit(var ed : InlineEdit; input_id : string; flags : ImGuiInputTextFlags; p : float2;
+                        w, h : float; sharp : int) : bool {
+    frame(p.x, p.y, w, h, BND_TEXT_RADIUS, sharp, bt.text_field, BL_ACTIVE, false)
+    SetCursorScreenPos(ImVec2(p.x, p.y))
+    PushStyleColor(ImGuiCol.FrameBg, 0u)
+    PushStyleColor(ImGuiCol.FrameBgHovered, 0u)
+    PushStyleColor(ImGuiCol.FrameBgActive, 0u)
+    PushStyleColor(ImGuiCol.Text, abgr(bt.text_field.text_sel))
+    PushStyleColor(ImGuiCol.TextSelectedBg, abgr(bt.text_field.item))
+    PushStyleVar(ImGuiStyleVar.FramePadding, ImVec2(u(BND_PAD_LEFT), floor((h - GetFontSize()) * 0.5 - u(1.0))))
+    SetNextItemWidth(w)
+    if (ed.focus) {
+        SetKeyboardFocusHere(0)
+        ed.focus = false
+        ed.age = 0
+    }
+    ed.age++
+    let done = InputText(input_id, ed.buf, flags)
+    PopStyleVar(1)
+    PopStyleColor(5)
+    if (done || (ed.age > 2 && !IsItemActive())) {
+        ed.id = ""
+        return true
+    }
+    return false
+}
+
 // bndNumberField: drag to change, click the end arrows to step,
 // double-click to type (ImGui InputText edits, framed as a text field).
-var bl_editing = ""
-var bl_edit_buf : ImGuiInputTextBuffer
-var bl_edit_focus = false   // focus the editor once (refocusing selects all)
-var bl_edit_age = 0         // frames since editing started (focus lands a frame later)
+var private number_edit = InlineEdit()
 
 def fmt_number(v : float; precision : int) : string {
     return precision <= 0 ? "{int(v)}" : (precision == 1 ? "{v:.1f}" : "{v:.2f}")
@@ -246,38 +286,17 @@ def private arrow(x, y, sz : float; color : uint) {
     *GetWindowDrawList() |> AddTriangleFilled(ImVec2(x, y), ImVec2(x - sz, y + abs(sz)), ImVec2(x - sz, y - abs(sz)), abgr(color))
 }
 
-def private edit_in_place(id : string; var value : float&; p : float2; w, h : float; sharp : int) : bool {
-    frame(p.x, p.y, w, h, BND_TEXT_RADIUS, sharp, bt.text_field, BL_ACTIVE, false)
-    SetCursorScreenPos(ImVec2(p.x, p.y))
-    PushStyleColor(ImGuiCol.FrameBg, 0u)
-    PushStyleColor(ImGuiCol.FrameBgHovered, 0u)
-    PushStyleColor(ImGuiCol.FrameBgActive, 0u)
-    PushStyleColor(ImGuiCol.Text, abgr(bt.text_field.text_sel))
-    PushStyleColor(ImGuiCol.TextSelectedBg, abgr(bt.text_field.item))
-    PushStyleVar(ImGuiStyleVar.FramePadding, ImVec2(u(BND_PAD_LEFT), floor((h - GetFontSize()) * 0.5 - u(1.0))))
-    SetNextItemWidth(w)
-    if (bl_edit_focus) {
-        SetKeyboardFocusHere(0)
-        bl_edit_focus = false
-        bl_edit_age = 0
-    }
-    bl_edit_age++
-    let done = InputText("##{id}_edit", bl_edit_buf, ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.CharsDecimal)
-    PopStyleVar(1)
-    PopStyleColor(5)
-    if (done || (bl_edit_age > 2 && !IsItemActive())) {
-        value = to_float(to_string(bl_edit_buf))
-        bl_editing = ""
-        return true
-    }
-    return false
-}
 
 def bl_number(id, caption : string; var value : float&; step : float; precision : int; w : float; sharp : int = 0) : bool {
     let p = GetCursorScreenPos()
     let h = u(21.0)
-    if (bl_editing == id) {
-        return edit_in_place(id, value, float2(p.x, p.y), w, h, sharp)
+    if (number_edit.id == id) {
+        let flags = ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.CharsDecimal
+        if (inline_edit(number_edit, "##{id}_edit", flags, float2(p.x, p.y), w, h, sharp)) {
+            value = to_float(to_string(number_edit.buf))
+            return true
+        }
+        return false
     }
     InvisibleButton(id, ImVec2(w, h))
     var changed = false
@@ -297,9 +316,7 @@ def bl_number(id, caption : string; var value : float&; step : float; precision 
         changed = true
     }
     if (IsItemHovered() && IsMouseDoubleClicked(ImGuiMouseButton.Left)) {
-        bl_editing = id
-        bl_edit_focus = true
-        bl_edit_buf = ImGuiInputTextBuffer(fmt_number(value, precision), 32)
+        number_edit |> start_edit(id, fmt_number(value, precision), 32)
     }
     let st = dragging ? BL_ACTIVE : (IsItemHovered() ? BL_HOVER : BL_DEFAULT)
     frame(p.x, p.y, w, h, BND_NUMBER_RADIUS, sharp, bt.number, st, false)
@@ -458,44 +475,20 @@ def bl_code_area(id : string; var buf : ImGuiInputTextBuffer; w, h : float; erro
 
 // bndTextField over a string value: drawn as a label, a click edits it in
 // place with one shared buffer (only one field is edited at a time).
-var private str_editing = ""
-var private str_buf : ImGuiInputTextBuffer
-var private str_focus = false
-var private str_age = 0
+var private string_edit = InlineEdit()
 
 def bl_string(id : string; var value : string&; w : float; sharp : int = 0) : bool {
     let p = GetCursorScreenPos()
     let h = u(21.0)
-    if (str_editing == id) {
-        frame(p.x, p.y, w, h, BND_TEXT_RADIUS, sharp, bt.text_field, BL_ACTIVE, false)
-        PushStyleColor(ImGuiCol.FrameBg, 0u)
-        PushStyleColor(ImGuiCol.FrameBgHovered, 0u)
-        PushStyleColor(ImGuiCol.FrameBgActive, 0u)
-        PushStyleColor(ImGuiCol.Text, abgr(bt.text_field.text_sel))
-        PushStyleColor(ImGuiCol.TextSelectedBg, abgr(bt.text_field.item))
-        PushStyleVar(ImGuiStyleVar.FramePadding, ImVec2(u(BND_PAD_LEFT), floor((h - GetFontSize()) * 0.5 - u(1.0))))
-        SetNextItemWidth(w)
-        if (str_focus) {
-            SetKeyboardFocusHere(0)
-            str_focus = false
-            str_age = 0
-        }
-        str_age++
-        let done = InputText("##{id}_str", str_buf, ImGuiInputTextFlags.EnterReturnsTrue)
-        PopStyleVar(1)
-        PopStyleColor(5)
-        if (done || (str_age > 2 && !IsItemActive())) {
-            value = to_string(str_buf)
-            str_editing = ""
+    if (string_edit.id == id) {
+        if (inline_edit(string_edit, "##{id}_str", ImGuiInputTextFlags.EnterReturnsTrue, float2(p.x, p.y), w, h, sharp)) {
+            value = to_string(string_edit.buf)
             return true
         }
         return false
     }
-    let clicked = InvisibleButton(id, ImVec2(w, h))
-    if (clicked) {
-        str_editing = id
-        str_focus = true
-        str_buf = ImGuiInputTextBuffer(value, 256)
+    if (InvisibleButton(id, ImVec2(w, h))) {
+        string_edit |> start_edit(id, value, 256)
     }
     let st = IsItemHovered() ? BL_HOVER : BL_DEFAULT
     frame(p.x, p.y, w, h, BND_TEXT_RADIUS, sharp, bt.text_field, st, false)
