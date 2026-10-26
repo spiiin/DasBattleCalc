@@ -64,7 +64,7 @@ struct UnitW {
     @caption = "CT" @min = 0 @max = 255 ct : int
     @caption = "Assumed turn" assumed : TurnEndW
     @caption = "Zodiac" @readonly zodiac : string
-    @caption = "Team byte" @readonly team_byte : int    // +0x05: 0x10 red (enemy), 0x08 controlled by the player
+    @caption = "Team byte" @readonly team_byte : int    // +0x05: 0x10 red (enemy), 0x08 controlled by the player, 0x04 immortal
     @caption = "Position" @readonly position : string
     @hide team : int                // TEAM_*
     @hide gender : int              // +0x06: 0x80 male, 0x40 female, 0x20 monster

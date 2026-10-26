@@ -802,7 +802,15 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
         let xz = zodiac_apply(x, f.zodiac)
         var h = (ma + xz) * fa / 10000
         f.hit_mods |> push("(MA {ma} + {xz}) x Faith {faith_of(att)} x {faith_of(tgt)} / 10000 = {h}")
-        if (fo == 0x0E && is_undead_w(tgt)) {
+        // an immortal unit (team byte bit 0x04: the enemies of the first
+        // battle) can not be KO'd nor turned into a Toad: 0% (checked:
+        // Lezalas; with the bit cleared Death 38%, Toad 45%)
+        let inf = read_inflict_w(ab.inflict)
+        let kills = fo == 0x0E || status_bit(inf.statuses, ST_DEAD) || status_bit(inf.statuses, ST_FROG)
+        if (kills && (tgt.team_byte & 0x04) != 0 && !(fo == 0x0E && is_undead_w(tgt))) {
+            h = 0
+            f.hit_mods |> push("the target is immortal (team byte 0x04)")
+        } elif (fo == 0x0E && is_undead_w(tgt)) {
             // Death heals the undead in full, a healing: no magic evade
             // (checked: 40% = the chance, 134 HP)
             h = min(h, 100)
@@ -827,10 +835,9 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
             f.note = "drains {y}% of max MP"
         } elif (fo == 0x0E) {
             // KO: the forecast shows the max HP as the damage (checked on
-            // Rosa, Gariland: 42); the undead are healed in full. Death and
-            // Toad show 0% on Lezalas (the first battle) - his own, not known
+            // Rosa, Gariland: 42; none on an immortal); the undead are healed
             f.healing = is_undead_w(tgt)
-            f.damage = f.healing ? -tgt.max_hp : tgt.max_hp
+            f.damage = f.healing ? -tgt.max_hp : ((tgt.team_byte & 0x04) != 0 ? 0 : tgt.max_hp)
             f.note = f.healing ? "heals the undead in full" : "KO"
         } else {
             f.note = inflict_text(ab.inflict)
