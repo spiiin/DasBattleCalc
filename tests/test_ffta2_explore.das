@@ -14,26 +14,8 @@ require ../scripts/core/explore.das
 require ../scripts/games/ffta2/ffta2_battle.das
 require ../scripts/games/ffta2/ffta2_attack.das
 require ../scripts/games/ffta2/ffta2_explore.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find_unit(units : array<Unit2>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return 0
-}
 
 def run(sc : Scene2; src : string; var t : ETable) : string {
     var s = Script()
@@ -54,8 +36,8 @@ def main() : int {
         print("{err0}\n")
         return 1
     }
-    let luso = units[find_unit(units, "Luso")]
-    let sasarr = units[find_unit(units, "Sasarr")]
+    let luso = units[find_named(units, "Luso")]
+    let sasarr = units[find_named(units, "Sasarr")]
     let sc = Scene2(att = luso, tgt = sasarr)
     // Attack by the attacker's Attack: every row = action2 after the edit
     var t : ETable
@@ -143,6 +125,5 @@ def main() : int {
         let e = run(sc, c._0, t)
         check("{c._0}-> {e}", find(e, c._1) >= 0)
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

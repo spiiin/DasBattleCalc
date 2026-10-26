@@ -10,26 +10,8 @@ require gui_common
 require daslib/strings_boost
 require daslib/fio
 require ../scripts/games/ffta2/ffta2_battle.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find_unit(units : array<Unit2>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
 
 def find_item(name : string) : int {
     for (i in range(1, item_count())) {
@@ -51,7 +33,7 @@ def find_ability(name : string) : int {
 
 // Attack, Defense, Magick, Resistance, Speed, Evasion, Move, Jump
 def check_stats(units : array<Unit2>; name : string; want : int[8]) {
-    let i = find_unit(units, name)
+    let i = find_named(units, name)
     check("{name} is in the battle", i >= 0)
     if (i < 0) {
         return
@@ -72,7 +54,7 @@ def main() : int {
     check("7 units (got {length(units)})", length(units) == 7)
     let names = join([for (un in units); un.name], ", ")
     check("names: {names}", names == "Klesta, Sasarr, Kaveisl, Cid, Belissana, Moricad, Luso")
-    let luso = find_unit(units, "Luso")
+    let luso = find_named(units, "Luso")
     if (luso >= 0) {
         let un = units[luso]
         check("Luso: Hume Soldier ({un.race} {un.job})", un.race == "Hume" && un.job == "Soldier")
@@ -81,10 +63,10 @@ def main() : int {
         check("Luso: player", un.team == TEAM_PLAYER)
         check("Luso's weapon Shortsword ({un.equip[0].name})", un.equip[0].name == "Shortsword")
     }
-    let cid = find_unit(units, "Cid")
+    let cid = find_named(units, "Cid")
     check("Cid: guest Bangaa Warrior", cid >= 0 && units[cid].team == TEAM_GUEST && units[cid].race == "Bangaa" &&
         units[cid].job == "Warrior")
-    let klesta = find_unit(units, "Klesta")
+    let klesta = find_named(units, "Klesta")
     check("Klesta: enemy Crushatrice", klesta >= 0 && units[klesta].team == TEAM_ENEMY &&
         units[klesta].job == "Crushatrice")
     check_stats(units, "Luso", fixed_array<int>(44, 51, 15, 27, 57, 5, 4, 2))
@@ -134,6 +116,5 @@ def main() : int {
     for (un in units) {
         print("{un.name} ({un.race} {un.job}) Lv{un.level} HP {un.hp}/{un.max_hp} MP {un.mp}/{un.max_mp} {un.position} CT {un.ct} team {fmt(":02X", un.team_byte)} stats {un.stat_total}\n")
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

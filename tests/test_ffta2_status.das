@@ -16,18 +16,7 @@ require daslib/strings_boost
 require daslib/fio
 require ../scripts/games/ffta2/ffta2_battle.das
 require ../scripts/games/ffta2/ffta2_forecast.das
-
-var failed = 0
-var total = 0
-
-def find_unit(units : array<Unit2>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
+require ./test_check.das
 
 def add_status(var u : Unit2; n : int) {
     u.status[n >> 3] = uint8(uint(u.status[n >> 3]) | (1u << uint(n & 7)))
@@ -43,8 +32,8 @@ def main() : int {
         print("FAIL {err}\n")
         return 1
     }
-    let luso = find_unit(units, "Luso")
-    let sasarr = find_unit(units, "Sasarr")
+    let luso = find_named(units, "Luso")
+    let sasarr = find_named(units, "Sasarr")
     for (line in split(fread("research/ffta2/status4.txt"), "\n")) {
         let parts <- split(line, " | ")
         if (length(parts) != 2) {
@@ -86,6 +75,5 @@ def main() : int {
         }
         print("{ok ? "ok  " : "FAIL"} {parts[0]} ({ab.name}): game {game_hit}, vm {hit} {why}\n")
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

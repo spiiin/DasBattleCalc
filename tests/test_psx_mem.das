@@ -8,17 +8,8 @@ options indenting = 4
 //   battlecalc tests/test_psx_mem.das --state <fft_test_battle1.State> [--out <new.State>]
 require gba_mem
 require gui_common
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 let RAMZA = 0x801908CCu                 // the first battle record
 
@@ -41,6 +32,5 @@ def main() : int {
         check("the export loads", gba_load_state(out) == "")
         check("HP 77 in it", gba_read16(RAMZA + 0x28u) == 77u && gba_read16(RAMZA + 0x2Au) == 113u)
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

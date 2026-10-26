@@ -8,26 +8,8 @@ require gba_mem
 require gui_common
 require ../scripts/games/fftwotl/fftwotl_data.das
 require ../scripts/games/fftwotl/fftwotl_battle.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find_unit(units : array<UnitW>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
 
 [export]
 def main() : int {
@@ -49,7 +31,7 @@ def main() : int {
         }
     }
     check("11 units on the field (got {length(units)})", length(units) == 11)
-    let r = find_unit(units, "AAAAA")
+    let r = find_named(units, "AAAAA")
     check("Ramza: first record", r == 0)
     if (r >= 0) {
         let u = units[r]
@@ -58,7 +40,7 @@ def main() : int {
         check("Ramza at 6, 3; Capricorn; player", u.x == 6 && u.y == 3 && u.zodiac == "Capricorn" && u.team == TEAM_PLAYER)
         check("Ramza's job Squire (got {u.job})", u.job == "Squire")
     }
-    let a = find_unit(units, "Agrias")
+    let a = find_named(units, "Agrias")
     check("Agrias: Holy Knight, HP 204, guest", a >= 0 && units[a].job == "Holy Knight" && units[a].max_hp == 204 &&
         units[a].team == TEAM_GUEST)
     check("tables: Dagger WP 3, Broadsword WP 4", read_item_w(1).wp == 3 && read_item_w(19).wp == 4)
@@ -76,6 +58,5 @@ def main() : int {
     check("heights (5,3) 11, (5,2) 11, (5,1) 9, (6,3) 11, (7,3) 10", map_height_w(m, 5, 3) == 11 &&
         map_height_w(m, 5, 2) == 11 && map_height_w(m, 5, 1) == 9 && map_height_w(m, 6, 3) == 11 &&
         map_height_w(m, 7, 3) == 10)
-    print("test_fftwotl_battle: {total - failed} / {total} passed\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

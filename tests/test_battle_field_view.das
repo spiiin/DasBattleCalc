@@ -9,17 +9,8 @@ options indenting = 4
 //   battlecalc tests/test_battle_field_view.das
 require math
 require ../scripts/ui/battle_field.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 [export]
 def main() : int {
@@ -63,6 +54,5 @@ def main() : int {
     let mm = FieldMap(w = w, h = h, mirror = true)
     st.view_rot = 0
     check("mirror: facing +y -> -x, -x -> +y", field_view_facing(mm, st, 0) == 1 && field_view_facing(mm, st, 1) == 0)
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

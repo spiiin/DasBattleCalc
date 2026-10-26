@@ -9,17 +9,8 @@ require gui_common
 require ../scripts/games/fftwotl/fftwotl_data.das
 require ../scripts/games/fftwotl/fftwotl_battle.das
 require ../scripts/games/fftwotl/fftwotl_attack.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 def unit_named(units : array<UnitW>; name : string) : UnitW {
     for (u in units) {
@@ -85,6 +76,5 @@ def main() : int {
         re.name == "Counter" && re.triggers && re.chance == 100 && re.counter && re.counter_fight.damage == 48)
     let spell = action_w(rc, lc, 16, side_of_w(rc, lc))
     check("Counter does not answer Fire", !reaction_w(rc, lc, spell).triggers)
-    print("test_fftwotl_attack: {total - failed} / {total} passed\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

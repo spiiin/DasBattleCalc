@@ -15,26 +15,8 @@ require ../scripts/games/ffta/ffta_battle.das
 require ../scripts/games/ffta/ffta_attack.das
 require ../scripts/games/ffta/ffta_explore.das
 require ./test_common.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find(units : array<BattleUnit>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return 0
-}
 
 def run(m : BattleMap; sc : Scene; src : string; var t : ETable) : string {
     var s = Script()
@@ -54,8 +36,8 @@ def main() : int {
         print("{err0}\n")
         return 1
     }
-    let marc = units[find(units, "Marc")]
-    let mont = units[find(units, "Montblanc")]
+    let marc = units[find_named(units, "Marc")]
+    let mont = units[find_named(units, "Montblanc")]
     let sc = Scene(att = marc, tgt = mont, ability = 0, side = 0)
     // W.Atk axis: every row = fight() with that base W.Atk
     var t : ETable
@@ -107,6 +89,5 @@ def main() : int {
         let e = run(battle, sc, c._0, t)
         check("{c._0}-> {e}", find(e, c._1) >= 0)
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

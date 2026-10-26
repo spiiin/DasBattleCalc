@@ -17,26 +17,8 @@ require ../scripts/games/fftwotl/fftwotl_attack.das
 require strings
 require daslib/strings_boost
 require fftwotl_edits
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find_unit(units : array<UnitW>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
 
 [export]
 def main() : int {
@@ -54,7 +36,7 @@ def main() : int {
     }
     check("5 of the party, 5 enemies, 1 guest (got {party} / {enemies} / {guests})", party == 5 && enemies == 5 &&
         guests == 1)
-    let g = find_unit(units, "Ganelon")
+    let g = find_named(units, "Ganelon")
     check("Ganelon is here", g >= 0)
     if (g >= 0) {
         let u = units[g]
@@ -62,10 +44,10 @@ def main() : int {
             u.slot == 16 && u.job == "Chemist" && u.level == 1 && u.max_hp == 37 && u.max_mp == 11 && u.x == 7 &&
             u.y == 12 && u.zodiac == "Leo" && u.active)
     }
-    let r = find_unit(units, "AAAAA")
+    let r = find_named(units, "AAAAA")
     check("Ramza (AAAAA): record 20, Squire, on the field though +0x2E is 0", r >= 0 && units[r].slot == 20 &&
         units[r].job == "Squire" && !units[r].on_field)
-    let d = find_unit(units, "Delita")
+    let d = find_named(units, "Delita")
     check("Delita: the guest, record 0", d >= 0 && units[d].team == TEAM_GUEST && units[d].slot == 0)
     var m : MapW
     check("map reads", read_map_w(m))
@@ -73,8 +55,8 @@ def main() : int {
     let turns <- predict_turns_w(units, 4)
     check("Ganelon acts first", length(turns) > 0 && units[turns[0].unit].name == "Ganelon")
     // the forecasts: "<ability, 0 Attack> | case | edits | dmg heal mpdmg hit"
-    let r16 = find_unit(units, "Ganelon")
-    let r17 = find_unit(units, "Rosa")
+    let r16 = find_named(units, "Ganelon")
+    let r17 = find_named(units, "Rosa")
     let text = read_text("forecast10.txt")
     check("forecast10.txt read", text != "" && r16 >= 0 && r17 >= 0)
     var cases = 0
@@ -100,6 +82,5 @@ def main() : int {
             game == model)
     }
     check("{cases} forecasts", cases >= 20)
-    print("test_fftwotl_battle2: {total - failed} / {total} passed\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

@@ -17,26 +17,8 @@ require daslib/strings_boost
 require ../scripts/core/explore.das
 require ../scripts/games/fft/fft_battle.das
 require ../scripts/games/fft/fft_explore.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find_unit(units : array<FftUnit>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
 
 // the experiment's table; "" or the error
 def run(sc : SceneF; m : FftMap; src : string; var t : ETable) : string {
@@ -61,8 +43,8 @@ def main() : int {
     check("battle read", read_battle(units) == "")
     var m : FftMap
     read_map(m)
-    let ri = find_unit(units, "Ramza")
-    let li = find_unit(units, "Lezales")
+    let ri = find_named(units, "Ramza")
+    let li = find_named(units, "Lezales")
     if (ri < 0 || li < 0) {
         return 1
     }
@@ -113,6 +95,5 @@ def main() : int {
 ", t)
     check("Fire, MA 4 and 8: {err} {column(t, "damage")} {column(t, "hit")}, the game: 17 95% (MA 4)",
         err == "" && column(t, "damage") == "17 35" && column(t, "hit") == "95 95")
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

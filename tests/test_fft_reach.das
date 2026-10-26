@@ -15,19 +15,10 @@ require daslib/strings_boost
 require ../scripts/games/fft/fft_battle.das
 require ../scripts/games/fft/fft_attack.das
 require ../scripts/games/fft/fft_reach.das
+require ./test_check.das
 
 let TERRAIN = 0x8018F8CCu
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 def tiles_text(m : FftMap; set : array<bool>; other : array<bool>) : string {
     var res = ""
@@ -79,6 +70,5 @@ def main() : int {
         check("{name} ({n} tiles): only the model{tiles_text(m, model, game)}; only the game{tiles_text(m, game, model)}",
             same)
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

@@ -13,6 +13,7 @@ require gba_mem
 require ../scripts/games/ffta/ffta_battle.das
 require ./test_common.das
 require ../scripts/games/ffta/ffta_attack.das
+require ./test_check.das
 
 def find(units : array<BattleUnit>; name : string) : BattleUnit {
     for (u in units) {
@@ -37,8 +38,6 @@ def main() : int {
     var euver = find(units, "Euver")
     euver.x = 7
     euver.y = 5
-    var failed = 0
-    var total = 0
     let check = $(name : string; att, tgt : BattleUnit; ability, value, hit : int) {
         let r = act(battle, att, tgt, ability, SideChoice.Auto)
         let ok = r.damage == value && r.hit == hit
@@ -69,6 +68,5 @@ def main() : int {
     var strong = marc
     strong.stat_base[int(Stat.MPow)] = 200
     check("First Aid, M.Pow 200", strong, mont, 76, 38, 100)
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

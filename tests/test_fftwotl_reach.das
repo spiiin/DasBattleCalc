@@ -20,17 +20,8 @@ require ../scripts/games/fftwotl/fftwotl_data.das
 require ../scripts/games/fftwotl/fftwotl_battle.das
 require ../scripts/games/fftwotl/fftwotl_attack.das
 require fftwotl_edits
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 def tiles_of(s : string) : array<int2> {
     var res : array<int2>
@@ -126,6 +117,5 @@ def main() : int {
         check("{name}: the model reaches but the game does not light: {join(extra, "; ")}", length(extra) == 0)
     }
     check("{cases} reach cases", cases >= 9 || (file != "reach1.txt" && cases >= 4))
-    print("test_fftwotl_reach: {total - failed} / {total} passed\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

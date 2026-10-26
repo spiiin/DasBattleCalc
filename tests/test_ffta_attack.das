@@ -12,15 +12,7 @@ require gba_mem
 require ../scripts/games/ffta/ffta_battle.das
 require ./test_common.das
 require ../scripts/games/ffta/ffta_attack.das
-
-def find(units : array<BattleUnit>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
+require ./test_check.das
 
 [export]
 def main() : int {
@@ -31,10 +23,8 @@ def main() : int {
         print("{err}\n")
         return 1
     }
-    let marc = units[find(units, "Marc")]
-    let mont = units[find(units, "Montblanc")]
-    var failed = 0
-    var total = 0
+    let marc = units[find_named(units, "Marc")]
+    let mont = units[find_named(units, "Montblanc")]
     // one case: attacker and target after the change, damage / hit of the game
     let check = $(name : string; att, tgt : BattleUnit; dmg, hit : int) {
         let r = fight(battle, att, tgt, SideChoice.Auto)
@@ -74,7 +64,7 @@ def main() : int {
     }
     // other attackers on Marc's tile (the whole record copied in the game)
     for (o in [("Euver", 15), ("Lunais", 10), ("Judge", 1), ("Montblanc", 6)]) {
-        var oa = units[find(units, o._0)]
+        var oa = units[find_named(units, o._0)]
         oa.x = marc.x
         oa.y = marc.y
         check("attacker {o._0}", oa, mont, o._1, 65)
@@ -93,6 +83,5 @@ def main() : int {
     if (r.hit_roll != 75 || r.crit != 5) {
         failed++
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

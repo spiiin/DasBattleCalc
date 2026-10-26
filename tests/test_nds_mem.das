@@ -6,17 +6,8 @@ options indenting = 4
 //   battlecalc tests/test_nds_mem.das --state <ffta2_test_battle1.State> --rom <FFTA2 (USA)>.zip
 require gba_mem
 require gui_common
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 [export]
 def main() : int {
@@ -39,6 +30,5 @@ def main() : int {
     check("Shortsword Attack 22", nds_buf_read8(items, 25 * 40 + 19) == 22u)
     let names = nds_pak_file("system/rom/JD_message_rom_0.idx", "system/rom/JD_message_0.pak", 0)
     check("name table: 779 strings (got {nds_buf_read16(names, 0)})", nds_buf_read16(names, 0) == 779u)
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

@@ -16,17 +16,8 @@ require ../scripts/games/fftwotl/fftwotl_data.das
 require ../scripts/games/fftwotl/fftwotl_battle.das
 require ../scripts/games/fftwotl/fftwotl_attack.das
 require fftwotl_edits
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 [export]
 def main() : int {
@@ -87,6 +78,5 @@ def main() : int {
         }
     }
     check("{cases} cases", cases >= (file == "arith1.txt" ? 16 : 8))
-    print("test_fftwotl_arith: {total - failed} / {total} passed\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

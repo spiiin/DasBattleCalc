@@ -11,15 +11,7 @@ require gba_mem
 require ../scripts/games/ffta/ffta_battle.das
 require ./test_common.das
 require ../scripts/core/result_try.das
-
-def find(units : array<BattleUnit>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return 0
-}
+require ./test_check.das
 
 // write the edited units to out, then load that file and read it back
 def export_and_reload(battle : BattleMap; units, orig : array<BattleUnit>; out : string; var notes : string&;
@@ -41,8 +33,8 @@ def main() : int {
         return 1
     }
     var units := orig
-    let mi = find(units, "Marc")
-    let ni = find(units, "Montblanc")
+    let mi = find_named(units, "Marc")
+    let ni = find_named(units, "Montblanc")
     units[mi].hp = 7
     units[mi].mp = 3
     units[mi].stat_base[int(Stat.WAtk)] = 150

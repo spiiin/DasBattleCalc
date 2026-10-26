@@ -14,17 +14,8 @@ require math
 require daslib/strings_boost
 require ../scripts/games/fft/fft_battle.das
 require ../scripts/games/fft/fft_turns.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 [export]
 def main() : int {
@@ -86,6 +77,5 @@ def main() : int {
             }
         }
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

@@ -9,17 +9,8 @@ options stack = 1000000     // the dasPEG parser of the Explore language recurse
 require strings
 require daslib/strings_boost
 require ../scripts/core/explore.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 def calc(src : string; t : ETable; row : array<Value>) : string {
     var e = Expr()
@@ -128,6 +119,5 @@ def main() : int {
         let kinds = join([for (sp in spans); "{sp.kind}"], " ")
         check("highlight '{c._0}': {kinds}", kinds == c._1)
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

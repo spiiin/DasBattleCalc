@@ -14,6 +14,7 @@ require gba_mem
 require ../scripts/games/ffta/ffta_battle.das
 require ./test_common.das
 require ../scripts/games/ffta/ffta_attack.das
+require ./test_check.das
 
 def find(units : array<BattleUnit>; name : string) : BattleUnit {
     for (u in units) {
@@ -43,8 +44,6 @@ def main() : int {
     mage.x = marc.x
     mage.y = marc.y
     mage.facing = marc.facing
-    var failed = 0
-    var total = 0
     let check = $(name : string; att, tgt : BattleUnit; ability, value, hit : int; kind : TechKind) {
         let r = act(battle, att, tgt, ability, SideChoice.Auto)
         let ok = r.damage == value && r.hit == hit && r.tech == kind
@@ -66,6 +65,5 @@ def main() : int {
     if (!area_ok) {
         failed++
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

@@ -9,26 +9,8 @@ require gba_mem
 require gui_common
 require daslib/strings_boost
 require ../scripts/games/fft/fft_battle.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find_unit(units : array<FftUnit>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
 
 [export]
 def main() : int {
@@ -38,7 +20,7 @@ def main() : int {
     check("battle read ({err})", err == "")
     let names = join([for (un in units); un.name], ", ")
     check("names: {names}", names == "Ramza, Agrias, Gafgarion, Alicia, Lavian, Lezales, Wezaleff, Viggs, Dish, Fukes, Rad")
-    let r = find_unit(units, "Ramza")
+    let r = find_named(units, "Ramza")
     if (r >= 0) {
         let un = units[r]
         check("Ramza: Squire Lv 9 Exp 8", un.job == "Squire" && un.level == 9 && un.exp == 8)
@@ -47,7 +29,7 @@ def main() : int {
         check("at 6, 3", un.x == 6 && un.y == 3)
         check("a player unit", un.team == TEAM_PLAYER)
     }
-    let lez = find_unit(units, "Lezales")
+    let lez = find_named(units, "Lezales")
     check("Lezales: enemy Knight, HP 135, MP 17, CT 80", lez >= 0 && units[lez].team == TEAM_ENEMY &&
         units[lez].job == "Knight" && units[lez].hp == 135 && units[lez].mp == 17 && units[lez].ct == 80)
     var m : FftMap
@@ -94,6 +76,5 @@ def main() : int {
         }
         check("{un.name}: the raw stats x the job give the record's", same)
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

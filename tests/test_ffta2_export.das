@@ -12,26 +12,8 @@ require math
 require daslib/strings_boost
 require ../scripts/games/ffta2/ffta2_battle.das
 require ../scripts/games/ffta2/ffta2_attack.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find_unit(units : array<Unit2>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
 
 // what the export writes, as text
 def key(u : Unit2) : string {
@@ -47,8 +29,8 @@ def main() : int {
     check("state loads", gba_load_state(gui_arg("--state", "")) == "")
     var units : array<Unit2>
     check("battle read", read_battle2(units) == "")
-    let luso = find_unit(units, "Luso")
-    let cid = find_unit(units, "Cid")
+    let luso = find_named(units, "Luso")
+    let cid = find_named(units, "Cid")
     if (luso < 0 || cid < 0 || out == "") {
         print("FAIL {failed + 1} of {total + 1}\n")
         return 1
@@ -81,7 +63,7 @@ def main() : int {
     // exported state (vary_probe.lua with PROBE_STATE = --out; the target
     // cursor state, Luso moved to 9, 8)
     let want = gui_arg_int("--forecast", -1)
-    let sasarr = find_unit(back, "Sasarr")
+    let sasarr = find_named(back, "Sasarr")
     if (want >= 0 && sasarr >= 0) {
         var att = back[luso]
         att.x = 9
@@ -89,6 +71,5 @@ def main() : int {
         let f = action2(att, back[sasarr], read_ability2(ATTACK_ABILITY), side_of2(att, back[sasarr]))
         check("forecast {f.damage} = the game's {want}", f.damage == want)
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

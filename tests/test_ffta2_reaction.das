@@ -14,26 +14,8 @@ require daslib/strings_boost
 require daslib/fio
 require ../scripts/games/ffta2/ffta2_battle.das
 require ../scripts/games/ffta2/ffta2_attack.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find_unit(units : array<Unit2>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
 
 [export]
 def main() : int {
@@ -43,7 +25,7 @@ def main() : int {
     check("battle read", read_battle2(units) == "")
     var m : Map2
     check("map read", read_map2(m))
-    var att = units[find_unit(units, "Luso")]
+    var att = units[find_named(units, "Luso")]
     att.x = 9
     att.y = 8
     let atk = read_ability2(ATTACK_ABILITY)
@@ -52,7 +34,7 @@ def main() : int {
         if (length(p) != 3 || starts_with(line, "#")) {
             continue
         }
-        var tgt = units[find_unit(units, "Sasarr")]
+        var tgt = units[find_named(units, "Sasarr")]
         tgt.reaction = to_int(p[0])
         let sasarr = to_int(p[1])
         let luso = to_int(p[2])
@@ -69,7 +51,7 @@ def main() : int {
         }
     }
     // no counter from out of reach: Sasarr two tiles away
-    var far = units[find_unit(units, "Sasarr")]
+    var far = units[find_named(units, "Sasarr")]
     far.reaction = 829
     far.x = 11
     let r <- reaction2(att, far, atk, m)
@@ -78,12 +60,11 @@ def main() : int {
     // the code Counter answers it next to the caster (not seen in the
     // game: Luso has no Fire); Evade Magick evades it
     let fire = read_ability2(63)
-    var t2 = units[find_unit(units, "Sasarr")]
+    var t2 = units[find_named(units, "Sasarr")]
     t2.reaction = 829
     check("Counter answers Fire next to the caster", reaction2(att, t2, fire, m).counter)
     t2.reaction = 839
     let em <- reaction2(att, t2, fire, m)
     check("Evade Magick evades Fire", em.triggers && em.evades)
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

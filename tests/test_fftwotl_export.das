@@ -8,17 +8,8 @@ require gba_mem
 require gui_common
 require ../scripts/games/fftwotl/fftwotl_data.das
 require ../scripts/games/fftwotl/fftwotl_battle.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 [export]
 def main() : int {
@@ -50,6 +41,5 @@ def main() : int {
         check("Hi-Potion learned", learned_bit(r, 1, 1))
         check("others unchanged", back[1].name == "Agrias" && back[1].hp == units[1].hp)
     }
-    print("test_fftwotl_export: {total - failed} / {total} passed\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

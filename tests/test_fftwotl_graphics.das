@@ -16,17 +16,8 @@ require daslib/strings_boost
 require ../scripts/games/fftwotl/fftwotl_battle.das
 require ../scripts/games/fftwotl/fftwotl_map.das
 require ../scripts/ui/battle_field.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 [export]
 def main() : int {
@@ -72,6 +63,5 @@ def main() : int {
         check("{w._0} in battle", seen)
     }
     check("stand frames", stand_frame_w(96, false) == 11 && stand_frame_w(96, true) == 16)
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

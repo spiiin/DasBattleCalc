@@ -13,15 +13,7 @@ require strings
 require daslib/strings_boost
 require ../scripts/games/ffta2/ffta2_battle.das
 require ../scripts/games/ffta2/ffta2_forecast.das
-
-def find_unit(units : array<Unit2>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
+require ./test_check.das
 
 [export]
 def main() : int {
@@ -34,12 +26,10 @@ def main() : int {
         return 1
     }
     let verbose = gui_arg_int("--verbose", 0) != 0
-    var att = units[find_unit(units, "Luso")]
-    let tgt = units[find_unit(units, "Sasarr")]
+    var att = units[find_named(units, "Luso")]
+    let tgt = units[find_named(units, "Sasarr")]
     att.x = 9
     att.y = 8
-    var failed = 0
-    var total = 0
     var problems : table<string; int>
     for (line in split(fread(gui_arg("--data", "research/ffta2/abil1.txt")), "\n")) {
         let p <- split(line, " ")
@@ -66,6 +56,5 @@ def main() : int {
     for (k, v in keys(problems), values(problems)) {
         print("  {v} x {k}\n")
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

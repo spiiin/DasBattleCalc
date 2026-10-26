@@ -20,17 +20,8 @@ require ../scripts/games/fftwotl/fftwotl_data.das
 require ../scripts/games/fftwotl/fftwotl_battle.das
 require ../scripts/games/fftwotl/fftwotl_attack.das
 require fftwotl_edits
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 // "hp mp ct brave faith pa ma statuses" -> 7 numbers and the statuses' hex
 struct Snap {
@@ -129,6 +120,5 @@ def main() : int {
             differs == re.triggers)
     }
     check("{cases} reaction cases", cases >= 20)
-    print("test_fftwotl_react: {total - failed} / {total} passed\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

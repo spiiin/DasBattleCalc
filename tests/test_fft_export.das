@@ -14,26 +14,8 @@ require gui_common
 require math
 require daslib/strings_boost
 require ../scripts/games/fft/fft_battle.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find_unit(units : array<FftUnit>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
 
 [export]
 def main() : int {
@@ -43,8 +25,8 @@ def main() : int {
     check("state loads", gba_load_state(src) == "")
     var units : array<FftUnit>
     check("battle read", read_battle(units) == "")
-    let ri = find_unit(units, "Ramza")
-    let li = find_unit(units, "Lezales")
+    let ri = find_named(units, "Ramza")
+    let li = find_named(units, "Lezales")
     if (ri < 0 || li < 0 || out == "") {
         return 1
     }
@@ -113,6 +95,5 @@ def main() : int {
         er.equip[3] == 33 && er.support == 465 && (gba_read8(er.record + 0x90u) & 0x10u) != 0u)
     check("Lezales: no shield {el.equip[6]}, Protect with timer {gba_read8(el.record + 0x5Fu)}",
         el.equip[6] == 0xFF && has_status(el, 26) && gba_read8(el.record + 0x5Fu) == 32u)
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

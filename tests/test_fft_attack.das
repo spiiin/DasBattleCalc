@@ -16,26 +16,8 @@ require ../scripts/games/fft/fft_battle.das
 require ../scripts/games/fft/fft_attack.das
 require ../scripts/games/fft/fft_abilities.das
 require ../scripts/games/fft/fft_reactions.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find_unit(units : array<FftUnit>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
 
 def set_status(var u : FftUnit; n : int) {
     u.status[n >> 3] = uint8(uint(u.status[n >> 3]) | (0x80u >> uint(n & 7)))
@@ -52,8 +34,8 @@ def main() : int {
     check("state loads", gba_load_state(gui_arg("--state", "")) == "")
     var units : array<FftUnit>
     check("battle read", read_battle(units) == "")
-    let ri = find_unit(units, "Ramza")
-    let li = find_unit(units, "Lezales")
+    let ri = find_named(units, "Ramza")
+    let li = find_named(units, "Lezales")
     check("units found", ri >= 0 && li >= 0)
     if (ri < 0 || li < 0) {
         return 1
@@ -205,8 +187,8 @@ def main() : int {
         check("battle 2 loads", gba_load_state(b2) == "")
         var bu : array<FftUnit>
         read_battle(bu)
-        let bi = find_unit(bu, "Barney")
-        let ci = find_unit(bu, "Candy")
+        let bi = find_named(bu, "Barney")
+        let ci = find_named(bu, "Candy")
         check("Barney and Candy", bi >= 0 && ci >= 0)
         if (bi >= 0 && ci >= 0) {
             let cases = fixed_array<tuple<string; int; int; int; int>>(("front", 0, 1, 21, 95), ("back", 2, 1, 21, 100),
@@ -225,6 +207,5 @@ def main() : int {
                 d.amount_min <= 18 && d.amount_max >= 18 && (18 % 6) == 0 && d.amount_min == 6 && d.hit == 100)
         }
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

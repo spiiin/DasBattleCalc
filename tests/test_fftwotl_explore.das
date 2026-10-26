@@ -16,26 +16,8 @@ require ../scripts/games/fftwotl/fftwotl_battle.das
 require ../scripts/games/fftwotl/fftwotl_attack.das
 require ../scripts/games/fftwotl/fftwotl_turns.das
 require ../scripts/games/fftwotl/fftwotl_explore.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find_unit(units : array<UnitW>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return 0
-}
 
 def run(sc : SceneW; src : string; var t : ETable) : string {
     var s = Script()
@@ -55,8 +37,8 @@ def main() : int {
         print("{err0}\n")
         return 1
     }
-    let ramza = units[find_unit(units, "AAAAA")]
-    let lez = units[find_unit(units, "Lezalas")]
+    let ramza = units[find_named(units, "AAAAA")]
+    let lez = units[find_named(units, "Lezalas")]
     let sc = SceneW(att = ramza, tgt = lez)
     // Attack by the attacker's PA: every row = action_w after the edit
     var t : ETable
@@ -127,6 +109,5 @@ def main() : int {
             print("tick {tr.tick}: {units[tr.unit].name} (CT {tr.ct})\n")
         }
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

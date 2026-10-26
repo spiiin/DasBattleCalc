@@ -14,9 +14,7 @@ require daslib/strings_boost
 require daslib/fio
 require ../scripts/games/ffta2/ffta2_battle.das
 require ../scripts/games/ffta2/ffta2_attack.das
-
-var failed = 0
-var total = 0
+require ./test_check.das
 
 [export]
 def main() : int {
@@ -98,6 +96,5 @@ def main() : int {
             print("FAIL {parts[0]} ({ab.name}, {att.equip[0].name}): missing {missing}, extra {extra}\n")
         }
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

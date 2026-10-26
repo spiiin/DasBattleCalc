@@ -16,26 +16,8 @@ require gba_mem
 require ../scripts/games/ffta/ffta_battle.das
 require ../scripts/games/ffta/ffta_attack.das
 require ./test_common.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find(units : array<BattleUnit>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
 
 [export]
 def main() : int {
@@ -62,7 +44,7 @@ def main() : int {
     let first = next_actor(sim, ticks)
     check("first actor {sim[first].name} after {ticks} ticks", sim[first].name == "Loki" && ticks == 9)
     for (u in sim) {
-        let k = find(units, u.name)
+        let k = find_named(units, u.name)
         check("{u.name}: CT {u.ct}, game {k >= 0 ? units[k].ct : -1}", k >= 0 && units[k].ct == u.ct)
     }
     // 2. the Status screens: W.Atk W.Def M.Pow M.Res Speed Evade Move Jump
@@ -73,7 +55,7 @@ def main() : int {
         ("Romuel", [100, 104, 71, 66, 104, 50, 3, 2]), ("Herbatius", [107, 106, 73, 67, 107, 50, 3, 2]),
         ("Hjalavar", [107, 85, 116, 130, 115, 60, 4, 3]), ("Judge", [0, 0, 0, 0, 50, 0, 8, 4])]
     for (w in want) {
-        let k = find(units, w._0)
+        let k = find_named(units, w._0)
         var ok = k >= 0
         for (s in range(8)) {
             ok = ok && units[k].stat_total[s] == w._1[s]
@@ -81,8 +63,8 @@ def main() : int {
         check("{w._0} stats, game {w._1}", ok)
     }
     // 3. the forecasts: attacker, target, its facing (-1: Marc's), damage, hit
-    let loki = units[find(units, "Loki")]
-    let marc = units[find(units, "Marc")]
+    let loki = units[find_named(units, "Loki")]
+    let marc = units[find_named(units, "Marc")]
     let cases = [
         ("Loki", "Marc", -1, 16, 87), ("Loki", "Batazes", -1, 22, 88), ("Loki", "Sinagelus", -1, 19, 87),
         ("Loki", "Hjalavar", -1, 24, 85), ("Loki", "Cristine", -1, 22, 88), ("Loki", "Nusratt", -1, 22, 90),
@@ -107,18 +89,17 @@ def main() : int {
         ("Sinagelus", "Batazes", 1, 27, 50), ("Sinagelus", "Batazes", 0, 27, 75), ("Sinagelus", "Batazes", 2, 27, 75),
         ("Sinagelus", "Hjalavar", 1, 29, 40), ("Sinagelus", "Hjalavar", 0, 29, 70), ("Sinagelus", "Hjalavar", 2, 29, 70)]
     for (c in cases) {
-        var att = units[find(units, c._0)]
+        var att = units[find_named(units, c._0)]
         att.x = loki.x
         att.y = loki.y
         att.facing = loki.facing
         att.flags = loki.flags
-        var tgt = units[find(units, c._1)]
+        var tgt = units[find_named(units, c._1)]
         tgt.x = marc.x
         tgt.y = marc.y
         tgt.facing = c._2 >= 0 ? c._2 : marc.facing
         let r = fight(m, att, tgt, SideChoice.Auto)
         check("{c._0} -> {c._1} ({r.side}): {r.damage} / {r.hit}%, game {c._3} / {c._4}%", r.damage == c._3 && r.hit == c._4)
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

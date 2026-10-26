@@ -21,6 +21,7 @@ require daslib/strings_boost
 require ../scripts/games/ffta2/ffta2_battle.das
 require ../scripts/games/ffta2/ffta2_attack.das
 require ../scripts/games/ffta2/ffta2_forecast.das
+require ./test_check.das
 
 let CASES = fixed_array<string>(
     "ab=63 | 99 21",
@@ -273,18 +274,6 @@ let REAL_80 = fixed_array<string>(
     "2049389902 2796062950 14", "408858367 747918161 14", "3063294128 2994740668 19",
     "1422762593 946595879 18", "4077198354 3193418386 0", "2436666819 1145273597 0", "796135284 3392096104 17")
 
-var failed = 0
-var total = 0
-
-def find_unit(units : array<Unit2>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
-
 def apply_edit(var att, tgt : Unit2; var game_facing : int&; var ability : int&; key : string; v : int) {
     if (key == "ab") {
         ability = v
@@ -337,8 +326,8 @@ def main() : int {
         print("FAIL {err}\n")
         return 1
     }
-    let luso = find_unit(units, "Luso")
-    let sasarr = find_unit(units, "Sasarr")
+    let luso = find_named(units, "Luso")
+    let sasarr = find_named(units, "Sasarr")
     for (c in CASES) {
         let parts <- split(c, " | ")
         var att = units[luso]
@@ -400,6 +389,5 @@ def main() : int {
             print("FAIL real attack 80 %, seeds {p[0]} {p[1]}: game {p[2]}, model {r.damage}\n")
         }
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

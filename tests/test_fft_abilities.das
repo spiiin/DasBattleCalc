@@ -17,34 +17,16 @@ require daslib/strings_boost
 require ../scripts/games/fft/fft_battle.das
 require ../scripts/games/fft/fft_attack.das
 require ../scripts/games/fft/fft_abilities.das
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
-
-def find_unit(units : array<FftUnit>; name : string) : int {
-    for (i in range(length(units))) {
-        if (units[i].name == name) {
-            return i
-        }
-    }
-    return -1
-}
 
 [export]
 def main() : int {
     check("state loads", gba_load_state(gui_arg("--state", "")) == "")
     var units : array<FftUnit>
     check("battle read", read_battle(units) == "")
-    let ri = find_unit(units, "Ramza")
-    let li = find_unit(units, "Lezales")
+    let ri = find_named(units, "Ramza")
+    let li = find_named(units, "Lezales")
     if (ri < 0 || li < 0) {
         check("units found", false)
         return 1
@@ -95,7 +77,7 @@ def main() : int {
     }
     // Charge with a Long Bow at Viggs (side, no shield): (PA + Speed) / 2
     // + K, x WP 4: +1 -> 28, +4 -> 40; Attack 24
-    let vi = find_unit(units, "Viggs")
+    let vi = find_named(units, "Viggs")
     if (vi >= 0) {
         var archer = ramza
         archer.equip[3] = 0x53
@@ -151,8 +133,8 @@ def main() : int {
         check("throw state loads", gba_load_state(throw_state) == "")
         var tu : array<FftUnit>
         read_battle(tu)
-        let tr = tu[find_unit(tu, "Ramza")]
-        let tl = tu[find_unit(tu, "Lezales")]
+        let tr = tu[find_named(tu, "Ramza")]
+        let tl = tu[find_named(tu, "Lezales")]
         for (tc in fixed_array<tuple<int; int>>((382, 42), (384, 24), (391, 96))) {
             let ab = read_ability(tc._0)
             let f = ability_forecast(tr, tl, ab)
@@ -182,8 +164,8 @@ def main() : int {
         check("battle 2 loads", gba_load_state(b2) == "")
         var bu : array<FftUnit>
         read_battle(bu)
-        let bi = find_unit(bu, "Barney")
-        let ci = find_unit(bu, "Candy")
+        let bi = find_named(bu, "Barney")
+        let ci = find_named(bu, "Candy")
         if (bi >= 0 && ci >= 0) {
             var barney = bu[bi]
             barney.mp = 99
@@ -192,7 +174,7 @@ def main() : int {
                 check("{ability_name(sc._0)} at Candy: {f.hit}%, the game: {sc._1}%", f.hit == sc._1)
             }
             // Delita (a guest, +0x05 0x84) is immortal here
-            let di = find_unit(bu, "Delita")
+            let di = find_named(bu, "Delita")
             check("Delita immortal: Death {ability_forecast(barney, bu[di], read_ability(30)).hit}%",
                 is_immortal(bu[di]) && !is_immortal(bu[ci]) && ability_forecast(barney, bu[di], read_ability(30)).hit == 0)
         }
@@ -206,7 +188,7 @@ def main() : int {
         read_battle(mu)
         var mm : FftMap
         read_map(mm)
-        let bi = find_unit(mu, "Barney")
+        let bi = find_named(mu, "Barney")
         let fire = read_ability(16)
         let mcases = fixed_array<tuple<string; int; int; string>>(
             ("CT, 3", 0, 3, ""),
@@ -228,6 +210,5 @@ def main() : int {
         check("Barney's Math spells: {length(math_spells(mu[bi]))} (Black Magic learned: 16)",
             length(math_spells(mu[bi])) == 16)
     }
-    print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }

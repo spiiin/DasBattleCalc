@@ -6,17 +6,8 @@ options indenting = 4
 //   battlecalc tests/test_psp_mem.das --state <fftwotl_test_battle1.ppst> [--out <new.ppst>]
 require gba_mem
 require gui_common
+require ./test_check.das
 
-var failed = 0
-var total = 0
-
-def check(what : string; ok : bool) {
-    total++
-    if (!ok) {
-        failed++
-        print("FAIL {what}\n")
-    }
-}
 
 // Ramza's battle record (research/fftwotl/notes.md)
 let RAMZA = 0x092E5CB4u
@@ -47,6 +38,5 @@ def main() : int {
     check("written state loads ({rerr})", rerr == "")
     check("written HP 99 (got {gba_read16(RAMZA + 0x30u)})", gba_read16(RAMZA + 0x30u) == 99u)
     check("the rest unchanged", gba_read16(RAMZA + 0x32u) == 111u && gba_read8(RAMZA + 0x2Bu) == 53u)
-    print("test_psp_mem: {total - failed} / {total} passed\n")
-    return failed == 0 ? 0 : 1
+    return report()
 }
