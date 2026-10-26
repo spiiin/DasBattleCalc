@@ -23,6 +23,7 @@ require strings
 require daslib/strings_boost
 require fft_battle
 require fft_attack
+require ../fftcore/fft_common.das public
 
 let ABILITY_COMMON = 0x8005EBF0u
 let ABILITY_ACTION = 0x8005FBF0u

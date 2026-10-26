@@ -16,21 +16,16 @@ require ../../core/teams.das public
 require ../../core/result_try.das
 require daslib/strings_boost
 require ../../core/util.das
+require ../fftcore/fft_common.das public
 
 let FFT_CODE = "SCUS"
 let UNIT_TABLE = 0x801908CCu
 let UNIT_SIZE = 0x1C0u
 let UNIT_SLOTS = 21
 let EQUIP_SLOTS = 7
-let EQUIP_LABELS = fixed_array<string>("Head", "Body", "Accessory", "Right hand", "Right shield", "Left hand",
-    "Left shield")
 // the map's header in the code's data: u32 width, u32 length, ...,
 // +0x18 the terrain (8 bytes per tile, 256 tiles per floor)
 let MAP_HEADER = 0x800F6860u
-// the record's facing (+0x49 & 3): 0 -y, 1 -x, 2 +y, 3 +x - a bow shot
-// from +y of Lezales: facing 0 100% (his back), 2 66% (his front), 1 / 3
-// 74%; the field numbers them 0 +y, 1 -x, 2 -y, 3 +x (facing_to_field)
-let FACING_NAMES = fixed_array<string>("-y", "-x", "+y", "+x")
 let private FACING_FIELD = fixed_array<int>(2, 1, 0, 3)
 
 // the record's facing <-> the field's (the same swap both ways)
@@ -55,9 +50,6 @@ let ST_HASTE = 28
 let ST_SLOW = 29
 let ST_STOP = 30
 let ST_CHARGING = 4
-let ZODIAC_NAMES = fixed_array<string>("Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio",
-    "Sagittarius", "Capricorn", "Aquarius", "Pisces", "Serpentarius")
-
 // FFT text: 0..9, A..Z, a..z, 0xFA space, 0x42 '+', 0xFE the end;
 // 0xD0..0xDA start a two-byte character: D1 1D '-', DA 76 '''
 def fft_text(at : uint; max_len : int) : string {
@@ -87,13 +79,6 @@ def fft_text(at : uint; max_len : int) : string {
             }
         }
     }
-}
-
-enum TurnEnd {
-    MoveAndAct
-    ActOnly
-    MoveOnly
-    Wait
 }
 
 struct FftUnit {
@@ -184,8 +169,6 @@ let EL_CANCEL = 1
 let EL_HALF = 2
 let EL_WEAK = 3
 let EL_STRENGTHEN = 4
-let ELEMENT_NAMES = fixed_array<string>("Fire", "Lightning", "Ice", "Wind", "Earth", "Water", "Holy", "Dark")
-
 def has_element(u : FftUnit; kind : int; element : int) : bool {
     return (int(u.elements[kind]) & element) != 0
 }
@@ -194,7 +177,7 @@ def element_text(element : int) : string {
     var names : array<string>
     for (k in range(8)) {
         if ((element & (0x80 >> k)) != 0) {
-            names |> push(ELEMENT_NAMES[k])
+            names |> push(FFT_ELEMENT_NAMES[k])
         }
     }
     return join_or(names, ", ", "none")
@@ -268,7 +251,7 @@ def read_unit(slot : int) : FftUnit {
 }
 
 def update_unit(var u : FftUnit) {
-    u.position = "{u.x}, {u.y}{u.upper ? " (upper)" : ""}, facing {FACING_NAMES[u.facing & 3]}"
+    u.position = "{u.x}, {u.y}{u.upper ? " (upper)" : ""}, facing {FFT_FACING_NAMES[u.facing & 3]}"
     var names : array<string>
     for (n in range(1, 40)) {
         if (has_status(u, n)) {

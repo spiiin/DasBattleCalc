@@ -16,6 +16,7 @@ require daslib/strings_boost
 require fftwotl_data
 require fftwotl_battle
 require daslib/match
+require ../fftcore/fft_common.das public
 
 enum SideW {
     Front

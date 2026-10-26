@@ -32,25 +32,16 @@ require fft_attack
 require fft_abilities
 require fft_reach
 require ../../core/util.das
+require ../fftcore/fft_common.das public
 
 let MAX_POINTS_F = 20000
 
-let METRICS_F = fixed_array<string>("damage", "healing", "dmg_min", "dmg_max", "hit", "crit", "expected", "reach",
-    "distance", "mp_cost", "xa", "ya", "zodiac_rel")
-
-let SIDE_F_LABELS = fixed_array<string>("Auto", "Front", "Side", "Back")
-
 let ZODIAC_REL_F = fixed_array<string>("worst", "bad", "neutral", "good", "best")
-
-let EXPLORE_F_GENERATORS = fixed_array<string>("jobs", "weapons", "supports", "actions", "sides")
 
 // the Jump abilities make one action (their reach: the best learned)
 let JUMP_FIRST = 394
 let JUMP_END = 406
 
-// Explore: ready experiments (the editor starts with the first)
-let EXPLORE_F_NAMES = fixed_array<string>("Damage by PA and Brave", "Every weapon", "Side and Protect",
-    "Fire by MA and Faith", "Every action")
 let EXPLORE_F_EXAMPLES = fixed_array<string>(
     "// the attacker and target of the Attack tab: Attack by the\n// attacker's PA, one line per Brave (knight swords and bare\n// hands use Brave)\nvary atk.pa 3..20\nvary atk.brave 40, 60, 80, 97\navg = expected\nplot avg by atk.pa per atk.brave title \"Average damage per Attack\"\n",
     "// every weapon in the attacker's right hand, best first\nvary atk.weapon weapons\navg = expected\nwhere damage > 0\nsort avg desc\nplot damage, avg by atk.weapon bar\n",
@@ -352,7 +343,7 @@ def axis_values_f(sc : SceneF; ax : Axis; var vals : array<Value>) : string {
         }
     } elif (n.kind == NodeKind.Call && n.text == "sides") {
         for (s in range(1, 4)) {
-            vals |> push(vtext(SIDE_F_LABELS[s], double(s)))
+            vals |> push(vtext(FFT_SIDE_LABELS[s], double(s)))
         }
     } else {
         return "line {ax.line}: values are from..to [step s], a, b, ..., jobs, weapons, supports, actions, sides - not '{n.text}'"
@@ -373,7 +364,7 @@ def private point_param_f(att, tgt : FftUnit; ability, side : int; path : string
         return true
     }
     if (path == "side") {
-        v = vtext(SIDE_F_LABELS[side & 3], double(side))
+        v = vtext(FFT_SIDE_LABELS[side & 3], double(side))
         return true
     }
     var owner = ""
@@ -448,7 +439,7 @@ class FftPoints : ExploreModel {
 
 def run_experiment_f(sc : SceneF; m : FftMap; var s : Script; var t : ETable) : string {
     var model = new FftPoints(map := m, sc := sc, max_points = MAX_POINTS_F)
-    model.metrics |> push_from(METRICS_F)
+    model.metrics |> push_from(FFT_METRICS)
     let err = run_experiment(*model, s, t)
     unsafe {
         delete model

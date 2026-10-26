@@ -14,6 +14,7 @@ module fftwotl_turns shared public
 require math
 require fftwotl_data
 require fftwotl_battle
+require ../fftcore/fft_common.das public
 
 let TURN_READY_W = 100
 
@@ -22,10 +23,6 @@ struct TurnW {
     ct : int                        // its CT when the turn starts
     tick : int                      // ticks since now
     nth : int                       // the unit's 1st, 2nd, ... turn
-}
-
-def turn_cost_w(how : TurnEndW) : int {
-    return how == TurnEndW.MoveAndAct ? 100 : (how == TurnEndW.Wait ? 60 : 80)
 }
 
 // what a tick adds to the unit's CT
@@ -66,7 +63,7 @@ def predict_turns_w(units : array<UnitW>; count : int) : array<TurnW> {
         if (units[i].active && length(res) < count) {
             nth[i]++
             res |> push(TurnW(unit = i, ct = ct[i] + TURN_READY_W, tick = 0, nth = nth[i]))
-            ct[i] = min(60, ct[i] + TURN_READY_W - turn_cost_w(units[i].assumed))
+            ct[i] = min(60, ct[i] + TURN_READY_W - turn_cost(units[i].assumed))
         }
     }
     var ticks = 0
@@ -79,7 +76,7 @@ def predict_turns_w(units : array<UnitW>; count : int) : array<TurnW> {
                 any = true
                 nth[i]++
                 res |> push(TurnW(unit = i, ct = ct[i], tick = ticks, nth = nth[i]))
-                ct[i] = min(60, ct[i] - turn_cost_w(units[i].assumed))
+                ct[i] = min(60, ct[i] - turn_cost(units[i].assumed))
             }
         }
         if (!any) {

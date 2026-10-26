@@ -89,7 +89,7 @@ def main() : int {
         if (e == "") {
             e = build_chart(s, t, t.names[0], "damage", ch)
         }
-        check("example '{EXPLORE_W_NAMES[k]}': {e}, {length(t.rows)} rows", e == "" && length(t.rows) > 1 &&
+        check("example '{FFT_EXPLORE_NAMES[k]}': {e}, {length(t.rows)} rows", e == "" && length(t.rows) > 1 &&
             length(ch.series) > 0)
     }
     for (c in [("vary atk.pq 1..5\n", "line 1: no parameter 'atk.pq'"), ("vary atk.pa foo\n", "values are from..to"),

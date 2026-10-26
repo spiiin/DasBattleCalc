@@ -87,7 +87,7 @@ def main() : int {
     // the ready experiments run (the scene line is the UI's: here Attack)
     for (k in range(length(EXPLORE_F_EXAMPLES))) {
         err = run(sc, m, EXPLORE_F_EXAMPLES[k], t)
-        check("example {EXPLORE_F_NAMES[k]}: '{err}', {length(t.rows)} rows", err == "" && length(t.rows) > 0)
+        check("example {FFT_EXPLORE_NAMES[k]}: '{err}', {length(t.rows)} rows", err == "" && length(t.rows) > 0)
     }
     // Fire (the scene's action) at Lezales: MA 4 x 14 x Faith 63 x his Faith
     let fire = SceneF(att = units[ri], tgt = units[li], ability = 16)

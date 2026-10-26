@@ -39,6 +39,7 @@ require fft_abilities
 require fft_reactions
 require fft_explore
 require ../../core/util.das
+require ../fftcore/fft_common.das public
 
 def private turn_end_text(how : TurnEnd) : string {
     return how == TurnEnd.MoveAndAct ? "Move + Act" : (how == TurnEnd.ActOnly ? "Act" : (how == TurnEnd.MoveOnly ? "Move" : "Wait"))
@@ -119,8 +120,8 @@ class FftGame : GameModule {
     item_filter : ImGuiInputTextBuffer
     item_all : bool = false
     // Explore
-    explore : ExplorePanel = make_explore_panel("fft_explore", EXPLORE_F_NAMES, EXPLORE_F_EXAMPLES,
-        EXPLORE_F_GENERATORS, METRICS_F)
+    explore : ExplorePanel = make_explore_panel("fft_explore", FFT_EXPLORE_NAMES, EXPLORE_F_EXAMPLES,
+        FFT_GENERATORS, FFT_METRICS)
 
     def FftGame {
         message = "Load a BizHawk state (Nymashock core) of Final Fantasy Tactics (USA)"
@@ -379,7 +380,7 @@ class FftGame : GameModule {
         var names <- ["none"]
         var ids <- [0]
         var sel = 0
-        let cur = k == 0 ? unit.reaction : (k == 1 ? unit.support : unit.movement)
+        let cur = rsm_of(unit, k)
         for (aid in range(lo[k], hi[k])) {
             let n = ability_name(aid)
             if (n != "") {
@@ -393,25 +394,13 @@ class FftGame : GameModule {
         SetCursorScreenPos(ImVec2(x + lw, y))
         if (bl_choice("fft_rsm{k}", names, sel, w - lw - bw)) {
             let before = unit
-            if (k == 0) {
-                unit.reaction = ids[sel]
-            } elif (k == 1) {
-                unit.support = ids[sel]
-            } else {
-                unit.movement = ids[sel]
-            }
+            set_rsm(unit, k, ids[sel])
             recompute_unit(unit, before)
         }
-        let old = k == 0 ? saved_u.reaction : (k == 1 ? saved_u.support : saved_u.movement)
+        let old = rsm_of(saved_u, k)
         if (cur != old && bl_revert_button("fft_rsm_revert{k}", x + w - u(22.0), y)) {
             let before = unit
-            if (k == 0) {
-                unit.reaction = old
-            } elif (k == 1) {
-                unit.support = old
-            } else {
-                unit.movement = old
-            }
+            set_rsm(unit, k, old)
             recompute_unit(unit, before)
         }
         return y + u(26.0)
@@ -438,7 +427,7 @@ class FftGame : GameModule {
             }
             SetCursorScreenPos(ImVec2(x + iw, ry))
             let bad = has && !job_can_wear(un.job_id, iid) ? " (!)" : ""
-            let caption = has ? "{item_name(iid)}{bad}" : "({EQUIP_LABELS[slot]}: empty)"
+            let caption = has ? "{item_name(iid)}{bad}" : "({FFT_SLOT_NAMES[slot]}: empty)"
             if (bl_tool_button("fft_equip{slot}", caption, -1, w - bw - iw - u(4.0))) {
                 OpenPopup("##fft_item_pick")
                 pick_slot = slot

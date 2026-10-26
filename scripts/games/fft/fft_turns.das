@@ -17,6 +17,7 @@ module fft_turns shared public
 
 require math
 require fft_battle
+require ../fftcore/fft_common.das public
 
 let TURN_READY = 100
 
@@ -26,10 +27,6 @@ struct Turn {
     tick : int                      // ticks since now
     nth : int                       // the unit's 1st, 2nd, ... turn
     charge : int                    // a charged ability going off (its id), 0 a turn
-}
-
-def turn_cost(how : TurnEnd) : int {
-    return how == TurnEnd.MoveAndAct ? 100 : (how == TurnEnd.ActOnly || how == TurnEnd.MoveOnly ? 80 : 60)
 }
 
 def tick_amount(u : FftUnit) : int {

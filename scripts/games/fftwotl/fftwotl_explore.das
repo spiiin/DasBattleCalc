@@ -27,21 +27,12 @@ require ../../core/explore.das
 require fftwotl_data
 require fftwotl_battle
 require fftwotl_attack
+require ../fftcore/fft_common.das public
 
 let MAX_POINTS_W = 20000
 
-let METRICS_W = fixed_array<string>("damage", "healing", "dmg_min", "dmg_max", "hit", "crit", "expected", "reach",
-    "distance", "mp_cost", "xa", "ya", "zodiac_rel")
-
 let STAT_W_KEYS = fixed_array<string>("pa", "ma", "sp")
 
-let SIDE_W_LABELS = fixed_array<string>("Auto", "Front", "Side", "Back")
-
-let EXPLORE_W_GENERATORS = fixed_array<string>("jobs", "weapons", "supports", "actions", "sides")
-
-// Explore: ready experiments (the editor starts with the first)
-let EXPLORE_W_NAMES = fixed_array<string>("Damage by PA and Brave", "Every weapon", "Side and Protect",
-    "Fire by MA and Faith", "Every action")
 let EXPLORE_W_EXAMPLES = fixed_array<string>(
     "// the attacker and target of the Attack tab: Attack by the\n// attacker's PA, one line per Brave (knight swords, katanas\n// and bare hands use Brave)\nvary atk.pa 3..20\nvary atk.brave 40, 60, 80, 97\navg = expected\nplot avg by atk.pa per atk.brave title \"Average damage per Attack\"\n",
     "// every weapon in the attacker's hands, best first\nvary atk.weapon weapons\navg = expected\nwhere damage > 0\nsort avg desc\nplot damage, avg by atk.weapon bar\n",
@@ -254,7 +245,7 @@ def axis_values_w(sc : SceneW; ax : Axis; var vals : array<Value>) : string {
         }
     } elif (n.kind == NodeKind.Call && n.text == "sides") {
         for (s in range(1, 4)) {
-            vals |> push(vtext(SIDE_W_LABELS[s], double(s)))
+            vals |> push(vtext(FFT_SIDE_LABELS[s], double(s)))
         }
     } else {
         return ("line {ax.line}: values are from..to [step s], a, b, ..., jobs, weapons, supports, actions, " +
@@ -276,7 +267,7 @@ def private point_param_w(att, tgt : UnitW; ability, side : int; path : string; 
         return true
     }
     if (path == "side") {
-        v = vtext(SIDE_W_LABELS[side & 3], double(side))
+        v = vtext(FFT_SIDE_LABELS[side & 3], double(side))
         return true
     }
     var owner = ""
@@ -350,7 +341,7 @@ class WotlPoints : ExploreModel {
 
 def run_experiment_w(sc : SceneW; var s : Script; var t : ETable) : string {
     var model = new WotlPoints(sc := sc, max_points = MAX_POINTS_W)
-    model.metrics |> push_from(METRICS_W)
+    model.metrics |> push_from(FFT_METRICS)
     let err = run_experiment(*model, s, t)
     unsafe {
         delete model

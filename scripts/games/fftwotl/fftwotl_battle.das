@@ -13,17 +13,11 @@ require ../../core/teams.das public
 require ../../core/result_try.das
 require fftwotl_data
 require ../../core/util.das
+require ../fftcore/fft_common.das public
 
 let UNIT_BASE_W = 0x092E5CB4u
 let UNIT_SIZE_W = 0x1E8u
 let UNIT_SLOTS_W = 21
-
-let ZODIAC_NAMES = fixed_array<string>("Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio",
-    "Sagittarius", "Capricorn", "Aquarius", "Pisces", "Serpentarius")
-// facing (record +0x51 low bits): 0 -y, 1 -x, 2 +y, 3 +x (checked by the
-// game's forecasts, forecast1.txt and forecast6.txt: the attacker on each
-// axis); the field's numbering: 0 +y, 1 -x, 2 -y, 3 +x
-let FACING_W_NAMES = fixed_array<string>("-y", "-x", "+y", "+x")
 
 // learned abilities (record +0xA3): 3 bytes per job - the action
 // abilities of its skillset (16 bits, 0x80 of the first byte = the first
@@ -38,13 +32,6 @@ let LEARN_JOB_NAMES = fixed_array<string>("Base", "Chemist", "Knight", "Archer",
 
 // how a turn ends (the CT it costs: 100 moved and acted, 80 one of them,
 // 60 neither)
-enum TurnEndW {
-    MoveAndAct
-    ActOnly
-    MoveOnly
-    Wait
-}
-
 struct UnitW {
     @readonly name : string
     @readonly job : string
@@ -63,7 +50,7 @@ struct UnitW {
     @caption = "MP" @min = 0 mp : int
     @caption = "Max MP" @min = 0 max_mp : int
     @caption = "CT" @min = 0 @max = 255 ct : int
-    @caption = "Assumed turn" assumed : TurnEndW
+    @caption = "Assumed turn" assumed : TurnEnd
     @caption = "Zodiac" @readonly zodiac : string
     @caption = "Team byte" @readonly team_byte : int    // +0x05: 0x10 red (enemy), 0x08 controlled by the player, 0x04 immortal
     @caption = "Position" @readonly position : string
@@ -192,7 +179,7 @@ def recompute_unit_w(var u : UnitW) {
     u.sm_ev[1] = rs.m_ev
     u.a_ev = u.equip[SLOT_ACCESSORY].p_ev
     u.am_ev = u.equip[SLOT_ACCESSORY].m_ev
-    u.position = "{u.x}, {u.y}{u.high ? " (upper)" : ""}, facing {FACING_W_NAMES[u.facing & 3]}"
+    u.position = "{u.x}, {u.y}{u.high ? " (upper)" : ""}, facing {FFT_FACING_NAMES[u.facing & 3]}"
 }
 
 def read_unit_w(slot : int) : UnitW {
@@ -259,7 +246,7 @@ def read_unit_w(slot : int) : UnitW {
     if (u.name == "") {
         u.name = u.job
     }
-    u.assumed = TurnEndW.MoveAndAct
+    u.assumed = TurnEnd.MoveAndAct
     recompute_unit_w(u)
     // the game's own current stats and Move / Jump / C-EV (they include
     // what the model does not know, e.g. Move+ abilities)

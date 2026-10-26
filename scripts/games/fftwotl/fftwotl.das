@@ -35,6 +35,7 @@ require fftwotl_turns
 require fftwotl_explore
 require fftwotl_map
 require ../../core/util.das
+require ../fftcore/fft_common.das public
 
 let private STAT_W_LABELS = fixed_array<string>("PA", "MA", "Speed")
 
@@ -134,8 +135,8 @@ class WotlGame : GameModule {
     table_filter = ImGuiInputTextBuffer("", 64)
     table_pick : int = -1
     // Explore
-    explore : ExplorePanel = make_explore_panel("explorew", EXPLORE_W_NAMES, EXPLORE_W_EXAMPLES,
-        EXPLORE_W_GENERATORS, METRICS_W)
+    explore : ExplorePanel = make_explore_panel("explorew", FFT_EXPLORE_NAMES, EXPLORE_W_EXAMPLES,
+        FFT_GENERATORS, FFT_METRICS)
 
     def WotlGame {
         message = "Load a PPSSPP save state (.ppst) of FFT: The War of the Lions (USA)"
@@ -419,7 +420,7 @@ class WotlGame : GameModule {
         let list <- abilities_of_kind(kinds[k])
         var names <- ["none"]
         var sel = 0
-        let cur = k == 0 ? unit.reaction : (k == 1 ? unit.support : unit.movement)
+        let cur = rsm_of(unit, k)
         for (i in range(length(list))) {
             names |> push(ability_name_w(list[i]))
             if (list[i] == cur) {
@@ -429,24 +430,12 @@ class WotlGame : GameModule {
         SetCursorScreenPos(ImVec2(x + lw, y))
         if (bl_choice("unitw_rsm{k}", names, sel, w - lw - bw)) {
             let aid = sel == 0 ? 0 : list[sel - 1]
-            if (k == 0) {
-                unit.reaction = aid
-            } elif (k == 1) {
-                unit.support = aid
-            } else {
-                unit.movement = aid
-            }
+            set_rsm(unit, k, aid)
             rebuild_rsm_mask(unit)
         }
-        let old = k == 0 ? saved_u.reaction : (k == 1 ? saved_u.support : saved_u.movement)
+        let old = rsm_of(saved_u, k)
         if (cur != old && bl_revert_button("rsmw_revert{k}", x + w - u(22.0), y)) {
-            if (k == 0) {
-                unit.reaction = old
-            } elif (k == 1) {
-                unit.support = old
-            } else {
-                unit.movement = old
-            }
+            set_rsm(unit, k, old)
             unit.rsm_mask = saved_u.rsm_mask
         }
         return y + u(26.0)
@@ -534,7 +523,7 @@ class WotlGame : GameModule {
                 gba_gfx_draw(icon, x, ry + u(2.0), u(16.0), u(16.0), 1.0)
             }
             SetCursorScreenPos(ImVec2(x + iw, ry))
-            let caption = it.id != ITEM_NONE ? it.name : "({SLOT_W_NAMES[slot]}: empty)"
+            let caption = it.id != ITEM_NONE ? it.name : "({FFT_SLOT_NAMES[slot]}: empty)"
             if (bl_tool_button("equipw_slot{slot}", caption, -1, w - bw - kw - u(4.0) - iw)) {
                 OpenPopup("##itemw_pick")
                 pick_slot = slot

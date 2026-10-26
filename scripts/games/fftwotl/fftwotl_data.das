@@ -12,6 +12,7 @@ require math
 require strings
 require daslib/strings_boost
 require ../../core/util.das
+require ../fftcore/fft_common.das public
 
 let WOTL_GAME_ID = "ULUS10297"
 let private GAME_ID_AT = 0x08B18354u
@@ -64,12 +65,6 @@ let KIND_W_NAMES = fixed_array<string>("", "Knife", "Ninja Blade", "Sword", "Kni
     "Perfume", "Shuriken", "Bomb", "Item", "Fell Sword", "Lip Rouge")
 let KIND_SHIELD = 19
 
-// elements: bit 0x80 >> n
-let ELEMENT_W_NAMES = fixed_array<string>("Fire", "Lightning", "Ice", "Wind", "Earth", "Water", "Holy", "Dark")
-
-// equipment slots of the unit record (+0x1A, u16 each)
-let SLOT_W_NAMES = fixed_array<string>("Head", "Body", "Accessory", "Right hand", "Right shield", "Left hand",
-    "Left shield")
 let SLOT_HEAD = 0
 let SLOT_BODY = 1
 let SLOT_ACCESSORY = 2
@@ -445,7 +440,7 @@ def element_text(mask : int) : string {
     var parts : array<string>
     for (e in range(8)) {
         if ((mask & (0x80 >> e)) != 0) {
-            parts |> push(ELEMENT_W_NAMES[e])
+            parts |> push(FFT_ELEMENT_NAMES[e])
         }
     }
     return join_or(parts, ", ", "-")

@@ -24,7 +24,8 @@ def main() : int {
             print("{u.slot} {u.name} [{u.job}] Lv{u.level} Br{u.brave} Fa{u.faith} HP {u.hp}/{u.max_hp} MP {u.mp}/{u.max_mp} PA {u.pa} MA {u.ma} SP {u.sp} CT {u.ct} Mv {u.move} Jp {u.jump} @{u.x},{u.y} team {u.team} {u.zodiac}\n")
             for (k in range(7)) {
                 if (u.items[k] != ITEM_NONE) {
-                    print("    {SLOT_W_NAMES[k]}: {u.equip[k].name} (kind {KIND_W_NAMES[u.equip[k].kind]}, WP {u.equip[k].wp})\n")
+                    let it = u.equip[k]
+                    print("    {FFT_SLOT_NAMES[k]}: {it.name} (kind {KIND_W_NAMES[it.kind]}, WP {it.wp})\n")
                 }
             }
             print("    {skillset_name_w(u.primary)} / {skillset_name_w(u.secondary)}; R {ability_name_w(u.reaction)} S {ability_name_w(u.support)} M {ability_name_w(u.movement)}; status {status_text(u.status)}\n")
