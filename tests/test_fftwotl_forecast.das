@@ -127,12 +127,6 @@ def check_abilities(units : array<UnitW>; file : string) : int {
         cases++
         let aid = to_int(strip(parts[0]))
         let name = strip(parts[1])
-        // Death / Toad on the living Lezalas: the game shows 0% - his own
-        // (no immunity in his record, job, equipment; on Rosa in Gariland
-        // they work: test_fftwotl_battle2)
-        if ((aid == 29 || aid == 30) && name != "t_undead") {
-            continue
-        }
         var att = units[0]
         var tgt = units[5]
         apply_writes(att, tgt, parts[2])
@@ -174,6 +168,8 @@ def main() : int {
     check("{fires} Fire forecasts", fires >= 30)
     let abilities = check_abilities(units, "forecast3.txt")
     let statuses = check_abilities(units, "forecast9.txt")
+    let immortal = check_abilities(units, "forecast11.txt")
+    check("{immortal} immortal forecasts", immortal >= 5)
     check("{statuses} status / drain / Gravity forecasts", statuses >= 50)
     check("{abilities} ability forecasts", abilities >= 50)
     print("test_fftwotl_forecast: {total - failed} / {total} passed

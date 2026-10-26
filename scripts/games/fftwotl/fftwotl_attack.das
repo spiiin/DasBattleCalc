@@ -802,7 +802,15 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
         let xz = zodiac_apply(x, f.zodiac)
         var h = (ma + xz) * fa / 10000
         f.hit_mods |> push("(MA {ma} + {xz}) x Faith {faith_of(att)} x {faith_of(tgt)} / 10000 = {h}")
-        if (fo == 0x0E && is_undead_w(tgt)) {
+        // an immortal unit (team byte bit 0x04: the enemies of the first
+        // battle) can not be KO'd nor turned into a Toad: 0% (checked:
+        // Lezalas; with the bit cleared Death 38%, Toad 45%)
+        let inf = read_inflict_w(ab.inflict)
+        let kills = fo == 0x0E || status_bit(inf.statuses, ST_DEAD) || status_bit(inf.statuses, ST_FROG)
+        if (kills && (tgt.team_byte & 0x04) != 0 && !(fo == 0x0E && is_undead_w(tgt))) {
+            h = 0
+            f.hit_mods |> push("the target is immortal (team byte 0x04)")
+        } elif (fo == 0x0E && is_undead_w(tgt)) {
             // Death heals the undead in full, a healing: no magic evade
             // (checked: 40% = the chance, 134 HP)
             h = min(h, 100)
@@ -827,10 +835,9 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
             f.note = "drains {y}% of max MP"
         } elif (fo == 0x0E) {
             // KO: the forecast shows the max HP as the damage (checked on
-            // Rosa, Gariland: 42); the undead are healed in full. Death and
-            // Toad show 0% on Lezalas (the first battle) - his own, not known
+            // Rosa, Gariland: 42; none on an immortal); the undead are healed
             f.healing = is_undead_w(tgt)
-            f.damage = f.healing ? -tgt.max_hp : tgt.max_hp
+            f.damage = f.healing ? -tgt.max_hp : ((tgt.team_byte & 0x04) != 0 ? 0 : tgt.max_hp)
             f.note = f.healing ? "heals the undead in full" : "KO"
         } else {
             f.note = inflict_text(ab.inflict)
@@ -1025,6 +1032,82 @@ def unit_actions(u : UnitW; all_known : bool) : array<int> {
     return <- res
 }
 
+// ------------------------------------------------------------ Arithmeticks
+
+// the Arithmetician's set (skillset 21): an algorithm (CT, Level, EXP,
+// Height), a number (prime, a multiple of 5 / 4 / 3) and a magick (action
+// flag 3 bit 0x40); it hits every living unit whose value fits, allies and
+// the caster too (checked: Level x 3 lit Ramza, Lavian, Lezalas, Diesch -
+// not the KO'd Fuchs)
+let ARITH_ALGS = fixed_array<string>("CT", "Level", "EXP", "Height")
+let ARITH_NUMS = fixed_array<string>("prime", "multiple of 5", "multiple of 4", "multiple of 3")
+
+def arith_value_w(u : UnitW; alg : int; m : MapW) : int {
+    if (alg == 0) {
+        // the CT the screen shows: at most 100, the unit at its turn 100
+        // (checked: 104 and the active 4 both as 100; 24 is a multiple of 3)
+        return min(u.active ? u.ct + 100 : u.ct, 100)
+    } elif (alg == 1) {
+        return u.level
+    } elif (alg == 2) {
+        return u.exp
+    }
+    // the height with half the slope: a half h fits nothing (checked: the
+    // units on slopes of 1 - 9.5, 8.5, 7.5 h - are never hit); -1 then
+    if (u.x < 0 || u.y < 0 || u.x >= m.w || u.y >= m.h) {
+        return -1
+    }
+    let i = u.y * m.w + u.x
+    let half = u.high && m.upper[i] > 0 ? m.upper[i] * 2 : m.height[i] * 2 + m.slope[i]
+    return (half & 1) != 0 ? -1 : half / 2
+}
+
+def arith_fits_w(v, num : int) : bool {
+    if (num == 0) {
+        if (v < 2) {
+            return false
+        }
+        for (d in range(2, v)) {
+            if (d * d > v) {
+                break
+            }
+            if (v % d == 0) {
+                return false
+            }
+        }
+        return true
+    }
+    // 0 is no multiple (checked: Lavian's EXP 0 is not hit)
+    let k = num == 1 ? 5 : (num == 2 ? 4 : 3)
+    return v > 0 && v % k == 0
+}
+
+// the indices of the units Arithmeticks (alg, num) targets; the KO'd ones
+// too when ko (the game lights their tiles, they take nothing)
+def arith_targets_w(units : array<UnitW>; alg, num : int; m : MapW; ko : bool = false) : array<int> {
+    var res : array<int>
+    for (i in range(length(units))) {
+        let u = units[i]
+        let alive = u.hp > 0 && !has_status_w(u, ST_DEAD)
+        if ((alive || ko) && arith_fits_w(arith_value_w(u, alg, m), num)) {
+            res |> push(i)
+        }
+    }
+    return <- res
+}
+
+// the magicks Arithmeticks can cast (action flag 3 bit 0x40)
+def arith_spells_w() : array<int> {
+    var res : array<int>
+    for (id in range(1, 368)) {
+        let a = read_ability_w(id)
+        if ((a.f3 & 0x40) != 0 && a.name != "") {
+            res |> push(id)
+        }
+    }
+    return <- res
+}
+
 // ------------------------------------------------------------ reactions
 
 struct ReactionW {
@@ -1049,7 +1132,7 @@ def private countergrasp(f : FightW) : bool {
 // reactions that change the hit chance (Shirahadori, Archer's Bane, Parry,
 // Reflexes) are in the forecast already and checked; the others are the
 // reference's rules, their Brave rolls are not checked.
-def reaction_w(att, tgt : UnitW; f : FightW) : ReactionW {
+def reaction_w(att, tgt : UnitW; f : FightW; arith : bool = false) : ReactionW {
     var r = ReactionW()
     // the equipped reaction if its bit is on, else the first bit of the mask
     if (tgt.reaction != 0 && has_ability_w(tgt, tgt.reaction)) {
@@ -1096,9 +1179,10 @@ def reaction_w(att, tgt : UnitW; f : FightW) : ReactionW {
             r.effect = first ? "attacks first, the action is cancelled" : "attacks back"
         }
     } elif (rid == ID_COUNTER_TACKLE) {
-        r.triggers = f.formula == 0x37
+        // checked: it answers Attack (Rush back: 8 to Ramza), not Rush
+        r.triggers = countergrasp(f)
         r.effect = "Rush back"
-        r.why = r.triggers ? "" : "only Rush / Stone"
+        r.why = r.triggers ? "" : "not a physical blow"
     } elif (rid == ID_DRAGONHEART || rid == ID_BRAVERY_BOOST || rid == ID_VANISH) {
         r.triggers = countergrasp(f)
         r.effect = rid == ID_DRAGONHEART ? "Reraise" : (rid == ID_VANISH ? "Invisible" : "Brave +3")
@@ -1123,9 +1207,13 @@ def reaction_w(att, tgt : UnitW; f : FightW) : ReactionW {
         let magick = f.ability.id != 0 && f.ability.kind == AB_NORMAL && (f.ability.f3 & 0x20) != 0
         r.triggers = (rid == ID_MAGICK_COUNTER ? (f.ability.f4 & 0x40) != 0 : (rid == ID_NATURES_WRATH ?
             (f.ability.f4 & 0x80) != 0 : magick))
+        // checked: Arithmeticks' Fire calls none of them (Faith Boost,
+        // Absorb MP, Magick Counter, Reflect); a magick cast the usual way
+        // is not checked (it charges)
+        r.triggers = r.triggers && !arith
         r.effect = (rid == ID_MAGICK_COUNTER ? "casts it back" : (rid == ID_ABSORB_MP ? "gains the MP spent" :
             (rid == ID_FAITH_BOOST ? "Faith +3" : "the reaction's effect")))
-        r.why = r.triggers ? "" : "not a magick it answers"
+        r.why = r.triggers ? "" : (arith ? "Arithmeticks call no magick reactions" : "not a magick it answers")
     } elif (rid == ID_STICKY_FINGERS || rid == ID_EARPLUG || rid == ID_CUP_OF_LIFE) {
         r.triggers = false
         r.why = "not modelled (throws, Speechcraft, healing)"

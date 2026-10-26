@@ -54,11 +54,20 @@ STATUS_GROUPS = [
     (102, 9, 4, 2, 2, STD + stats('pa', 0x3E, (10,)) + [('zodiac7', [(A, 0x09, 0x70, 1)]),
          ('t_protect', [(T, 0x65, 0x20, 1)])]),
 ]
+# --immortal: Death / Toad on Lezalas with the team byte's bit 0x04 cleared
+# (the ENTD's "immortal"?) -> forecast11.txt
+IMMORTAL_GROUPS = [
+    (30, 11, 6, 2, 14, STD + [('team_90', [(T, 0x05, 0x90, 1)]), ('team_94', [(T, 0x05, 0x94, 1)])]),
+    (29, 11, 6, 2, 13, STD + [('team_90', [(T, 0x05, 0x90, 1)])]),
+]
+if '--immortal' in sys.argv:
+    GROUPS = IMMORTAL_GROUPS
 STATUS = '--status' in sys.argv
 if STATUS:
     GROUPS = STATUS_GROUPS
 only = [int(a) for a in sys.argv[1:] if not a.startswith('--')]
-out = open('forecast9.txt' if STATUS else 'fc3.txt', 'a' if only else 'w')
+out = open('forecast11.txt' if '--immortal' in sys.argv else ('forecast9.txt' if STATUS else 'fc3.txt'),
+           'a' if only else 'w')
 for aid, sec, job, sub, idx, cases in GROUPS:
     if only and aid not in only:
         continue

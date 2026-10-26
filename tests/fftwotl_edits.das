@@ -70,6 +70,9 @@ def apply_edit(var u : UnitW; off, v : int) {
         u.rsm_mask[off - 0x95] = uint8(v)
     } elif (off >= 0xA3 && off < 0xA3 + LEARNED_W_SIZE) {
         u.learned[off - 0xA3] = uint8(v)
+    } elif (off == 0x05) {
+        u.team_byte = v
+        u.team = team_of_w(v)
     } elif (off == 0x16) {
         u.support = v               // the id alone: no effect in the game
     }

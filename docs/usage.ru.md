@@ -55,6 +55,9 @@ build\bin\battlecalc.exe tests\test_fftwotl_reach.das --state <fftwotl_test_batt
 build\bin\battlecalc.exe tests\test_fftwotl_reach.das --state <fftwotl_test_battle2.ppst> --reach reach2.txt --unit 16
 build\bin\battlecalc.exe tests\test_fftwotl_reach.das --state <fftwotl_test_battle1.ppst> --reach reach3.txt
 build\bin\battlecalc.exe tests\test_fftwotl_reach.das --state <fftwotl_test_battle2.ppst> --reach reach4.txt --unit 16
+build\bin\battlecalc.exe tests\test_fftwotl_arith.das --state <fftwotl_test_battle1.ppst>
+build\bin\battlecalc.exe tests\test_fftwotl_arith.das --state <fftwotl_test_battle2.ppst> --file arith2.txt --unit 16
+build\bin\battlecalc.exe tests\test_fftwotl_react.das --state <fftwotl_test_battle1.ppst>
 build\bin\battlecalc.exe tests\test_fftwotl_battle2.das --state <fftwotl_test_battle2.ppst>
 build\bin\battlecalc.exe tests\test_fftwotl_graphics.das --state <fftwotl_test_battle1.ppst> --rom <WotL (USA).iso>
 ```
@@ -83,6 +86,8 @@ ULUS10297_1.00_N.ppst`, в меню PPSSPP это слот N + 1), игра — 
   (таблицы игры).
 - Формулы сверены с прогнозами самой игры (`tests/test_fftwotl_forecast.das`, 291 случай в двух боях: урон и шанс, которые игра показывает при выборе цели): Attack всеми видами
   оружия, зодиак, статусы, уклонения и стороны, элементы, поддержки и реакции (Shirahadori, Parry, Reflexes …),
+  Arithmeticks (на вкладке Attack, если у атакующего этот набор или включено «Every ability»: признак, число,
+  заклинание — кого заденет и сколько; сверено с игрой в двух боях),
   Fire, Cure, Arts of War, Umbra, Potion, Rush, Stone, статусная магия (Poison, Stop, Protect, Haste, Quick), Gravity,
   Empowerment / Invigoration, Rend Helm, Aurablast, Throw (лучший по WP предмет нужного вида из запаса партии;
   без него — «none in stock») и Jump (одно действие; выученные Jump задают дальность); Counter — по настоящему удару. Остальное — по

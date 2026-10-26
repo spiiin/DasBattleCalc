@@ -132,7 +132,7 @@ every ability learned (+0xA3 + job x 3), at Lezalas.
   had the drains rounded down).
 - **Death** on the undead (Lezalas made undead): heals 134 (max HP) at 40% - the chance without the magic evade, as a
   healing. **Death and Toad on the living Lezalas: 0%** in the game for every MA / Faith / zodiac; Poison and Stop on
-  him work. No immunity in his record (+0x5D), job or equipment - **not explained**; the test skips these 7 lines.
+  him work: he is **immortal** (team byte bit 0x04, see "The second battle").
 - **Rend Helm .. Rend Weapon (0x25): zodiac on the sum (PA + WP + Y)** - (6 + 7 + 45) x 5 / 4 = 72, PA 20: 90, the
   worst zodiac 29 (then the evades: 50, 63, 20%); Rend Power .. MP (0x2B / 0x2C) scale PA and Y apart (7 + 62 = 69).
 - **Aurablast (0x31): PA' x [(PA + Y) / 2]** - the modifiers and the zodiac on the first PA only: 7 x 4 = 28, PA 10:
@@ -171,13 +171,42 @@ matches tile for tile):
 - **Jump**: the learned horizontal / vertical; it lands on the bottom of water (the depth not added: from the bridge,
   11 h down to the floor - out of the 8 h Jump).
 
+## Reactions triggered (checked, the action performed)
+
+`fcreact.py` (`react1.txt`, `tests/test_fftwotl_react.das`): Ramza attacks Lezalas and the action is **performed**
+(the forecast, then "Perform"); Lezalas has one reaction (its mask bit, +0x14), Brave 100, no shield, C-EV 0; both
+records read after the animation and compared with the same action without a reaction.
+
+- Attack calls: Counter (48 back), First Strike (strikes first, the attack is cancelled), **Counter Tackle (8 back -
+  it answers Attack, not Rush)**, Dragonheart (Reraise), Bravery Boost (+3), Vanish (Invisible), Regenerate (Regen),
+  Fury (PA +1), Magick Boost (MA +1), Auto-Potion (+30), Mana Shield (the damage to MP). Left in Critical: Recover HP
+  (full), Recover MP (full), Quick (CT 255), Bonecrusher (KO'd Ramza). Not left in Critical: none of those.
+- **Arithmeticks' Fire calls no magick reaction** (Faith Boost, Absorb MP, Magick Counter, Reflect: as without).
+  Fire cast the usual way charges, so its reactions were not seen.
+
+## Arithmeticks (checked)
+
+`fcarith.py --sweep` (`arith1.txt`: the first battle, Ramza, every algorithm x number with Fire - fitted; `arith2.txt`:
+Gariland, Ganelon, EXP and Height - held out, matches), `tests/test_fftwotl_arith.das`. The menu: Act, Arithmeticks,
+the algorithm (CT, Level, EXP, Height), the number (prime, multiple of 5 / 4 / 3), the magick (action flag 3 bit 0x40:
+45 of them), then the forecast of the first target and "Perform this action?". **The targeted tiles have byte 5 bit
+0x80**.
+
+- Every unit whose value fits, allies and the caster too; the KO'd are lit but take nothing.
+- **CT as the screen shows it: at most 100** (104 and the active unit's 4 both count as 100).
+- **0 is no multiple** (EXP 0 is not hit).
+- **Height with half the slope: a half h fits nothing** (units on slopes of 1 are never hit).
+- The damage is the magick's own (Fire: MA x Y x Faith x Faith, the zodiac): every target matches the model.
+
 ## The second battle: Gariland (checked)
 
 `fcb2.py` (`forecast10.txt`, `tests/test_fftwotl_battle2.das`), the user's save: Ganelon (Chemist, record 16) at his
 turn on Rosa (record 17, of the party, the tile next to him - a record moved next to him is not a target: the game
 keeps its own map of where the units stand). 25 forecasts, all as the model: Attack (every facing, PA, zodiac,
 Protect, C-EV), Fire, Poison, Toad (62%), Death. **Death shows the target's max HP as the damage** (42) and Toad /
-Death work on her - the 0% of both on Lezalas (the first battle) is his own: not explained. The party stands in
+Death work on her. **The 0% on Lezalas: team byte (+0x05) bit 0x04 = immortal** (every enemy of the first battle has
+0x94, Gariland's 0x90): `fcgroups.py --immortal` (`forecast11.txt`) - with the bit cleared Death 38% (134 damage
+shown), Toad 45%; set again, 0%. The party stands in
 records 16..20; +0x2E is set only for the unit at its turn.
 
 ## Not found yet
