@@ -149,6 +149,9 @@ class FftGame : GameModule {
     action_sel : int = 0              // the Attack tab's action: 0 Attack, k the unit's k-th ability
     action_unit : int = -1            // whose abilities action_sel picks from
     all_abilities : bool = false      // also the abilities not learned
+    math_cond : int = 0               // Math Skill: CT, Level, Exp, Height
+    math_num : int = 0                // Prime Number, 5, 4, 3
+    math_spell : int = 0              // in math_spells
     turns_ahead : int = 24
     state_path : string
     rom_path : string                 // the disc (.cue / .bin): the graphics
@@ -803,14 +806,18 @@ class FftGame : GameModule {
         var items : array<string>
         items |> push("Attack")
         var jump_listed = false
+        var math_listed = false
         for (ua in abilities) {
-            // the Jump abilities (their reach) make one Jump command
+            // the Jump abilities (their reach) make one Jump command, Math
+            // Skill's conditions and numbers one Math Skill
             let jump = ua.id >= 0x18A && ua.id < 0x196
-            if ((ua.learned || all_abilities) && !(jump && jump_listed)) {
-                shown |> push(ua.id)
-                let name = jump ? "Jump" : ability_name(ua.id)
-                items |> push(ua.learned ? name : "{name} (not learned)")
+            let math = ua.id >= MATH_FIRST && ua.id < MATH_END
+            if ((ua.learned || all_abilities) && !(jump && jump_listed) && !(math && math_listed)) {
+                shown |> push(math ? MATH_FIRST : ua.id)
+                let name = jump ? "Jump" : (math ? "Math Skill" : ability_name(ua.id))
+                items |> push(ua.learned || math ? name : "{name} (not learned)")
                 jump_listed = jump_listed || jump
+                math_listed = math_listed || math
             }
         }
         action_sel = clamp(action_sel, 0, length(items) - 1)
@@ -818,6 +825,10 @@ class FftGame : GameModule {
         bl_choice("fft_action", items, action_sel, u(220.0))
         SetCursorScreenPos(ImVec2(x + u(228.0), y))
         bl_option("fft_all_abilities", "Not learned too", all_abilities)
+        if (action_sel > 0 && shown[action_sel - 1] == MATH_FIRST) {
+            self->math_view(a, x, y + u(26.0), w, h - u(26.0))
+            return
+        }
         if (action_sel > 0) {
             self->ability_view(a, read_ability(shown[action_sel - 1]), x, y + u(26.0), w, h - u(26.0))
             return
@@ -903,6 +914,82 @@ class FftGame : GameModule {
                 yy += u(19.0)
             }
         }
+        SetCursorScreenPos(ImVec2(x, yy))
+        Dummy(ImVec2(1.0, u(4.0)))
+        EndChild()
+    }
+
+    // Math Skill: a condition, a number and a learned spell; the spell
+    // hits every unit on the field whose value the number takes (the
+    // caster too), with no MP, range or charge
+    def math_view(a : FftUnit; x, y, w, h : float) : void {
+        let fg = bt.regular.text | 0xffu
+        let dim = offset_color(fg, 60)
+        let spells <- math_spells(a)
+        var conds <- [for (c in MATH_CONDITIONS); c]
+        var nums <- [for (n in MATH_NUMBERS); n]
+        var names <- [for (sid in spells); ability_name(sid)]
+        if (length(names) == 0) {
+            names |> push("(no spell learned)")
+        }
+        math_spell = clamp(math_spell, 0, length(names) - 1)
+        SetCursorScreenPos(ImVec2(x, y))
+        bl_choice("fft_math_cond", conds, math_cond, u(110.0))
+        SetCursorScreenPos(ImVec2(x + u(114.0), y))
+        bl_choice("fft_math_num", nums, math_num, u(130.0))
+        SetCursorScreenPos(ImVec2(x + u(248.0), y))
+        bl_choice("fft_math_spell", names, math_spell, u(150.0))
+        SetCursorScreenPos(ImVec2(x + u(406.0), y))
+        bl_label("Math Skill: every unit whose {MATH_CONDITIONS[math_cond]} the number takes", -1, w - u(406.0))
+        let row_h = u(21.0)
+        let head = fixed_array<string>("Target", MATH_CONDITIONS[math_cond], "Effect", "Amount", "Hit", "HP after")
+        let widths = fixed_array<float>(110.0, 60.0, 190.0, 80.0, 50.0, 80.0)
+        var cols : array<float>
+        var cx = x + u(12.0)
+        for (k in range(length(widths))) {
+            cols |> push(cx)
+            cx += u(widths[k])
+        }
+        var ry = y + u(26.0)
+        for (k in range(length(head))) {
+            text_at_baseline(cols[k], ry + u(14.0), head[k], dim)
+        }
+        ry += row_h
+        SetCursorScreenPos(ImVec2(x, ry))
+        BeginChild("fft_math", ImVec2(w, y + h - ry), ImGuiChildFlags.None, ImGuiWindowFlags.None)
+        var dl = GetWindowDrawList()
+        var yy = GetCursorScreenPos().y
+        for (i in range(length(units))) {
+            let t = units[i]
+            let v = math_value(t, math_cond, map)
+            let hit = math_matches(v, math_num)
+            if (t.hp <= 0) {
+                continue
+            }
+            *dl |> AddRectFilled(ImVec2(x + u(2.0), yy + u(3.0)), ImVec2(x + u(6.0), yy + row_h - u(3.0)),
+                abgr(side_color(t.team)), u(2.0), ImDrawFlags.None)
+            let b = yy + u(15.0)
+            let col = hit ? fg : dim
+            text_at_baseline(cols[0], b, t.name, team_text_color(t.team))
+            text_at_baseline(cols[1], b, v < 0 ? "-" : "{v}", col)
+            if (hit && length(spells) > 0) {
+                let f = ability_forecast(a, t, read_ability(spells[math_spell]))
+                let range_text = "{f.amount_min}..{f.amount_max}"
+                let amount = f.amount_max == 0 ? "-" : (f.amount_min == f.amount_max ? "{f.amount_min}" : range_text)
+                let after = f.heal ? min(t.max_hp, t.hp + f.amount_max) : max(0, t.hp - f.amount_max)
+                text_at_baseline(cols[2], b, f.effect, f.known ? col : dim)
+                text_at_baseline(cols[3], b, f.heal && f.amount_max > 0 ? "+{amount}" : amount, col)
+                text_at_baseline(cols[4], b, "{f.hit}%", col)
+                text_at_baseline(cols[5], b, f.amount_max == 0 ? "" : "{after}/{t.max_hp}", col)
+            } else {
+                text_at_baseline(cols[2], b, hit ? "" : "not a target", dim)
+            }
+            yy += row_h
+        }
+        yy += u(8.0)
+        text_at_baseline(x + u(12.0), yy + u(14.0),
+            "CT counts at most 100 (the unit taking its turn: 100); Height only whole (2.5: none)", dim)
+        yy += u(19.0)
         SetCursorScreenPos(ImVec2(x, yy))
         Dummy(ImVec2(1.0, u(4.0)))
         EndChild()

@@ -37,7 +37,7 @@ Blender 2.7 (Blendish). Общение с пользователем — на р
   `tests/test_fft_attack.das` (`fft_test_ramza2.State [--battle2 fft_test_battle2.State]`: прогнозы Attack игры — урон, стороны, зодиак; второй бой — Barney по Candy),
   `tests/test_fft_graphics.das` (`fft_test_battle1.State --rom <.cue>`), `tests/test_fft_reach.das` (`--dir <PSX/State>`:
   12 сейвов `fft_reach_*.State` с открытыми зонами Move / Attack — флаги игры в терраине +5),
-  `tests/test_fft_abilities.das` (`fft_test_ramza2.State [--throw fft_test_throw.State] [--battle2 fft_test_battle2.State]`: прогнозы способностей игры,
+  `tests/test_fft_abilities.das` (`fft_test_ramza2.State [--throw fft_test_throw.State] [--battle2 fft_test_battle2.State] [--math fft_test_math.State]`: прогнозы способностей игры,
   Jump, Throw; формулы — `fft_abilities.das`), `tests/test_fft_explore.das` (`fft_test_ramza2.State`: Explore —
   стороны, зодиак, оружие, Attack UP, Protect, Fire дают числа игры). Второй бой (Гариленд) — `fft_test_battle2.State`.
   Экспорт сейва с правками — `export_battle` (характеристики, без позиции), тест `tests/test_fft_export.das`

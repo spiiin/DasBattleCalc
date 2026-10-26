@@ -4,10 +4,11 @@
 -- value, attacks (Act > Attack > the tile below > Execute) and reads
 -- Lezales' HP after the hit: a miss, the forecast's 42, or more (a
 -- critical). One line per trial in crit.txt: seed, HP before, HP after.
---   CRIT_TRIALS (200)
+--   CRIT_TRIALS (200), CRIT_FIRST (0: the first trial's number - its seed)
 local OUT = "C:/src/DasBattleCalc-psx/research/fft/"
 local STATE = os.getenv("PROBE_STATE") or "C:/rom/BizHawk-2.11-win-x64/PSX/State/fft_test_ramza2.State"
 local TRIALS = tonumber(os.getenv("CRIT_TRIALS") or "200")
+local FIRST = tonumber(os.getenv("CRIT_FIRST") or "0")
 local LEZ = 0x19118C          -- Lezales' record (slot 5); HP at +0x28
 local PAD = { Down = "P1 D-Pad Down", Circle = "P1 \u{25CB}" }
 -- CRIT_EXEC: a state saved at "Execute?" (the plan below skipped) - each
@@ -18,7 +19,7 @@ local PLAN = EXEC and { [5] = "Circle" } or { [10] = "Down", [30] = "Circle", [6
 local LAST = EXEC and 800 or 1000
 local f = io.open(OUT .. "crit.txt", "w")
 client.speedmode(1600)
-for t = 0, TRIALS - 1 do
+for t = FIRST, FIRST + TRIALS - 1 do
   savestate.load(EXEC or STATE)
   local k = (t * 2654435761 + 12345) % 4294967296
   memory.write_u32_le(0x009010, k, "MainRAM")

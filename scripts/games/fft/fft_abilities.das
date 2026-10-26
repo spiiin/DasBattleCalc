@@ -185,6 +185,78 @@ def private learned_slot(ss : int) : int {
 }
 
 // the unit's primary and secondary skillsets' actions, learned or not
+// ------------------------------------------------------------ Math Skill
+
+// Math Skill's abilities: 414..417 the conditions CT, Level, Exp, Height;
+// 418..421 the numbers Prime Number, 5, 4, 3
+let MATH_FIRST = 414
+let MATH_END = 422
+let MATH_CONDITIONS = fixed_array<string>("CT", "Level", "Exp", "Height")
+let MATH_NUMBERS = fixed_array<string>("Prime Number", "5", "4", "3")
+// the skillsets whose learned spells Math Skill casts: White, Black,
+// Time, Yin Yang Magic (the game listed the learned Black Magic)
+let MATH_SKILLSETS = fixed_array<int>(10, 11, 12, 16)
+
+// a unit's value for a condition, -1 none. The game (battle 2): CT at
+// most 100 and the unit taking its turn 100 (CT 102 units were hit by
+// "5", not by "3"); Height the tile's whole height (2.5 matches no
+// number)
+def math_value(u : FftUnit; cond : int; m : FftMap) : int {
+    if (cond == 0) {
+        return u.active ? 100 : min(u.ct, 100)
+    } elif (cond == 1) {
+        return u.level
+    } elif (cond == 2) {
+        return u.exp
+    }
+    if (u.x < 0 || u.y < 0 || u.x >= m.w || u.y >= m.h) {
+        return -1
+    }
+    let i = u.y * m.w + u.x
+    let h2 = u.upper && m.upper[i] >= 0 ? m.upper[i] : m.height[i]
+    return (h2 & 1) != 0 ? -1 : h2 / 2
+}
+
+// the number picks the value: 0 a prime, 1..3 divisible by 5, 4, 3
+def math_matches(v, number : int) : bool {
+    if (v < 0) {
+        return false
+    }
+    if (number == 0) {
+        if (v < 2) {
+            return false
+        }
+        for (d in range(2, v)) {
+            if (d * d > v) {
+                break
+            }
+            if (v % d == 0) {
+                return false
+            }
+        }
+        return true
+    }
+    let k = fixed_array<int>(0, 5, 4, 3)
+    return v % k[number] == 0
+}
+
+// the spells a unit can cast by Math Skill: the learned ones of
+// MATH_SKILLSETS, whichever its skillsets are
+def math_spells(u : FftUnit) : array<int> {
+    var res : array<int>
+    for (ss in MATH_SKILLSETS) {
+        let slot = learned_slot(ss)
+        let ids <- skillset_actions(ss)
+        for (i in range(length(ids))) {
+            let b = gba_read8(u.record + LEARNED + uint(slot * 3 + i / 8))
+            if ((b & (0x80u >> uint(i % 8))) != 0u) {
+                res |> push(ids[i])
+            }
+        }
+    }
+    return <- res
+}
+
 def unit_abilities(u : FftUnit) : array<UnitAbility> {
     var res : array<UnitAbility>
     for (ss in [u.primary, u.secondary]) {

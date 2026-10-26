@@ -123,7 +123,7 @@ def unit_actions_f(u : FftUnit; all_known : bool) : array<int> {
     res |> push(0)
     var jump = -1
     for (ua in unit_abilities(u)) {
-        if (!ua.learned && !all_known) {
+        if ((!ua.learned && !all_known) || (ua.id >= MATH_FIRST && ua.id < MATH_END)) {
             continue
         }
         if (ua.id >= JUMP_FIRST && ua.id < JUMP_END) {

@@ -491,7 +491,7 @@ The probe's mistake on the way: Lezales' record is 0x8019118C (slot 5 x
 Lezales (42, 66%); each trial loads it, writes its own seed to the RNG
 (0x80009010, PsyQ rand: seed x 0x41C64E6D + 0x3039 - 4835 steps during
 the attack; idle frames do not move it), presses ○ and reads Lezales' HP.
-1000 trials (`crit_1000.txt`): 331 misses, 648 x 42, criticals 49 / 56 /
+1000 trials (now in `crit_3000.txt`): 331 misses, 648 x 42, criticals 49 / 56 /
 63 / 70 / 77 (4, 3, 3, 4, 7) = (XA 6 + r) x WP 7, r = 1..5, the most
 77 = the model's crit_max. Hits 66.9% (the forecast 66%). A critical
 with r = 0 looks like 42; with that, ~25 of 669 hits, 3.8% +- 0.8%: the
@@ -506,3 +506,37 @@ prologue at Orbonne (fft_test_ramza2: Ramza given the same at Lezales)
 Frog and Death show 0% with no status name, Poison 49%: no immunity in
 the records (+0x53..), the jobs (+31..) or the items' attributes - a flag
 of that battle, not found. The model's note says so.
+
+## Math Skill (2026-10-26)
+
+Skillset 21: abilities 414..417 the conditions CT, Level, Exp, Height,
+418..421 the numbers Prime Number, 5, 4, 3 (kind 6). In the game (battle
+2, Barney given Math Skill and Black Magic by edits - secondary +0x13 =
+21, learned +0xC9 and +0xAB / +0xAC = 255 - and MP 99; the save
+`fft_test_math.State`): Act > Math Skill (a tutorial hint before each
+list) > condition > number > a learned spell ("Ref. Turn: Now") >
+Execute; the forecast panel only shows the caster (the cursor does not
+move), so the hits were read from the HP after the cast:
+
+| condition, number, Fire | units hit (HP lost) |
+|---|---|
+| CT, 3 | none - CT 102 counts as 100, 22 and 2 are not divisible |
+| CT, 5 | Barney 12 (taking his turn: 100), Ian 11, Maria 14, Ramza 16, Candy 21 |
+| Exp, Prime Number | Bernard (73) 10, Barney (37) 12, Ian (23) 11, Candy (53) 21 |
+| Height, Prime Number | all on whole height 2 or 7 (Ilia) - not Ian, Maria (2.5), Buster (4) |
+
+So: CT at most 100 (the acting unit 100), Height the tile's whole
+height (half heights match nothing), the caster can be hit, and the
+damage is the spell's own (MA x 14 x Fa x Fa, the zodiac) - all as the
+model. The spells: the learned ones of White, Black, Time and Yin Yang
+Magic (assumed for all but Black: the game listed Black Magic). Not
+checked: Exp 0 with 5 / 4 / 3, status spells' hit through Math.
+
+3000 trials (`crit_3000.txt`, the first 1000 above and 2000 more, all
+seeds different): 1000 misses, 1931 x 42, criticals 49 / 56 / 63 / 70 /
+77 = 12 / 11 / 13 / 11 / 22; hits 66.7%. 77 (r = 5 = XA - 1) comes twice
+as often as each other r: r = min(rand(1..XA), XA - 1) fits (11.5 each,
+23) - then no critical looks like 42 and the rate is 69 / 2000 = 3.5% +-
+0.4% of the hits; with r = rand(0..XA - 1) it would be 4.1% +- 0.5%.
+Either way below the guides' 5% (the model's expected damage), the most
+(2 XA - 1) x YA as the model.

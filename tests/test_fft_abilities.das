@@ -9,7 +9,7 @@ options indenting = 4
 // Dash and Throw Stone: the forecast shows one roll of rand(1..Y) - 3 and
 // 2 in this state - so the game's number is PA' x that roll. Also Wish
 // (caster's max HP / 5 x 2), Chakra, Potion, Charge with a bow at Viggs.
-//   battlecalc tests/test_fft_abilities.das --state <fft_test_ramza2.State> [--throw <fft_test_throw.State>] [--battle2 <fft_test_battle2.State>]
+//   battlecalc tests/test_fft_abilities.das --state <fft_test_ramza2.State> [--throw <fft_test_throw.State>] [--battle2 <fft_test_battle2.State>] [--math <fft_test_math.State>]
 require gba_mem
 require gui_common
 require math
@@ -179,6 +179,37 @@ def main() : int {
                 check("{ability_name(sc._0)} at Candy: {f.hit}%, the game: {sc._1}%", f.hit == sc._1)
             }
         }
+    }
+    // --math (fft_test_math: battle 2, Barney given Math Skill, Black Magic
+    // and MP 99): Math Skill's Fire hit in the game (the HP lost)
+    let math_state = gui_arg("--math", "")
+    if (math_state != "") {
+        check("math state loads", gba_load_state(math_state) == "")
+        var mu : array<FftUnit>
+        read_battle(mu)
+        var mm : FftMap
+        read_map(mm)
+        let bi = find_unit(mu, "Barney")
+        let fire = read_ability(16)
+        let mcases = fixed_array<tuple<string; int; int; string>>(
+            ("CT, 3", 0, 3, ""),
+            ("Exp, Prime Number", 2, 0, "Bernard 10, Barney 12, Ian 11, Candy 21"),
+            ("CT, 5", 0, 1, "Barney 12, Ian 11, Maria 14, Ramza 16, Candy 21"),
+            ("Height, Prime Number", 3, 0,
+                "Delita 12, Santos 11, Yeager 16, Bernard 10, Ilia 12, Barney 12, Ramza 16, Candy 21"))
+        for (c in mcases) {
+            var hits : array<string>
+            for (t in mu) {
+                if (math_matches(math_value(t, c._1, mm), c._2)) {
+                    let f = ability_forecast(mu[bi], t, fire)
+                    hits |> push("{t.name} {f.amount_min}")
+                }
+            }
+            let got = join(hits, ", ")
+            check("Math Skill {c._0}, Fire: [{got}], the game: [{c._3}]", got == c._3)
+        }
+        check("Barney's Math spells: {length(math_spells(mu[bi]))} (Black Magic learned: 16)",
+            length(math_spells(mu[bi])) == 16)
     }
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
     return failed == 0 ? 0 : 1
