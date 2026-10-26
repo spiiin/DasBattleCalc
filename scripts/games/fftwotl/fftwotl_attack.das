@@ -1132,7 +1132,7 @@ def private countergrasp(f : FightW) : bool {
 // reactions that change the hit chance (Shirahadori, Archer's Bane, Parry,
 // Reflexes) are in the forecast already and checked; the others are the
 // reference's rules, their Brave rolls are not checked.
-def reaction_w(att, tgt : UnitW; f : FightW) : ReactionW {
+def reaction_w(att, tgt : UnitW; f : FightW; arith : bool = false) : ReactionW {
     var r = ReactionW()
     // the equipped reaction if its bit is on, else the first bit of the mask
     if (tgt.reaction != 0 && has_ability_w(tgt, tgt.reaction)) {
@@ -1179,9 +1179,10 @@ def reaction_w(att, tgt : UnitW; f : FightW) : ReactionW {
             r.effect = first ? "attacks first, the action is cancelled" : "attacks back"
         }
     } elif (rid == ID_COUNTER_TACKLE) {
-        r.triggers = f.formula == 0x37
+        // checked: it answers Attack (Rush back: 8 to Ramza), not Rush
+        r.triggers = countergrasp(f)
         r.effect = "Rush back"
-        r.why = r.triggers ? "" : "only Rush / Stone"
+        r.why = r.triggers ? "" : "not a physical blow"
     } elif (rid == ID_DRAGONHEART || rid == ID_BRAVERY_BOOST || rid == ID_VANISH) {
         r.triggers = countergrasp(f)
         r.effect = rid == ID_DRAGONHEART ? "Reraise" : (rid == ID_VANISH ? "Invisible" : "Brave +3")
@@ -1206,9 +1207,13 @@ def reaction_w(att, tgt : UnitW; f : FightW) : ReactionW {
         let magick = f.ability.id != 0 && f.ability.kind == AB_NORMAL && (f.ability.f3 & 0x20) != 0
         r.triggers = (rid == ID_MAGICK_COUNTER ? (f.ability.f4 & 0x40) != 0 : (rid == ID_NATURES_WRATH ?
             (f.ability.f4 & 0x80) != 0 : magick))
+        // checked: Arithmeticks' Fire calls none of them (Faith Boost,
+        // Absorb MP, Magick Counter, Reflect); a magick cast the usual way
+        // is not checked (it charges)
+        r.triggers = r.triggers && !arith
         r.effect = (rid == ID_MAGICK_COUNTER ? "casts it back" : (rid == ID_ABSORB_MP ? "gains the MP spent" :
             (rid == ID_FAITH_BOOST ? "Faith +3" : "the reaction's effect")))
-        r.why = r.triggers ? "" : "not a magick it answers"
+        r.why = r.triggers ? "" : (arith ? "Arithmeticks call no magick reactions" : "not a magick it answers")
     } elif (rid == ID_STICKY_FINGERS || rid == ID_EARPLUG || rid == ID_CUP_OF_LIFE) {
         r.triggers = false
         r.why = "not modelled (throws, Speechcraft, healing)"

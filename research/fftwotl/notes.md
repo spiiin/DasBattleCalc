@@ -171,6 +171,19 @@ matches tile for tile):
 - **Jump**: the learned horizontal / vertical; it lands on the bottom of water (the depth not added: from the bridge,
   11 h down to the floor - out of the 8 h Jump).
 
+## Reactions triggered (checked, the action performed)
+
+`fcreact.py` (`react1.txt`, `tests/test_fftwotl_react.das`): Ramza attacks Lezalas and the action is **performed**
+(the forecast, then "Perform"); Lezalas has one reaction (its mask bit, +0x14), Brave 100, no shield, C-EV 0; both
+records read after the animation and compared with the same action without a reaction.
+
+- Attack calls: Counter (48 back), First Strike (strikes first, the attack is cancelled), **Counter Tackle (8 back -
+  it answers Attack, not Rush)**, Dragonheart (Reraise), Bravery Boost (+3), Vanish (Invisible), Regenerate (Regen),
+  Fury (PA +1), Magick Boost (MA +1), Auto-Potion (+30), Mana Shield (the damage to MP). Left in Critical: Recover HP
+  (full), Recover MP (full), Quick (CT 255), Bonecrusher (KO'd Ramza). Not left in Critical: none of those.
+- **Arithmeticks' Fire calls no magick reaction** (Faith Boost, Absorb MP, Magick Counter, Reflect: as without).
+  Fire cast the usual way charges, so its reactions were not seen.
+
 ## Arithmeticks (checked)
 
 `fcarith.py --sweep` (`arith1.txt`: the first battle, Ramza, every algorithm x number with Fire - fitted; `arith2.txt`:

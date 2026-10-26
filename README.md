@@ -86,8 +86,8 @@ field) gives the graphics: the units' sprites, the items' icons and the battle m
   Bane in the hit chance, a real Counter.
 - **Arithmeticks**: the algorithm (CT, Level, EXP, Height), the number and the magick - which units are hit (allies and
   the caster too) and what it does to each; checked against the game on 2 battles.
-- **The target's reaction**: which reaction it has (the record's ability bits), whether this action calls it, the
-  Brave roll, the counter-attack's damage.
+- **The target's reaction**: which reaction it has (the record's ability bits), whether this action calls it (checked
+  in the game with the action performed: 21 reactions), the Brave roll, the counter-attack's damage.
 - **Editor**: job, primary / secondary skillsets, reaction / support / movement, PA / MA / Speed, Level, Exp, Brave,
   Faith, HP / MP / CT, the seven equipment slots (what the job can wear), statuses, learned abilities by job; drag units
   on the field. **Export state with edits** writes a new `.ppst` (PPSSPP: File > Load State).
@@ -99,8 +99,7 @@ field) gives the graphics: the units' sprites, the items' icons and the battle m
   weapons from 3 tiles, bows farther from above) and every ability (the own tile, the vertical tolerance, Throw =
   Move, Jump's reach) - the game's highlighted tiles match on 2 battles.
 
-Not yet: when the reactions other than the hit-chance ones trigger (checked in the game:
-research/fftwotl/notes.md). RAM layout and tables:
+Not yet: whether a magick cast the usual way (it charges) calls the magick reactions. RAM layout and tables:
 [research/fftwotl/notes.md](research/fftwotl/notes.md), [layouts.md](research/fftwotl/layouts.md).
 
 ## Final Fantasy Tactics (PSX)

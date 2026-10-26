@@ -57,6 +57,7 @@ build\bin\battlecalc.exe tests\test_fftwotl_reach.das --state <fftwotl_test_batt
 build\bin\battlecalc.exe tests\test_fftwotl_reach.das --state <fftwotl_test_battle2.ppst> --reach reach4.txt --unit 16
 build\bin\battlecalc.exe tests\test_fftwotl_arith.das --state <fftwotl_test_battle1.ppst>
 build\bin\battlecalc.exe tests\test_fftwotl_arith.das --state <fftwotl_test_battle2.ppst> --file arith2.txt --unit 16
+build\bin\battlecalc.exe tests\test_fftwotl_react.das --state <fftwotl_test_battle1.ppst>
 build\bin\battlecalc.exe tests\test_fftwotl_battle2.das --state <fftwotl_test_battle2.ppst>
 build\bin\battlecalc.exe tests\test_fftwotl_graphics.das --state <fftwotl_test_battle1.ppst> --rom <WotL (USA).iso>
 ```
