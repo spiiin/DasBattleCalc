@@ -959,6 +959,148 @@ def run_steps(var s : Script; var t : ETable) : string {
     return ""
 }
 
+// ------------------------------------------------------------ experiments
+
+// "owner.key" -> owner, key ("side": owner "side", key "")
+def split_path(path : string; var owner : string&; var key : string&) {
+    let dot = find(path, ".")
+    owner = dot < 0 ? path : slice(path, 0, dot)
+    key = dot < 0 ? "" : slice(path, dot + 1)
+}
+
+// attacker.x / target.x -> atk.x / tgt.x
+def short_name(name : string) : string {
+    if (starts_with(name, "attacker.")) {
+        return "atk.{slice(name, 9)}"
+    }
+    if (starts_with(name, "target.")) {
+        return "tgt.{slice(name, 7)}"
+    }
+    return name
+}
+
+def private short_names(var e : Expr) {
+    for (n in e.nodes) {
+        if (n.kind == NodeKind.Name) {
+            n.text = short_name(n.text)
+        }
+    }
+}
+
+def short_script_names(var s : Script) {
+    for (ax in s.axes) {
+        ax.path = short_name(ax.path)
+    }
+    for (st in s.steps) {
+        short_names(st.e)
+    }
+    for (a in s.plot) {
+        for (e in a.exprs) {
+            short_names(e)
+        }
+    }
+}
+
+// A game's side of an experiment: the point the axes change (from the
+// scene: attacker, target, action, side ...) and what is measured there.
+class ExploreModel {
+    metrics : array<string>         // the columns every point gets
+    max_points : int = 20000
+    axis_hint : string = "atk.<param>, tgt.<param>, action or side"
+
+    def abstract is_param_path(path : string) : bool
+    // the point = the scene
+    def abstract reset() : void
+    // the parameter of an axis exists (checked at the scene)
+    def abstract probe_axis(path : string; var v : Value) : bool
+    // a parameter at the current point; false: there is none
+    def abstract value(path : string; var v : Value) : bool
+    def abstract set(path : string; v : Value) : string
+    def abstract axis_values(ax : Axis; var vals : array<Value>) : string
+    // the metrics of the current point, pushed to the row
+    def abstract measure(var row : array<Value>) : void
+}
+
+// The table of the experiment: one row per combination of the axes (the
+// last changes fastest), then the steps (columns, where, sort). "" or the
+// error.
+def run_experiment(var m : ExploreModel; var s : Script; var t : ETable) : string {
+    short_script_names(s)
+    t.names |> clear()
+    t.rows |> clear()
+    var paths : array<string>
+    var values : array<array<Value>>
+    var total = 1
+    for (ax in s.axes) {
+        if (!m->is_param_path(ax.path)) {
+            return "line {ax.line}: vary {m.axis_hint}, not '{ax.path}'"
+        }
+        if (find_index(paths, ax.path) >= 0) {
+            return "line {ax.line}: {ax.path} is already an axis"
+        }
+        var probe : Value
+        if (!m->probe_axis(ax.path, probe)) {
+            return "line {ax.line}: no parameter '{ax.path}'"
+        }
+        var vals : array<Value>
+        let err = m->axis_values(ax, vals)
+        if (err != "") {
+            return err
+        }
+        total *= length(vals)
+        if (total > m.max_points) {
+            return "line {ax.line}: too many points (more than {m.max_points})"
+        }
+        paths |> push(ax.path)
+        values |> emplace(vals)
+    }
+    // the parameters the script reads that are not axes
+    var used : array<string>
+    script_names(s, used)
+    var extra : array<string>
+    m->reset()
+    for (name in used) {
+        var probe : Value
+        if (find_index(paths, name) < 0 && find_index(m.metrics, name) < 0 && m->is_param_path(name)
+                && m->value(name, probe)) {
+            extra |> push(name)
+        }
+    }
+    t.names |> push_from(paths)
+    t.names |> push_from(m.metrics)
+    t.names |> push_from(extra)
+    var idx : array<int>
+    idx |> resize(length(paths))
+    for (_ in range(total)) {
+        m->reset()
+        var row : array<Value>
+        for (a in range(length(paths))) {
+            let v = values[a][idx[a]]
+            row |> push(v)
+            let err = m->set(paths[a], v)
+            if (err != "") {
+                return err
+            }
+        }
+        m->measure(row)
+        for (p in extra) {
+            var v : Value
+            m->value(p, v)
+            row |> push(v)
+        }
+        t.rows |> emplace(row)
+        var a = length(paths) - 1
+        while (a >= 0) {
+            idx[a]++
+            if (idx[a] < length(values[a])) {
+                break
+            }
+            idx[a] = 0
+            a--
+        }
+    }
+    return run_steps(s, t)
+}
 // ------------------------------------------------------------ chart data
 
 enum ChartKind {

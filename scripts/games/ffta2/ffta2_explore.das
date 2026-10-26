@@ -109,12 +109,6 @@ def private status_index2(key : string) : int {
     return -1
 }
 
-def private split_path2(path : string; var owner : string&; var key : string&) {
-    let dot = find(path, ".")
-    owner = dot < 0 ? path : slice(path, 0, dot)
-    key = dot < 0 ? "" : slice(path, dot + 1)
-}
-
 def private item_value2(it : Item2) : Value {
     return vtext(it.id == 0 ? "(none)" : it.name, double(it.id))
 }
@@ -327,7 +321,7 @@ def private point_param2(att, tgt : Unit2; ability, side, privilege : int; path 
     }
     var owner = ""
     var key = ""
-    split_path2(path, owner, key)
+    split_path(path, owner, key)
     return unit_param2(owner == "tgt" ? tgt : att, key, v)
 }
 
@@ -354,138 +348,65 @@ def private metric_values2(f : Fight2; reach : bool; distance, mp : int; var row
     row |> push(vtext(f.affinity >= 0 && f.affinity < 5 ? AFFINITY_NAMES[f.affinity] : "{f.affinity}", double(f.affinity)))
 }
 
-def private short_name2(name : string) : string {
-    if (starts_with(name, "attacker.")) {
-        return "atk.{slice(name, 9)}"
-    }
-    if (starts_with(name, "target.")) {
-        return "tgt.{slice(name, 7)}"
-    }
-    return name
-}
+// FFTA2's point: the scene's units, the action, the side and the privilege
+class Ffta2Points : ExploreModel {
+    sc : Scene2 = Scene2()
+    att : Unit2
+    tgt : Unit2
+    ability : int
+    side : int
+    privilege : int
 
-def private short_script_names2(var s : Script) {
-    for (ax in s.axes) {
-        ax.path = short_name2(ax.path)
+    def override is_param_path(path : string) : bool {
+        return is_param_path2(path)
     }
-    for (st in s.steps) {
-        for (n in st.e.nodes) {
-            if (n.kind == NodeKind.Name) {
-                n.text = short_name2(n.text)
-            }
-        }
+    def override reset() : void {
+        att = sc.att
+        tgt = sc.tgt
+        ability = sc.ability
+        side = sc.side
+        privilege = sc.privilege
     }
-    for (a in s.plot) {
-        for (e in a.exprs) {
-            for (n in e.nodes) {
-                if (n.kind == NodeKind.Name) {
-                    n.text = short_name2(n.text)
-                }
-            }
-        }
+    def override probe_axis(path : string; var v : Value) : bool {
+        return point_param2(sc.att, sc.tgt, sc.ability, 0, 0, path, v)
     }
-}
-
-// The table of the experiment: one row per combination of the axes,
-// then the steps (columns, where, sort). "" or the error.
-def run_experiment2(sc : Scene2; var s : Script; var t : ETable) : string {
-    short_script_names2(s)
-    t.names |> clear()
-    t.rows |> clear()
-    var paths : array<string>
-    var values : array<array<Value>>
-    var total = 1
-    for (ax in s.axes) {
-        if (!is_param_path2(ax.path)) {
-            return "line {ax.line}: vary atk.<param>, tgt.<param>, action, side or privilege, not '{ax.path}'"
-        }
-        if (find_index(paths, ax.path) >= 0) {
-            return "line {ax.line}: {ax.path} is already an axis"
-        }
-        var probe : Value
-        if (!point_param2(sc.att, sc.tgt, sc.ability, 0, 0, ax.path, probe)) {
-            return "line {ax.line}: no parameter '{ax.path}'"
-        }
-        var vals : array<Value>
-        let err = axis_values2(sc, ax, vals)
-        if (err != "") {
-            return err
-        }
-        total *= length(vals)
-        if (total > MAX_POINTS2) {
-            return "line {ax.line}: too many points (more than {MAX_POINTS2})"
-        }
-        paths |> push(ax.path)
-        values |> emplace(vals)
+    def override value(path : string; var v : Value) : bool {
+        return point_param2(att, tgt, ability, side, privilege, path, v)
     }
-    var used : array<string>
-    script_names(s, used)
-    var extra : array<string>
-    for (name in used) {
-        var probe : Value
-        if (find_index(paths, name) < 0 && find_index(METRICS2, name) < 0 && is_param_path2(name) &&
-                point_param2(sc.att, sc.tgt, sc.ability, sc.side, sc.privilege, name, probe)) {
-            extra |> push(name)
+    def override set(path : string; v : Value) : string {
+        if (path == "action") {
+            ability = int(v.num)
+        } elif (path == "side") {
+            side = int(v.num)
+        } elif (path == "privilege") {
+            privilege = int(v.num)
+        } else {
+            var owner = ""
+            var key = ""
+            split_path(path, owner, key)
+            return owner == "tgt" ? set_unit_param2(tgt, key, v) : set_unit_param2(att, key, v)
         }
+        return ""
     }
-    for (p in paths) {
-        t.names |> push(p)
+    def override axis_values(ax : Axis; var vals : array<Value>) : string {
+        return axis_values2(sc, ax, vals)
     }
-    for (name in METRICS2) {
-        t.names |> push(name)
-    }
-    for (p in extra) {
-        t.names |> push(p)
-    }
-    var idx : array<int>
-    idx |> resize(length(paths))
-    for (_ in range(total)) {
-        var att = sc.att
-        var tgt = sc.tgt
-        var ability = sc.ability
-        var side = sc.side
-        var privilege = sc.privilege
-        var row : array<Value>
-        for (a in range(length(paths))) {
-            let v = values[a][idx[a]]
-            row |> push(v)
-            let path = paths[a]
-            if (path == "action") {
-                ability = int(v.num)
-            } elif (path == "side") {
-                side = int(v.num)
-            } elif (path == "privilege") {
-                privilege = int(v.num)
-            } else {
-                var owner = ""
-                var key = ""
-                split_path2(path, owner, key)
-                let err = owner == "tgt" ? set_unit_param2(tgt, key, v) : set_unit_param2(att, key, v)
-                if (err != "") {
-                    return err
-                }
-            }
-        }
+    def override measure(var row : array<Value>) : void {
         let ab = read_ability2(ability)
         // an ability for the user only targets the attacker
         let on = ab.range_kind == 8 ? att : tgt
         let f <- compute_action2(att, on, ab, side, privilege)
         metric_values2(f, in_reach_on(att, ab, sc.map, on.x, on.y), abs(att.x - on.x) + abs(att.y - on.y), ab.mp, row)
-        for (p in extra) {
-            var v : Value
-            point_param2(att, tgt, ability, side, privilege, p, v)
-            row |> push(v)
-        }
-        t.rows |> emplace(row)
-        var a = length(paths) - 1
-        while (a >= 0) {
-            idx[a]++
-            if (idx[a] < length(values[a])) {
-                break
-            }
-            idx[a] = 0
-            a--
-        }
     }
-    return run_steps(s, t)
+}
+
+def run_experiment2(sc : Scene2; var s : Script; var t : ETable) : string {
+    var model = new Ffta2Points(sc := sc, max_points = MAX_POINTS2,
+        axis_hint = "atk.<param>, tgt.<param>, action, side or privilege")
+    model.metrics |> push_from(METRICS2)
+    let err = run_experiment(*model, s, t)
+    unsafe {
+        delete model
+    }
+    return err
 }

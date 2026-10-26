@@ -101,12 +101,6 @@ def private status_index_f(key : string) : int {
     return -1
 }
 
-def private split_path_f(path : string; var owner : string&; var key : string&) {
-    let dot = find(path, ".")
-    owner = dot < 0 ? path : slice(path, 0, dot)
-    key = dot < 0 ? "" : slice(path, dot + 1)
-}
-
 def private item_value_f(item : int) : Value {
     return vtext(item <= 0 || item >= 0xFF ? "(none)" : item_name(item), double(item))
 }
@@ -384,7 +378,7 @@ def private point_param_f(att, tgt : FftUnit; ability, side : int; path : string
     }
     var owner = ""
     var key = ""
-    split_path_f(path, owner, key)
+    split_path(path, owner, key)
     return unit_param_f(owner == "tgt" ? tgt : att, key, v)
 }
 
@@ -406,132 +400,58 @@ def private metric_values_f(f : FightF; distance, zodiac : int; var row : array<
     row |> push(vtext(ZODIAC_REL_F[zodiac + 2], double(zodiac)))
 }
 
-def private short_name_f(name : string) : string {
-    if (starts_with(name, "attacker.")) {
-        return "atk.{slice(name, 9)}"
-    }
-    if (starts_with(name, "target.")) {
-        return "tgt.{slice(name, 7)}"
-    }
-    return name
-}
+// FFT's point: the scene's units, the action and the side
+class FftPoints : ExploreModel {
+    map : FftMap
+    sc : SceneF = SceneF()
+    att : FftUnit
+    tgt : FftUnit
+    ability : int
+    side : int
 
-def private short_script_names_f(var s : Script) {
-    for (ax in s.axes) {
-        ax.path = short_name_f(ax.path)
+    def override is_param_path(path : string) : bool {
+        return is_param_path_f(path)
     }
-    for (st in s.steps) {
-        for (n in st.e.nodes) {
-            if (n.kind == NodeKind.Name) {
-                n.text = short_name_f(n.text)
-            }
-        }
+    def override reset() : void {
+        att = sc.att
+        tgt = sc.tgt
+        ability = sc.ability
+        side = sc.side
     }
-    for (a in s.plot) {
-        for (e in a.exprs) {
-            for (n in e.nodes) {
-                if (n.kind == NodeKind.Name) {
-                    n.text = short_name_f(n.text)
-                }
-            }
-        }
+    def override probe_axis(path : string; var v : Value) : bool {
+        return point_param_f(sc.att, sc.tgt, sc.ability, 0, path, v)
     }
-}
-
-// The table of the experiment: one row per combination of the axes,
-// then the steps (columns, where, sort). "" or the error.
-def run_experiment_f(sc : SceneF; m : FftMap; var s : Script; var t : ETable) : string {
-    short_script_names_f(s)
-    t.names |> clear()
-    t.rows |> clear()
-    var paths : array<string>
-    var values : array<array<Value>>
-    var total = 1
-    for (ax in s.axes) {
-        if (!is_param_path_f(ax.path)) {
-            return "line {ax.line}: vary atk.<param>, tgt.<param>, action or side, not '{ax.path}'"
-        }
-        if (find_index(paths, ax.path) >= 0) {
-            return "line {ax.line}: {ax.path} is already an axis"
-        }
-        var probe : Value
-        if (!point_param_f(sc.att, sc.tgt, sc.ability, 0, ax.path, probe)) {
-            return "line {ax.line}: no parameter '{ax.path}'"
-        }
-        var vals : array<Value>
-        let err = axis_values_f(sc, ax, vals)
-        if (err != "") {
-            return err
-        }
-        total *= length(vals)
-        if (total > MAX_POINTS_F) {
-            return "line {ax.line}: too many points (more than {MAX_POINTS_F})"
-        }
-        paths |> push(ax.path)
-        values |> emplace(vals)
+    def override value(path : string; var v : Value) : bool {
+        return point_param_f(att, tgt, ability, side, path, v)
     }
-    var used : array<string>
-    script_names(s, used)
-    var extra : array<string>
-    for (name in used) {
-        var probe : Value
-        if (find_index(paths, name) < 0 && find_index(METRICS_F, name) < 0 && is_param_path_f(name) &&
-                point_param_f(sc.att, sc.tgt, sc.ability, sc.side, name, probe)) {
-            extra |> push(name)
+    def override set(path : string; v : Value) : string {
+        if (path == "action") {
+            ability = int(v.num)
+        } elif (path == "side") {
+            side = int(v.num)
+        } else {
+            var owner = ""
+            var key = ""
+            split_path(path, owner, key)
+            return owner == "tgt" ? set_unit_param_f(tgt, key, v) : set_unit_param_f(att, key, v)
         }
+        return ""
     }
-    for (p in paths) {
-        t.names |> push(p)
+    def override axis_values(ax : Axis; var vals : array<Value>) : string {
+        return axis_values_f(sc, ax, vals)
     }
-    for (name in METRICS_F) {
-        t.names |> push(name)
-    }
-    for (p in extra) {
-        t.names |> push(p)
-    }
-    var idx : array<int>
-    idx |> resize(length(paths))
-    for (_ in range(total)) {
-        var att = sc.att
-        var tgt = sc.tgt
-        var ability = sc.ability
-        var side = sc.side
-        var row : array<Value>
-        for (a in range(length(paths))) {
-            let v = values[a][idx[a]]
-            row |> push(v)
-            let path = paths[a]
-            if (path == "action") {
-                ability = int(v.num)
-            } elif (path == "side") {
-                side = int(v.num)
-            } else {
-                var owner = ""
-                var key = ""
-                split_path_f(path, owner, key)
-                let err = owner == "tgt" ? set_unit_param_f(tgt, key, v) : set_unit_param_f(att, key, v)
-                if (err != "") {
-                    return err
-                }
-            }
-        }
-        let f = fight_f(att, tgt, ability, side, m)
+    def override measure(var row : array<Value>) : void {
+        let f = fight_f(att, tgt, ability, side, map)
         metric_values_f(f, abs(att.x - tgt.x) + abs(att.y - tgt.y), zodiac_compat(att, tgt), row)
-        for (p in extra) {
-            var v : Value
-            point_param_f(att, tgt, ability, side, p, v)
-            row |> push(v)
-        }
-        t.rows |> emplace(row)
-        var a = length(paths) - 1
-        while (a >= 0) {
-            idx[a]++
-            if (idx[a] < length(values[a])) {
-                break
-            }
-            idx[a] = 0
-            a--
-        }
     }
-    return run_steps(s, t)
+}
+
+def run_experiment_f(sc : SceneF; m : FftMap; var s : Script; var t : ETable) : string {
+    var model = new FftPoints(map := m, sc := sc, max_points = MAX_POINTS_F)
+    model.metrics |> push_from(METRICS_F)
+    let err = run_experiment(*model, s, t)
+    unsafe {
+        delete model
+    }
+    return err
 }

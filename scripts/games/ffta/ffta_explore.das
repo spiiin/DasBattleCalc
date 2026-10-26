@@ -84,12 +84,6 @@ def private ability_name_of(kind, id : int) : string {
     return kind == 0 ? ability_name(id) : "{id}"
 }
 
-def private split_path(path : string; var owner : string&; var key : string&) {
-    let dot = find(path, ".")
-    owner = dot < 0 ? path : slice(path, 0, dot)
-    key = dot < 0 ? "" : slice(path, dot + 1)
-}
-
 // a parameter of a unit; false: there is no such parameter
 def unit_param(u : BattleUnit; key : string; var v : Value) : bool {
     let si = find_index(STAT_KEYS, key)
@@ -295,136 +289,60 @@ def private metric_values(r : AttackResult; var row : array<Value>) {
 }
 
 // attacker.x / target.x -> atk.x / tgt.x, in the axes and every name
-def private short_name(name : string) : string {
-    if (starts_with(name, "attacker.")) {
-        return "atk.{slice(name, 9)}"
-    }
-    if (starts_with(name, "target.")) {
-        return "tgt.{slice(name, 7)}"
-    }
-    return name
-}
+// FFTA's point: the scene's units, the action and the side
+class FftaPoints : ExploreModel {
+    map : BattleMap
+    sc : Scene
+    att : BattleUnit
+    tgt : BattleUnit
+    ability : int
+    side : int
 
-def private short_names(var e : Expr) {
-    for (n in e.nodes) {
-        if (n.kind == NodeKind.Name) {
-            n.text = short_name(n.text)
-        }
+    def override is_param_path(path : string) : bool {
+        return is_param_path(path)
     }
-}
-
-def short_script_names(var s : Script) {
-    for (ax in s.axes) {
-        ax.path = short_name(ax.path)
+    def override reset() : void {
+        att = sc.att
+        tgt = sc.tgt
+        ability = sc.ability
+        side = sc.side
     }
-    for (st in s.steps) {
-        short_names(st.e)
+    def override probe_axis(path : string; var v : Value) : bool {
+        return path == "action" || path == "side" || point_param(sc.att, sc.tgt, 0, 0, path, v)
     }
-    for (a in s.plot) {
-        for (e in a.exprs) {
-            short_names(e)
-        }
+    def override value(path : string; var v : Value) : bool {
+        return point_param(att, tgt, ability, side, path, v)
     }
-}
-
-// The table of the experiment: one row per combination of the axes,
-// then the steps (columns, where, sort). "" or the error.
-def run_experiment(m : BattleMap; sc : Scene; var s : Script; var t : ETable) : string {
-    short_script_names(s)
-    t.names |> clear()
-    t.rows |> clear()
-    var paths : array<string>
-    var values : array<array<Value>>
-    var total = 1
-    for (ax in s.axes) {
-        if (!is_param_path(ax.path)) {
-            return "line {ax.line}: vary atk.<param>, tgt.<param>, action or side, not '{ax.path}'"
+    def override set(path : string; v : Value) : string {
+        if (path == "action") {
+            ability = int(v.num)
+        } elif (path == "side") {
+            side = int(v.num)
+        } else {
+            var owner = ""
+            var key = ""
+            split_path(path, owner, key)
+            return owner == "tgt" ? set_unit_param(tgt, key, v) : set_unit_param(att, key, v)
         }
-        if (find_index(paths, ax.path) >= 0) {
-            return "line {ax.line}: {ax.path} is already an axis"
-        }
-        var probe : Value
-        if (ax.path != "action" && ax.path != "side" && !point_param(sc.att, sc.tgt, 0, 0, ax.path, probe)) {
-            return "line {ax.line}: no parameter '{ax.path}'"
-        }
-        var vals : array<Value>
-        let err = axis_values(sc, ax, vals)
-        if (err != "") {
-            return err
-        }
-        total *= length(vals)
-        if (total > MAX_POINTS) {
-            return "line {ax.line}: too many points (more than {MAX_POINTS})"
-        }
-        paths |> push(ax.path)
-        values |> emplace(vals)
+        return ""
     }
-    // the parameters the script reads that are not axes
-    var used : array<string>
-    script_names(s, used)
-    var extra : array<string>
-    for (name in used) {
-        var probe : Value
-        if (find_index(paths, name) < 0 && find_index(METRICS, name) < 0 && is_param_path(name)
-                && point_param(sc.att, sc.tgt, sc.ability, sc.side, name, probe)) {
-            extra |> push(name)
-        }
+    def override axis_values(ax : Axis; var vals : array<Value>) : string {
+        return axis_values(sc, ax, vals)
     }
-    for (p in paths) {
-        t.names |> push(p)
-    }
-    for (name in METRICS) {
-        t.names |> push(name)
-    }
-    for (p in extra) {
-        t.names |> push(p)
-    }
-    var idx : array<int>
-    idx |> resize(length(paths))
-    for (_ in range(total)) {
-        var att = sc.att
-        var tgt = sc.tgt
-        var ability = sc.ability
-        var side = sc.side
-        var row : array<Value>
-        for (a in range(length(paths))) {
-            let v = values[a][idx[a]]
-            row |> push(v)
-            let path = paths[a]
-            if (path == "action") {
-                ability = int(v.num)
-            } elif (path == "side") {
-                side = int(v.num)
-            } else {
-                var owner = ""
-                var key = ""
-                split_path(path, owner, key)
-                let err = owner == "tgt" ? set_unit_param(tgt, key, v) : set_unit_param(att, key, v)
-                if (err != "") {
-                    return err
-                }
-            }
-        }
+    def override measure(var row : array<Value>) : void {
         let choice = side == 1 ? SideChoice.Front : (side == 2 ? SideChoice.Side : (side == 3 ? SideChoice.Back :
             SideChoice.Auto))
-        let r = act(m, att, tech_info(ability).self_only ? att : tgt, ability, choice)
+        let r = act(map, att, tech_info(ability).self_only ? att : tgt, ability, choice)
         metric_values(r, row)
-        for (p in extra) {
-            var v : Value
-            point_param(att, tgt, ability, side, p, v)
-            row |> push(v)
-        }
-        t.rows |> emplace(row)
-        // the next combination: the last axis changes fastest
-        var a = length(paths) - 1
-        while (a >= 0) {
-            idx[a]++
-            if (idx[a] < length(values[a])) {
-                break
-            }
-            idx[a] = 0
-            a--
-        }
     }
-    return run_steps(s, t)
+}
+
+def run_experiment(m : BattleMap; sc : Scene; var s : Script; var t : ETable) : string {
+    var model = new FftaPoints(map := m, sc := sc, max_points = MAX_POINTS)
+    model.metrics |> push_from(METRICS)
+    let err = run_experiment(*model, s, t)
+    unsafe {
+        delete model
+    }
+    return err
 }
