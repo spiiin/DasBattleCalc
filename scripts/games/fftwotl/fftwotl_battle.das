@@ -69,7 +69,7 @@ struct UnitW {
     @hide team : int                // TEAM_*
     @hide gender : int              // +0x06: 0x80 male, 0x40 female, 0x20 monster
     @hide zodiac_id : int           // +0x09 >> 4
-    @hide on_field : bool           // +0x2E != 0 and in battle
+    @hide on_field : bool           // +0x2E != 0 (not "on the field": see read_battle_w)
     @hide active : bool             // +0x1AA: it is this unit's turn (its CT already paid 100)
     @hide raw : int[3]              // +0x38: PA, MA, Speed without the equipment
     @hide bonus : int[3]            // +0x3B: from the equipment
@@ -272,8 +272,8 @@ def read_unit_w(slot : int) : UnitW {
 }
 
 // The units in battle: records with an ENTD slot (+0x01 != 0xFF), a level
-// and max HP, on the field (+0x2E; the dead keep 0 there but stay on
-// their tile: kept when HP is 0 and the Dead status is on).
+// and max HP. (+0x2E is not "on the field": in the Gariland battle only the
+// unit at its turn has it, the other four of the party 0.)
 def read_battle_w(var units : array<UnitW>) : string {
     units |> clear()
     ensure(gba_has_state(), "no state loaded")
@@ -286,10 +286,7 @@ def read_battle_w(var units : array<UnitW>) : string {
         if (level < 1u || level > 99u || max_hp < 1u || max_hp > 999u || gba_read8(r + 0x01u) == 0xFFu) {
             continue
         }
-        let u = read_unit_w(slot)
-        if (u.on_field || (u.hp == 0 && status_bit(u.status, ST_DEAD))) {
-            units |> push(u)
-        }
+        units |> push(read_unit_w(slot))
     }
     ensure(length(units) > 0, "no battle in this state")
     return ""
@@ -313,6 +310,7 @@ struct MapW {
     slope : array<int>              // slope height (the higher side: height + slope)
     depth : array<int>              // water depth
     upper : array<int>              // the upper level's height, 0 none
+    blocked : array<bool>           // +6 bit 0x02: the cursor can not select it (the tower of Orbonne)
 }
 
 def read_map_w(var m : MapW) : bool {
@@ -331,8 +329,20 @@ def read_map_w(var m : MapW) : bool {
         m.slope |> push(sd & 31)
         m.depth |> push(sd >> 5)
         m.upper |> push(int(gba_read8(t + 0x800u + 2u)))
+        m.blocked |> push((gba_read8(t + 6u) & 2u) != 0u)
     }
     return true
+}
+
+// the tile's height for the reach, in half h: the height x 2 + the slope
+// (the middle of a slope) + the water's depth x 2 (its surface) - fitted
+// to the tiles the game lights (reach1.txt); -1 off the map
+def stand_half_w(m : MapW; x, y : int; high : bool = false) : int {
+    if (x < 0 || y < 0 || x >= m.w || y >= m.h) {
+        return -1
+    }
+    let i = y * m.w + x
+    return high && m.upper[i] > 0 ? m.upper[i] * 2 : m.height[i] * 2 + m.slope[i] + m.depth[i] * 2
 }
 
 def map_height_w(m : MapW; x, y : int; high : bool = false) : int {

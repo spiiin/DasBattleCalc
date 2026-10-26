@@ -561,7 +561,7 @@ def private throw_w(att, tgt : UnitW; kind, item : int; var f : FightW) {
     f.dmg_min = f.damage
     f.dmg_max = f.damage
     f.hit = miss ? 0 : physical_hit(att, tgt, f.side, 100, f.hit_mods)
-    f.note = "throws {it.name} (range = Move, unverified)"
+    f.note = "throws {it.name} (range = Move: checked)"
 }
 
 // Throw of a given item (the tests: the forecasts were taken with the
@@ -600,6 +600,95 @@ def private jump_w(att, tgt : UnitW; var f : FightW) {
     f.hit = 100
     f.hit_mods |> push("Jump is never evaded")
     f.note = "jumps (horizontal {r.x}, vertical {r.y}; charge {f.ct} ticks)"
+}
+
+// ------------------------------------------------------------ reach
+
+struct ReachW {
+    ok : bool
+    why : string
+}
+
+// Can the action f of att (from its tile) reach the tile (tx, ty)? The
+// weapon's kind by its attack flags: striking (0x80, bare hands too) its
+// range, 3 h up or down; lunging (0x40: polearms, poles, cloths) a
+// straight line, 3.5 h up, 4 / 3 h down (1 / 2 tiles away); direct (0x20:
+// guns, crossbows, instruments, books) and arcing (0x10: bows, the range
+// + [(the attacker's height - the target's) / 2]) any height, never
+// closer than 3 tiles; the heights of stand_half_w (half the slope, the
+// water's surface). Fitted to the tiles the game lights (reach1.txt: 9
+// weapons from the bridge, sword / polearm / bow from 4 more tiles). Jump: its
+// horizontal and vertical reach; Throw: Move; the other abilities their
+// range at any height.
+def reach_w(att : UnitW; f : FightW; m : MapW; tx, ty : int; t_high : bool) : ReachW {
+    let dist = abs(tx - att.x) + abs(ty - att.y)
+    // the height difference in half h (the target's - the attacker's)
+    let dh = m.w > 0 ? stand_half_w(m, tx, ty, t_high) - stand_half_w(m, att.x, att.y, att.high) : 0
+    let hs = "{dh >= 0 ? "+" : "-"}{abs(dh) / 2}{(abs(dh) & 1) != 0 ? ".5" : ""} h"
+    let ab = f.ability
+    let weapon = ab.id == 0 || ab.kind == AB_CHARGE || (ab.kind == AB_NORMAL && (ab.f1 & 0x20) != 0)
+    if (!weapon && ab.kind == AB_NORMAL) {
+        // the other abilities: their range, the own tile too unless flag
+        // 0x01; flag 0x08: the height within the ability's vertical (checked:
+        // Aurablast 3 h); the tiles the weapons can not select only with an
+        // area (Fire yes, Stone / Tailwind no)
+        if (dist == 0 && (ab.f1 & 0x01) != 0) {
+            return ReachW(why = "not on its own tile")
+        }
+        if (ab.area == 0 && m.w > 0 && tx >= 0 && ty >= 0 && tx < m.w && ty < m.h && m.blocked[ty * m.w + tx]) {
+            return ReachW(why = "a tile the cursor can not select")
+        }
+        let tol = (ab.f1 & 0x08) != 0
+        let ok = dist <= f.reach && (!tol || abs(dh) <= ab.vertical * 2)
+        let vt = tol ? "{ab.vertical} h up or down" : "any height"
+        return ReachW(ok = ok, why = "range {f.reach}, {vt}: {dist} tiles, {hs}")
+    }
+    if (dist < 1) {
+        return ReachW(why = "its own tile")
+    }
+    if (m.w > 0 && tx >= 0 && ty >= 0 && tx < m.w && ty < m.h && m.blocked[ty * m.w + tx]) {
+        return ReachW(why = "a tile the cursor can not select")
+    }
+    if (ab.kind == AB_JUMP) {
+        // Jump lands on the bottom of the water (checked: from the bridge,
+        // 11 h down to the water's floor, the Jump of 8 h does not reach)
+        let r = jump_reach_w(att)
+        let ti = ty * m.w + tx
+        let jdh = m.w > 0 && tx >= 0 && ty >= 0 && tx < m.w && ty < m.h && !t_high ? dh - m.depth[ti] * 2 : dh
+        let ai = att.y * m.w + att.x
+        let jdh2 = m.w > 0 && !att.high ? jdh + m.depth[ai] * 2 : jdh
+        let ok = dist <= r.x && abs(jdh2) <= r.y * 2
+        return ReachW(ok = ok, why = "Jump {r.x} tiles, {r.y} h: {dist} tiles, {hs}")
+    }
+    if (!weapon) {
+        return ReachW(ok = dist <= max(f.reach, 1), why = "range {max(f.reach, 1)}: {dist} tiles, {hs} (any height)")
+    }
+    let w = weapon_of(att)
+    let wr = max(w.reach, 1)
+    let fl = w.id == ITEM_NONE ? 128 : w.wflags
+    // the shooting weapons never reach the nearest two tiles (the game:
+    // instruments and books exactly 3, crossbows 3..4, guns 3..8)
+    if ((fl & 0x30) != 0 && dist < 3) {
+        return ReachW(why = "a shooting weapon: not closer than 3 tiles ({dist})")
+    }
+    if ((fl & 0x10) != 0) {
+        let bonus = -dh / 4            // +1 a 2 h lower (checked on 5 tiles)
+        let r = max(wr + bonus, 1)
+        return ReachW(ok = dist <= r, why = "a bow: range {wr} {bonus >= 0 ? "+" : ""}{bonus} for the height = {r}: {dist} tiles, {hs}")
+    }
+    if ((fl & 0x20) != 0) {
+        return ReachW(ok = dist <= wr, why = "range {wr}, any height: {dist} tiles, {hs}")
+    }
+    if ((fl & 0x40) != 0) {
+        // fitted: 3.5 h up; down 4 h next to it, 3 h two tiles away
+        let line = tx == att.x || ty == att.y
+        let down = dist == 1 ? 8 : 6
+        let ok = dist <= wr && line && dh <= 7 && -dh <= down
+        return ReachW(ok = ok, why = "a straight line of {wr}, 3.5 h up / {down / 2} h down: {dist} tiles{line ? "" : " (not in line)"}, {hs}")
+    }
+    // fitted: 2.5 h reached, 4 h not (the guides: 2 up / 3 down)
+    let ok = dist <= wr && abs(dh) <= 6
+    return ReachW(ok = ok, why = "range {wr}, 3 h up or down: {dist} tiles, {hs}")
 }
 
 // ------------------------------------------------------------ the action
@@ -737,10 +826,11 @@ def action_w(att, tgt : UnitW; ab_id : int; side : SideW) : FightW {
             f.damage = (tgt.max_mp * y + 99) / 100        // checked: 33% of 17 = 6
             f.note = "drains {y}% of max MP"
         } elif (fo == 0x0E) {
-            // KO: the forecast shows no damage (and 0% on Lezalas, as Toad -
-            // the reason is not known); the undead are healed in full
+            // KO: the forecast shows the max HP as the damage (checked on
+            // Rosa, Gariland: 42); the undead are healed in full. Death and
+            // Toad show 0% on Lezalas (the first battle) - his own, not known
             f.healing = is_undead_w(tgt)
-            f.damage = f.healing ? -tgt.max_hp : 0
+            f.damage = f.healing ? -tgt.max_hp : tgt.max_hp
             f.note = f.healing ? "heals the undead in full" : "KO"
         } else {
             f.note = inflict_text(ab.inflict)

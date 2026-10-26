@@ -79,7 +79,7 @@ field) gives the graphics: the units' sprites, the items' icons and the battle m
 - **Attack calculator**: Attack with every weapon type, Holy Sword / Fell Sword, magicks (damage, healing, chances of
   status spells with Faith), Arts of War, Aim, Items, Fundaments; zodiac compatibility, Protect / Shell and the support
   abilities, elements, evasion by side. The formulas come from the PSX battle code
-  ([research/fftwotl/formulas.md](research/fftwotl/formulas.md)); **266 forecasts of the game match** (the damage and hit % the game shows when a target is picked): Attack (every
+  ([research/fftwotl/formulas.md](research/fftwotl/formulas.md)); **291 forecasts of the game match (2 battles)** (the damage and hit % the game shows when a target is picked): Attack (every
   weapon kind, zodiac, statuses, evades, sides, elements, supports and reactions), Fire, Cure, Arts of War, Umbra,
   Potion, Rush, Stone, status magicks (Poison, Stop, Protect, Haste, Quick), Gravity, Empowerment / Invigoration,
   Rend Helm, Aurablast, Throw (every kind of thrown item, from the party's stock) and Jump; Shirahadori and Archer's
@@ -93,8 +93,11 @@ field) gives the graphics: the units' sprites, the items' icons and the battle m
 - **Explore** with its own parameters (`atk.pa`, `atk.brave`, `tgt.faith`, `tgt.status.protect`, `atk.zodiac`, ...).
 
 - **The battle map** with its heights and water; with the ISO, the map's 3D model and the units' sprites.
+- **Reach with the heights**: the tiles Attack reaches for each weapon kind (melee 3 h, polearms in a line, shooting
+  weapons from 3 tiles, bows farther from above) and every ability (the own tile, the vertical tolerance, Throw =
+  Move, Jump's reach) - the game's highlighted tiles match on 2 battles.
 
-Not yet: the height limits of reach, Arithmeticks. RAM layout and tables:
+Not yet: Arithmeticks. RAM layout and tables:
 [research/fftwotl/notes.md](research/fftwotl/notes.md), [layouts.md](research/fftwotl/layouts.md).
 
 ## Final Fantasy Tactics (PSX)

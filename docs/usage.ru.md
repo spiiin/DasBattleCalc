@@ -51,6 +51,11 @@ build\bin\battlecalc.exe tests\test_fftwotl_forecast.das --state <fftwotl_test_b
 build\bin\battlecalc.exe tests\test_fftwotl_explore.das --state <fftwotl_test_battle1.ppst>
 build\bin\battlecalc.exe tests\test_fft_explore.das --state <fft_test_ramza2.State>
 build\bin\battlecalc.exe tests\test_fftwotl_export.das --state <fftwotl_test_battle1.ppst> --out <new.ppst>
+build\bin\battlecalc.exe tests\test_fftwotl_reach.das --state <fftwotl_test_battle1.ppst>
+build\bin\battlecalc.exe tests\test_fftwotl_reach.das --state <fftwotl_test_battle2.ppst> --reach reach2.txt --unit 16
+build\bin\battlecalc.exe tests\test_fftwotl_reach.das --state <fftwotl_test_battle1.ppst> --reach reach3.txt
+build\bin\battlecalc.exe tests\test_fftwotl_reach.das --state <fftwotl_test_battle2.ppst> --reach reach4.txt --unit 16
+build\bin\battlecalc.exe tests\test_fftwotl_battle2.das --state <fftwotl_test_battle2.ppst>
 build\bin\battlecalc.exe tests\test_fftwotl_graphics.das --state <fftwotl_test_battle1.ppst> --rom <WotL (USA).iso>
 ```
 
@@ -69,12 +74,14 @@ ULUS10297_1.00_N.ppst`, в меню PPSSPP это слот N + 1), игра — 
   статусы, выученные способности по профессиям. **Export state with edits** пишет новый `.ppst` (PPSSPP: File → Load
   State…); RAM в нём — правленая, остальное — как в загруженном сейве.
 - **Battle → Field**: карта боя с высотами и водой (из памяти игры; с ISO — текстурированная модель), юниты (с ISO —
-  спрайты в палитрах игры), клетки дальности действия (без учёта высот). Вид — как в игре (зеркально общему полю
+  спрайты в палитрах игры), клетки дальности действия с учётом высот (ближний бой ±3 h, копья по прямой, стрелковое
+  оружие не ближе 3 клеток, лук дальше сверху: +1 клетка за 2 h; умения — своя клетка, если можно, предел высоты у
+  умений с флагом допуска, Throw = Move, Jump; сверено с подсветкой игры в двух боях). Вид — как в игре (зеркально общему полю
   других игр); **View** / Z и C поворачивают вид на 90° (во всех играх).
 - **Calculation**: Turn order (тики CT, Haste / Slow / Stop; ход стоит 100 / 80 / 60 CT, у ходящего сейчас 100 уже
   снято), Attack (прогноз урона и шанса по шагам, реакция цели и ответный удар), Explore, Units, Items и Abilities
   (таблицы игры).
-- Формулы сверены с прогнозами самой игры (`tests/test_fftwotl_forecast.das`, 266 случаев: урон и шанс, которые игра показывает при выборе цели): Attack всеми видами
+- Формулы сверены с прогнозами самой игры (`tests/test_fftwotl_forecast.das`, 291 случай в двух боях: урон и шанс, которые игра показывает при выборе цели): Attack всеми видами
   оружия, зодиак, статусы, уклонения и стороны, элементы, поддержки и реакции (Shirahadori, Parry, Reflexes …),
   Fire, Cure, Arts of War, Umbra, Potion, Rush, Stone, статусная магия (Poison, Stop, Protect, Haste, Quick), Gravity,
   Empowerment / Invigoration, Rend Helm, Aurablast, Throw (лучший по WP предмет нужного вида из запаса партии;
