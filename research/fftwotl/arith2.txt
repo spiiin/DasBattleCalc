@@ -1,0 +1,8 @@
+EXP | Prime | tiles 8,5 | forecast 16:0/0 | hp 3:20
+EXP | 5 | tiles 0,4 7,9 | forecast 16:0/0 | hp 0:16 2:19
+EXP | 4 | tiles 3,7 7,8 7,9 5,12 6,12 7,12 | forecast 16:22/100 | hp 0:16 1:14 5:22 16:22 17:21 18:22
+EXP | 3 | tiles 0,4 8,5 8,6 6,12 7,12 | forecast 16:22/100 | hp 2:19 3:20 4:21 16:22 17:21
+Height | Prime | tiles 0,4 8,5 7,8 7,9 3,12 4,12 7,12 | forecast 16:22/100 | hp 0:16 1:14 2:19 3:20 16:22 19:19 20:21
+Height | 5 | tiles  | forecast 16:0/0 | hp 
+Height | 4 | tiles 8,6 3,7 | forecast 16:0/0 | hp 4:21 5:22
+Height | 3 | tiles  | forecast 16:0/0 | hp 

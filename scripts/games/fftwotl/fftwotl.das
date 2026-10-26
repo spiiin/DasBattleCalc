@@ -167,6 +167,9 @@ class WotlGame : GameModule {
     item_filter = ImGuiInputTextBuffer("", 64)
     item_all : bool = false
     turns_ahead : int = 24
+    arith_alg : int = 1               // the Attack tab's Arithmeticks: algorithm, number, magick
+    arith_num : int = 3
+    arith_spell : int = 0
     state_path : string
     iso_path : string                 // the ISO (optional): the graphics - sprites, icons, the map's mesh
     disc_serial : uint = 0xFFFFFFFFu // psx_disc_serial() after opening iso_path (another game may open its disc)
@@ -999,6 +1002,41 @@ class WotlGame : GameModule {
         text_at_baseline(x + u(8.0), ry + u(15.0),
             "Matches 291 of the game's own forecasts (Attack, magicks, statuses, Arts of War, Throw, Jump, ...); the rest: formulas.md", 0xe0a060ffu)
         ry += u(28.0)
+        // Arithmeticks (the attacker's set 21, or every ability): the units
+        // hit and what the magick does to each
+        let arith = att.primary == 21 || att.secondary == 21 || all_abilities
+        var arith_rows : array<tuple<string; string>>
+        if (arith) {
+            let spells <- arith_spells_w()
+            SetCursorScreenPos(ImVec2(x + u(8.0), ry))
+            bl_label("Arithmeticks:")
+            var algs <- [for (a in ARITH_ALGS); a]
+            var nums <- [for (n in ARITH_NUMS); n]
+            var snames <- [for (sp in spells); ability_name_w(sp)]
+            SetCursorScreenPos(ImVec2(x + u(116.0), ry))
+            bl_choice("arithw_alg", algs, arith_alg, u(90.0))
+            SetCursorScreenPos(ImVec2(x + u(210.0), ry))
+            bl_choice("arithw_num", nums, arith_num, u(130.0))
+            SetCursorScreenPos(ImVec2(x + u(344.0), ry))
+            arith_spell = clamp(arith_spell, 0, max(length(spells) - 1, 0))
+            bl_choice("arithw_spell", snames, arith_spell, u(140.0))
+            ry += u(28.0)
+            if (length(spells) > 0) {
+                let sp = spells[arith_spell]
+                let hit_ids <- arith_targets_w(units, arith_alg, arith_num, map_w)
+                if (length(hit_ids) == 0) {
+                    arith_rows |> push(("Arithmeticks", "no unit fits"))
+                }
+                for (i in hit_ids) {
+                    let t = units[i]
+                    let af <- action_w(att, t, sp, side_of_w(att, t))
+                    let v = arith_value_w(t, arith_alg, map_w)
+                    let amount = af.damage == 0 ? "" : "{abs(af.damage)} {af.damage < 0 ? "healed" : "damage"}, "
+                    let anote = af.note != "" ? ", {af.note}" : ""
+                    arith_rows |> push((t.name, "{ARITH_ALGS[arith_alg]} {v}: {amount}{af.hit}%{anote}"))
+                }
+            }
+        }
         var rows : array<tuple<string; string>>
         if (f.formula != 0) {
             let wn = f.weapon != "" ? ", {f.weapon}" : ""
@@ -1026,6 +1064,13 @@ class WotlGame : GameModule {
             }
         } else {
             rows |> push(("Reaction", "none"))
+        }
+        if (length(arith_rows) > 0) {
+            // the Arithmeticks' units first
+            for (r in rows) {
+                arith_rows |> push(r)
+            }
+            rows <- arith_rows
         }
         // the rows scroll when the panel is low
         SetCursorScreenPos(ImVec2(x, ry))

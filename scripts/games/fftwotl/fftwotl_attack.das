@@ -1032,6 +1032,82 @@ def unit_actions(u : UnitW; all_known : bool) : array<int> {
     return <- res
 }
 
+// ------------------------------------------------------------ Arithmeticks
+
+// the Arithmetician's set (skillset 21): an algorithm (CT, Level, EXP,
+// Height), a number (prime, a multiple of 5 / 4 / 3) and a magick (action
+// flag 3 bit 0x40); it hits every living unit whose value fits, allies and
+// the caster too (checked: Level x 3 lit Ramza, Lavian, Lezalas, Diesch -
+// not the KO'd Fuchs)
+let ARITH_ALGS = fixed_array<string>("CT", "Level", "EXP", "Height")
+let ARITH_NUMS = fixed_array<string>("prime", "multiple of 5", "multiple of 4", "multiple of 3")
+
+def arith_value_w(u : UnitW; alg : int; m : MapW) : int {
+    if (alg == 0) {
+        // the CT the screen shows: at most 100, the unit at its turn 100
+        // (checked: 104 and the active 4 both as 100; 24 is a multiple of 3)
+        return min(u.active ? u.ct + 100 : u.ct, 100)
+    } elif (alg == 1) {
+        return u.level
+    } elif (alg == 2) {
+        return u.exp
+    }
+    // the height with half the slope: a half h fits nothing (checked: the
+    // units on slopes of 1 - 9.5, 8.5, 7.5 h - are never hit); -1 then
+    if (u.x < 0 || u.y < 0 || u.x >= m.w || u.y >= m.h) {
+        return -1
+    }
+    let i = u.y * m.w + u.x
+    let half = u.high && m.upper[i] > 0 ? m.upper[i] * 2 : m.height[i] * 2 + m.slope[i]
+    return (half & 1) != 0 ? -1 : half / 2
+}
+
+def arith_fits_w(v, num : int) : bool {
+    if (num == 0) {
+        if (v < 2) {
+            return false
+        }
+        for (d in range(2, v)) {
+            if (d * d > v) {
+                break
+            }
+            if (v % d == 0) {
+                return false
+            }
+        }
+        return true
+    }
+    // 0 is no multiple (checked: Lavian's EXP 0 is not hit)
+    let k = num == 1 ? 5 : (num == 2 ? 4 : 3)
+    return v > 0 && v % k == 0
+}
+
+// the indices of the units Arithmeticks (alg, num) targets; the KO'd ones
+// too when ko (the game lights their tiles, they take nothing)
+def arith_targets_w(units : array<UnitW>; alg, num : int; m : MapW; ko : bool = false) : array<int> {
+    var res : array<int>
+    for (i in range(length(units))) {
+        let u = units[i]
+        let alive = u.hp > 0 && !has_status_w(u, ST_DEAD)
+        if ((alive || ko) && arith_fits_w(arith_value_w(u, alg, m), num)) {
+            res |> push(i)
+        }
+    }
+    return <- res
+}
+
+// the magicks Arithmeticks can cast (action flag 3 bit 0x40)
+def arith_spells_w() : array<int> {
+    var res : array<int>
+    for (id in range(1, 368)) {
+        let a = read_ability_w(id)
+        if ((a.f3 & 0x40) != 0 && a.name != "") {
+            res |> push(id)
+        }
+    }
+    return <- res
+}
+
 // ------------------------------------------------------------ reactions
 
 struct ReactionW {

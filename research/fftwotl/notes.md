@@ -171,6 +171,20 @@ matches tile for tile):
 - **Jump**: the learned horizontal / vertical; it lands on the bottom of water (the depth not added: from the bridge,
   11 h down to the floor - out of the 8 h Jump).
 
+## Arithmeticks (checked)
+
+`fcarith.py --sweep` (`arith1.txt`: the first battle, Ramza, every algorithm x number with Fire - fitted; `arith2.txt`:
+Gariland, Ganelon, EXP and Height - held out, matches), `tests/test_fftwotl_arith.das`. The menu: Act, Arithmeticks,
+the algorithm (CT, Level, EXP, Height), the number (prime, multiple of 5 / 4 / 3), the magick (action flag 3 bit 0x40:
+45 of them), then the forecast of the first target and "Perform this action?". **The targeted tiles have byte 5 bit
+0x80**.
+
+- Every unit whose value fits, allies and the caster too; the KO'd are lit but take nothing.
+- **CT as the screen shows it: at most 100** (104 and the active unit's 4 both count as 100).
+- **0 is no multiple** (EXP 0 is not hit).
+- **Height with half the slope: a half h fits nothing** (units on slopes of 1 are never hit).
+- The damage is the magick's own (Fire: MA x Y x Faith x Faith, the zodiac): every target matches the model.
+
 ## The second battle: Gariland (checked)
 
 `fcb2.py` (`forecast10.txt`, `tests/test_fftwotl_battle2.das`), the user's save: Ganelon (Chemist, record 16) at his

@@ -84,6 +84,8 @@ field) gives the graphics: the units' sprites, the items' icons and the battle m
   Potion, Rush, Stone, status magicks (Poison, Stop, Protect, Haste, Quick), Gravity, Empowerment / Invigoration,
   Rend Helm, Aurablast, Throw (every kind of thrown item, from the party's stock) and Jump; Shirahadori and Archer's
   Bane in the hit chance, a real Counter.
+- **Arithmeticks**: the algorithm (CT, Level, EXP, Height), the number and the magick - which units are hit (allies and
+  the caster too) and what it does to each; checked against the game on 2 battles.
 - **The target's reaction**: which reaction it has (the record's ability bits), whether this action calls it, the
   Brave roll, the counter-attack's damage.
 - **Editor**: job, primary / secondary skillsets, reaction / support / movement, PA / MA / Speed, Level, Exp, Brave,
@@ -97,7 +99,8 @@ field) gives the graphics: the units' sprites, the items' icons and the battle m
   weapons from 3 tiles, bows farther from above) and every ability (the own tile, the vertical tolerance, Throw =
   Move, Jump's reach) - the game's highlighted tiles match on 2 battles.
 
-Not yet: Arithmeticks. RAM layout and tables:
+Not yet: when the reactions other than the hit-chance ones trigger (checked in the game:
+research/fftwotl/notes.md). RAM layout and tables:
 [research/fftwotl/notes.md](research/fftwotl/notes.md), [layouts.md](research/fftwotl/layouts.md).
 
 ## Final Fantasy Tactics (PSX)
