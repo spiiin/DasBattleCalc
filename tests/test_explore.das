@@ -62,14 +62,14 @@ def main() : int {
     check("2 axes", length(s.axes) == 2 && s.axes[0].path == "atk.watk" && s.axes[1].path == "atk.job"
         && root_of(s.axes[0].src).text == "span" && length(root_of(s.axes[0].src).args) == 3
         && root_of(s.axes[1].src).text == "jobs")
-    check("3 steps", length(s.steps) == 3 && s.steps[0].kind == ST_LET && s.steps[2].kind == ST_ORDER_DESC)
+    check("3 steps", length(s.steps) == 3 && s.steps[0].kind == StepKind.Let && s.steps[2].kind == StepKind.OrderDesc)
     check("plot args", s.has_plot && length(s.plot) == 5 && length(s.plot[find_arg(s.plot, "y")].exprs) == 2
         && find_arg(s.plot, "series") >= 0 && find_arg(s.plot, "log_y") >= 0 && find_arg(s.plot, "title") >= 0)
     // the forms of vary and scene
     var s3 = Script()
     err = parse_script(("vary tgt.wdef 50, 100, 150\nvary atk.weapon weapons \"Sword\"\nvary side 1..3\n" +
         "scene Marc vs \"Judge\" with \"First Aid\" from back\n"), s3)
-    check("vary forms: {err}", err == "" && length(s3.axes) == 3 && root_of(s3.axes[0].src).kind == EX_LIST
+    check("vary forms: {err}", err == "" && length(s3.axes) == 3 && root_of(s3.axes[0].src).kind == NodeKind.List
         && length(root_of(s3.axes[0].src).args) == 3 && root_of(s3.axes[1].src).text == "weapons"
         && root_of(s3.axes[2].src).text == "span")
     check("scene", length(s3.scene) == 4 && s3.scene[find_arg(s3.scene, "action")].exprs[0].nodes[0].text == "First Aid"
@@ -87,8 +87,8 @@ def main() : int {
     // the chart of plot: 2 y x 2 series values, one point each
     var ch : Chart
     err = build_chart(s, tt, "a", "b", ch)
-    check("chart: {err}, {length(ch.series)} series", err == "" && length(ch.series) == 4 && ch.log_y && ch.kind == CH_LINE
-        && ch.series[0].name == "x2: J3" && length(ch.series[0].xs) == 1 && ch.title == "T")
+    check("chart: {err}, {length(ch.series)} series", err == "" && length(ch.series) == 4 && ch.log_y
+        && ch.kind == ChartKind.Line && ch.series[0].name == "x2: J3" && length(ch.series[0].xs) == 1 && ch.title == "T")
     for (c in [("a * (b + 1) - -a", "a * (b + 1) - -a"), ("(a > 1 ? 2 : 3) + max(a, 1)", "(a > 1 ? 2 : 3) + max(a, 1)"),
             ("a - (b - 1)", "a - (b - 1)"), ("a / b * 2", "a / b * 2")]) {
         var e = Expr()

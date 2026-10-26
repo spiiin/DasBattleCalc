@@ -14,11 +14,75 @@ module ffta2_vm shared public
 
 require gba_mem
 require math
+require daslib/match
 require strings
 
 let VM_STACK_ADDR = 268435456       // an address: a frame stack word
 let VM_GLOBAL_ADDR = 536870912     // an address: a global word
 let VM_CODE_ADDR = 805306368        // an address: a byte of the script (strings)
+
+// the opcodes (the i8 of an instruction)
+enum VmOp {
+    Nop = -1
+    PushInt                         // 0 .. 5: push a cell, its type = the opcode
+    PushFloat
+    PushLocal
+    PushGlobal
+    PushLocalPtr
+    PushGlobalPtr
+    Add                             // 6 .. 22, 24, 25: binary operators
+    Sub
+    Mul
+    Div
+    BitOr
+    BitAnd
+    BitXor
+    Shl
+    Shr
+    Pow
+    Mod
+    Eq
+    Ge
+    Gt
+    Le
+    Lt
+    Ne
+    Not
+    And
+    Or
+    Assign
+    ClearExpr
+    Reserve                         // sp += n
+    Enter                           // bp = sp
+    Leave                           // sp = bp
+    JumpIfFalse
+    JumpIfTrue
+    Jump
+    Switch
+    SetCounter
+    Loop                            // counter--, jump while not 0
+    PushCounter
+    PopCounter
+    SaveExpr
+    RestoreExpr
+    SetResultInt
+    SetResultFloat
+    PushResultInt
+    PushResultFloat
+    Return
+    ToInt
+    ToFloat
+    Call
+    Native
+    StoreLocal
+    AddrLocal
+    AddrGlobal
+    AddrCode
+}
+
+def private vm_op(code : int) : VmOp => unsafe(reinterpret<VmOp>(code))
+
+def private b2i(b : bool) : int => b ? 1 : 0
 
 struct VmScript {
     code : array<uint8>
@@ -186,7 +250,7 @@ class Vm {
         }
     }
 
-    def binary(op : int) : void {
+    def binary(op : VmOp) : void {
         let r = self->pop()
         let l = self->pop()
         var kl = 0
@@ -196,78 +260,51 @@ class Vm {
         if (kl == 2 || kr == 2) {
             let a = kl == 2 ? bits_float(vl) : float(vl)
             let b = kr == 2 ? bits_float(vr) : float(vr)
-            if (op == 6) {
-                self->push(1, float_bits(a + b))
-            } elif (op == 7) {
-                self->push(1, float_bits(a - b))
-            } elif (op == 8) {
-                self->push(1, float_bits(a * b))
-            } elif (op == 9) {
-                self->push(1, float_bits(b != 0.0 ? a / b : 0.0))
-            } elif (op == 15) {
-                self->push(1, float_bits(pow(a, b)))
-            } elif (op == 17) {
-                self->push(0, a == b ? 1 : 0)
-            } elif (op == 18) {
-                self->push(0, a >= b ? 1 : 0)
-            } elif (op == 19) {
-                self->push(0, a > b ? 1 : 0)
-            } elif (op == 20) {
-                self->push(0, a <= b ? 1 : 0)
-            } elif (op == 21) {
-                self->push(0, a < b ? 1 : 0)
-            } elif (op == 22) {
-                self->push(0, a != b ? 1 : 0)
-            } elif (op == 24) {
-                self->push(0, a != 0.0 && b != 0.0 ? 1 : 0)
-            } elif (op == 25) {
-                self->push(0, a != 0.0 || b != 0.0 ? 1 : 0)
-            } else {
-                self->push(0, int(a) % max(int(b), 1))      // integer-only operators on floats
+            let f = match (op) {
+                VmOp.Add => a + b
+                VmOp.Sub => a - b
+                VmOp.Mul => a * b
+                VmOp.Div => b != 0.0 ? a / b : 0.0
+                VmOp.Pow => pow(a, b)
+                _ => 0.0
+            }
+            match (op) {
+                VmOp.Add | VmOp.Sub | VmOp.Mul | VmOp.Div | VmOp.Pow => self->push(1, float_bits(f))
+                VmOp.Eq => self->push(0, b2i(a == b))
+                VmOp.Ge => self->push(0, b2i(a >= b))
+                VmOp.Gt => self->push(0, b2i(a > b))
+                VmOp.Le => self->push(0, b2i(a <= b))
+                VmOp.Lt => self->push(0, b2i(a < b))
+                VmOp.Ne => self->push(0, b2i(a != b))
+                VmOp.And => self->push(0, b2i(a != 0.0 && b != 0.0))
+                VmOp.Or => self->push(0, b2i(a != 0.0 || b != 0.0))
+                _ => self->push(0, int(a) % max(int(b), 1))      // integer-only operators on floats
             }
             return
         }
         let a = vl
         let b = vr
-        var res = 0
-        if (op == 6) {
-            res = a + b
-        } elif (op == 7) {
-            res = a - b
-        } elif (op == 8) {
-            res = a * b
-        } elif (op == 9) {
-            res = b != 0 ? a / b : 0
-        } elif (op == 10) {
-            res = a | b
-        } elif (op == 11) {
-            res = a & b
-        } elif (op == 12) {
-            res = a ^ b
-        } elif (op == 13) {
-            res = a << b
-        } elif (op == 14) {
-            res = a >> b
-        } elif (op == 15) {
-            res = int(pow(float(a), float(b)))
-        } elif (op == 16) {
-            res = b != 0 ? a % b : 0
-        } elif (op == 17) {
-            res = a == b ? 1 : 0
-        } elif (op == 18) {
-            res = a >= b ? 1 : 0
-        } elif (op == 19) {
-            res = a > b ? 1 : 0
-        } elif (op == 20) {
-            res = a <= b ? 1 : 0
-        } elif (op == 21) {
-            res = a < b ? 1 : 0
-        } elif (op == 22) {
-            res = a != b ? 1 : 0
-        } elif (op == 24) {
-            res = a != 0 && b != 0 ? 1 : 0
-        } elif (op == 25) {
-            res = a != 0 || b != 0 ? 1 : 0
+        let res = match (op) {
+            VmOp.Add => a + b
+            VmOp.Sub => a - b
+            VmOp.Mul => a * b
+            VmOp.Div => b != 0 ? a / b : 0
+            VmOp.BitOr => a | b
+            VmOp.BitAnd => a & b
+            VmOp.BitXor => a ^ b
+            VmOp.Shl => a << b
+            VmOp.Shr => a >> b
+            VmOp.Pow => int(pow(float(a), float(b)))
+            VmOp.Mod => b != 0 ? a % b : 0
+            VmOp.Eq => b2i(a == b)
+            VmOp.Ge => b2i(a >= b)
+            VmOp.Gt => b2i(a > b)
+            VmOp.Le => b2i(a <= b)
+            VmOp.Lt => b2i(a < b)
+            VmOp.Ne => b2i(a != b)
+            VmOp.And => b2i(a != 0 && b != 0)
+            VmOp.Or => b2i(a != 0 || b != 0)
+            _ => 0
         }
         self->push(0, res)
     }
@@ -301,135 +338,130 @@ class Vm {
                 unsupported = "too many steps"
                 return ret_i
             }
-            let op = int(int8(sc.code[pc]))
-            var len = int(sc.code[pc + 1])
-            if (op == 34) {
-                len = (rd16s(sc, pc + 2) - 1) * 8 + 12
+            let code = int(int8(sc.code[pc]))
+            if (code < int(VmOp.Nop) || code > int(VmOp.AddrCode)) {
+                unsupported = "opcode {code}"
+                return ret_i
             }
+            let op = vm_op(code)
+            var len = instr_len(sc, pc)
             var jumped = false
-            if (op >= 0 && op <= 5) {
-                self->push(op, rd32(sc, pc + 4))
-            } elif ((op >= 6 && op <= 22) || op == 24 || op == 25) {
-                self->binary(op)
-            } elif (op == 23) {
-                let c = self->pop()
-                self->push(0, self->float_of(c) == 0.0 ? 1 : 0)
-            } elif (op == 26) {
-                let r = self->pop()
-                let l = self->pop()
-                self->assign(r, l)
-            } elif (op == 27) {
-                expr |> clear()
-            } elif (op == 28) {
-                sp += rd16s(sc, pc + 2)
-            } elif (op == 29) {
-                bp = sp
-            } elif (op == 30) {
-                sp = bp
-            } elif (op == 31 || op == 32) {
-                let c = self->pop()
-                expr |> clear()
-                let t = self->float_of(c) != 0.0
-                if (t == (op == 32)) {
-                    pc += rd16s(sc, pc + 2)
-                    jumped = true
+            match (op) {
+                VmOp.Nop => $ { pass }
+                (VmOp.PushInt | VmOp.PushFloat | VmOp.PushLocal | VmOp.PushGlobal | VmOp.PushLocalPtr
+                        | VmOp.PushGlobalPtr) => self->push(code, rd32(sc, pc + 4))
+                (VmOp.Add | VmOp.Sub | VmOp.Mul | VmOp.Div | VmOp.BitOr | VmOp.BitAnd | VmOp.BitXor | VmOp.Shl
+                        | VmOp.Shr | VmOp.Pow | VmOp.Mod | VmOp.Eq | VmOp.Ge | VmOp.Gt | VmOp.Le | VmOp.Lt | VmOp.Ne
+                        | VmOp.And | VmOp.Or) => self->binary(op)
+                VmOp.Not => self->push(0, b2i(self->float_of(self->pop()) == 0.0))
+                VmOp.Assign => $ {
+                    let r = self->pop()
+                    let l = self->pop()
+                    self->assign(r, l)
                 }
-            } elif (op == 33) {
-                expr |> clear()
-                pc += rd16s(sc, pc + 2)
-                jumped = true
-            } elif (op == 34) {
-                let v = self->int_of(self->pop())
-                let cases = rd16s(sc, pc + 2)
-                for (k in range(cases)) {
-                    if (!jumped && rd32(sc, pc + 4 + 8 * k) == v) {
-                        pc += rd32(sc, pc + 8 + 8 * k)
+                VmOp.ClearExpr => expr |> clear()
+                VmOp.Reserve => $ { sp += rd16s(sc, pc + 2) }
+                VmOp.Enter => $ { bp = sp }
+                VmOp.Leave => $ { sp = bp }
+                VmOp.JumpIfFalse | VmOp.JumpIfTrue => $ {
+                    let c = self->pop()
+                    expr |> clear()
+                    if ((self->float_of(c) != 0.0) == (op == VmOp.JumpIfTrue)) {
+                        pc += rd16s(sc, pc + 2)
                         jumped = true
                     }
                 }
-            } elif (op == 35) {
-                counter = self->int_of(self->pop())
-            } elif (op == 36) {
-                counter--
-                expr |> clear()
-                if (counter != 0) {
+                VmOp.Jump => $ {
+                    expr |> clear()
                     pc += rd16s(sc, pc + 2)
                     jumped = true
                 }
-            } elif (op == 37) {
-                stack[sp] = counter
-                sp++
-            } elif (op == 38) {
-                sp--
-                counter = stack[sp]
-            } elif (op == 39) {
-                // save the pending expression cells, the frame base and their count
-                for (c in expr) {
-                    stack[sp] = c.t
-                    stack[sp + 1] = c.v
-                    sp += 2
-                }
-                stack[sp] = bp
-                stack[sp + 1] = length(expr)
-                sp += 2
-                expr |> clear()
-            } elif (op == 40) {
-                sp--
-                let cnt = stack[sp]
-                sp--
-                bp = stack[sp]
-                sp -= cnt * 2
-                expr |> clear()
-                for (k in range(cnt)) {
-                    self->push(stack[sp + 2 * k], stack[sp + 2 * k + 1])
-                }
-            } elif (op == 41) {
-                ret_i = self->int_of(self->pop())
-            } elif (op == 42) {
-                ret_f = float_bits(self->float_of(self->pop()))
-            } elif (op == 43) {
-                self->push(0, ret_i)
-            } elif (op == 44) {
-                self->push(1, ret_f)
-            } elif (op == 45) {
-                sp--
-                let a = stack[sp]
-                if (a == 0) {
-                    return ret_i
-                }
-                pc = a
-                len = int(sc.code[pc + 1])
-                if (int(int8(sc.code[pc])) == 34) {
-                    len = (rd16s(sc, pc + 2) - 1) * 8 + 12
-                }
-            } elif (op == 46) {
-                self->push(0, self->int_of(self->pop()))
-            } elif (op == 47) {
-                self->push(1, float_bits(self->float_of(self->pop())))
-            } elif (op == 48) {
-                stack[sp] = pc
-                sp++
-                pc += rd32(sc, pc + 4)
-                jumped = true
-            } elif (op == 49) {
-                let id = rd16s(sc, pc + 2)
-                if (host == null || !host->native(self, id)) {
-                    if (unsupported == "") {
-                        unsupported = "native {id}"
+                VmOp.Switch => $ {
+                    let v = self->int_of(self->pop())
+                    for (k in range(rd16s(sc, pc + 2))) {
+                        if (!jumped && rd32(sc, pc + 4 + 8 * k) == v) {
+                            pc += rd32(sc, pc + 8 + 8 * k)
+                            jumped = true
+                        }
                     }
-                    ret_i = 0
                 }
-            } elif (op == 50) {
-                stack[sp + rd16s(sc, pc + 2)] = self->value_word(self->pop())
-            } elif (op == 51 || op == 52) {
-                let off = rd16s(sc, pc + 4)
-                let t = rd16s(sc, pc + 6) == 2 ? 55 : 54
-                self->push(t, op == 51 ? VM_STACK_ADDR + bp + off : VM_GLOBAL_ADDR + off)
-            } elif (op == 53) {
-                self->push(0, VM_CODE_ADDR + pc + 2)
-            } elif (op != -1) {
-                unsupported = "opcode {op}"
-                return ret_i
+                VmOp.SetCounter => $ { counter = self->int_of(self->pop()) }
+                VmOp.Loop => $ {
+                    counter--
+                    expr |> clear()
+                    if (counter != 0) {
+                        pc += rd16s(sc, pc + 2)
+                        jumped = true
+                    }
+                }
+                VmOp.PushCounter => $ {
+                    stack[sp] = counter
+                    sp++
+                }
+                VmOp.PopCounter => $ {
+                    sp--
+                    counter = stack[sp]
+                }
+                VmOp.SaveExpr => $ {
+                    // the pending expression cells, the frame base and their count
+                    for (c in expr) {
+                        stack[sp] = c.t
+                        stack[sp + 1] = c.v
+                        sp += 2
+                    }
+                    stack[sp] = bp
+                    stack[sp + 1] = length(expr)
+                    sp += 2
+                    expr |> clear()
+                }
+                VmOp.RestoreExpr => $ {
+                    sp--
+                    let cnt = stack[sp]
+                    sp--
+                    bp = stack[sp]
+                    sp -= cnt * 2
+                    expr |> clear()
+                    for (k in range(cnt)) {
+                        self->push(stack[sp + 2 * k], stack[sp + 2 * k + 1])
+                    }
+                }
+                VmOp.SetResultInt => $ { ret_i = self->int_of(self->pop()) }
+                VmOp.SetResultFloat => $ { ret_f = float_bits(self->float_of(self->pop())) }
+                VmOp.PushResultInt => self->push(0, ret_i)
+                VmOp.PushResultFloat => self->push(1, ret_f)
+                VmOp.Return => $ {
+                    sp--
+                    let a = stack[sp]
+                    if (a == 0) {
+                        return ret_i
+                    }
+                    pc = a
+                    len = instr_len(sc, pc)
+                }
+                VmOp.ToInt => self->push(0, self->int_of(self->pop()))
+                VmOp.ToFloat => self->push(1, float_bits(self->float_of(self->pop())))
+                VmOp.Call => $ {
+                    stack[sp] = pc
+                    sp++
+                    pc += rd32(sc, pc + 4)
+                    jumped = true
+                }
+                VmOp.Native => $ {
+                    let id = rd16s(sc, pc + 2)
+                    if (host == null || !host->native(self, id)) {
+                        if (unsupported == "") {
+                            unsupported = "native {id}"
+                        }
+                        ret_i = 0
+                    }
+                }
+                VmOp.StoreLocal => $ { stack[sp + rd16s(sc, pc + 2)] = self->value_word(self->pop()) }
+                VmOp.AddrLocal | VmOp.AddrGlobal => $ {
+                    let off = rd16s(sc, pc + 4)
+                    let t = rd16s(sc, pc + 6) == 2 ? 55 : 54
+                    self->push(t, op == VmOp.AddrLocal ? VM_STACK_ADDR + bp + off : VM_GLOBAL_ADDR + off)
+                }
+                VmOp.AddrCode => self->push(0, VM_CODE_ADDR + pc + 2)
             }
             if (!jumped) {
                 pc += len
@@ -444,6 +476,14 @@ class Vm {
         var kind = 0
         return self->value(c, kind)
     }
+}
+
+// the length of the instruction at pc (Switch: by its cases)
+def private instr_len(sc : VmScript; pc : int) : int {
+    if (vm_op(int(int8(sc.code[pc]))) == VmOp.Switch) {
+        return (rd16s(sc, pc + 2) - 1) * 8 + 12
+    }
+    return int(sc.code[pc + 1])
 }
 
 def private rd32(sc : VmScript; o : int) : int {

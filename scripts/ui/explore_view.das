@@ -290,7 +290,7 @@ def draw_chart(id : string; c : Chart; x, y, w, h : float) : ChartHover {
         x0 = -0.5lf
         x1 = double(length(c.categories)) - 0.5lf
     }
-    if (c.kind == CH_BAR && !c.log_y) {
+    if (c.kind == ChartKind.Bar && !c.log_y) {
         y0 = min(y0, 0.0lf)
         y1 = max(y1, 0.0lf)
     }
@@ -304,7 +304,7 @@ def draw_chart(id : string; c : Chart; x, y, w, h : float) : ChartHover {
     }
     let pad = (y1 - y0) * 0.05lf
     y1 += pad
-    if (!(c.kind == CH_BAR && y0 == 0.0lf)) {
+    if (!(c.kind == ChartKind.Bar && y0 == 0.0lf)) {
         y0 -= pad
     }
     let sx = $(v : double) => float(double(left) + (v - x0) / (x1 - x0) * double(right - left))
@@ -367,7 +367,7 @@ def draw_chart(id : string; c : Chart; x, y, w, h : float) : ChartHover {
         let n = length(s.xs)
         // points of a line in x order
         var order <- [for (k in range(n)); k]
-        if (c.kind == CH_LINE) {
+        if (c.kind == ChartKind.Line) {
             sort(order) $(a, b) => s.xs[a] < s.xs[b]
         }
         var prev = ImVec2(0.0, 0.0)
@@ -376,7 +376,7 @@ def draw_chart(id : string; c : Chart; x, y, w, h : float) : ChartHover {
             let tx = categorical ? s.xs[k] : tr(s.xs[k], c.log_x)
             var px = sx(tx)
             let py = sy(tr(s.ys[k], c.log_y))
-            if (c.kind == CH_BAR) {
+            if (c.kind == ChartKind.Bar) {
                 px = sx(s.xs[k]) - slot * 0.4 + bar_w * (float(i) + 0.5)
                 let base = sy(c.log_y ? y0 : 0.0lf)
                 *dl |> AddRectFilled(ImVec2(px - bar_w * 0.45, min(py, base)), ImVec2(px + bar_w * 0.45, max(py, base)),
@@ -388,11 +388,11 @@ def draw_chart(id : string; c : Chart; x, y, w, h : float) : ChartHover {
                 }
                 continue
             }
-            if (c.kind == CH_LINE && j > 0) {
+            if (c.kind == ChartKind.Line && j > 0) {
                 *dl |> AddLine(prev, ImVec2(px, py), col, u(2.0))
             }
-            if (c.kind == CH_SCATTER || n <= 40) {
-                *dl |> AddCircleFilled(ImVec2(px, py), c.kind == CH_SCATTER ? u(3.5) : u(2.5), col, 12)
+            if (c.kind == ChartKind.Scatter || n <= 40) {
+                *dl |> AddCircleFilled(ImVec2(px, py), c.kind == ChartKind.Scatter ? u(3.5) : u(2.5), col, 12)
             }
             prev = ImVec2(px, py)
             let dx = mouse.x - px
@@ -413,7 +413,7 @@ def draw_chart(id : string; c : Chart; x, y, w, h : float) : ChartHover {
         let s & = unsafe(c.series[hover.series])
         let k = hover.point
         let xs = categorical ? c.categories[int(s.xs[k])] : value_text(vnum(s.xs[k]))
-        if (c.kind != CH_BAR) {
+        if (c.kind != ChartKind.Bar) {
             let px = sx(categorical ? s.xs[k] : tr(s.xs[k], c.log_x))
             let py = sy(tr(s.ys[k], c.log_y))
             *dl |> AddCircle(ImVec2(px, py), u(5.0), abgr(0xffffffffu), 12, u(1.5))

@@ -196,11 +196,11 @@ def axis_values(sc : Scene; ax : Axis; var vals : array<Value>) : string {
     var key = ""
     split_path(ax.path, owner, key)
     let u & = unsafe(owner == "tgt" ? sc.tgt : sc.att)
-    if (n.kind == EX_LIST) {
+    if (n.kind == NodeKind.List) {
         for (a in n.args) {
             vals |> push(eval_const(e, a))
         }
-    } elif (n.kind == EX_CALL && n.text == "span") {
+    } elif (n.kind == NodeKind.Call && n.text == "span") {
         // from..to [step s]: both ends included; downwards when to < from
         let lo = eval_const(e, n.args[0]).num
         let hi = eval_const(e, n.args[1]).num
@@ -217,14 +217,14 @@ def axis_values(sc : Scene; ax : Axis; var vals : array<Value>) : string {
             vals |> push(vnum(x))
             x += st
         }
-    } elif (n.kind == EX_CALL && n.text == "jobs") {
+    } elif (n.kind == NodeKind.Call && n.text == "jobs") {
         for (j in race_jobs(u.race)) {
             vals |> push(vtext(job_name(j, j), double(j)))
         }
         if (length(vals) == 0) {
             vals |> push(vtext(u.job, double(u.job_id)))
         }
-    } elif (n.kind == EX_CALL && n.text == "weapons") {
+    } elif (n.kind == NodeKind.Call && n.text == "weapons") {
         let want = length(n.args) > 0 ? eval_const(e, n.args[0]).text : ""
         for (iid in range(1, ITEM_COUNT)) {
             let it = read_item(uint(iid))
@@ -233,14 +233,14 @@ def axis_values(sc : Scene; ax : Axis; var vals : array<Value>) : string {
                 vals |> push(item_value(it))
             }
         }
-    } elif (n.kind == EX_CALL && (n.text == "supports" || n.text == "reactions")) {
+    } elif (n.kind == NodeKind.Call && (n.text == "supports" || n.text == "reactions")) {
         race_ability_values(u, n.text == "supports" ? 3 : 2, vals)
-    } elif (n.kind == EX_CALL && n.text == "actions") {
+    } elif (n.kind == NodeKind.Call && n.text == "actions") {
         vals |> push(vtext("Fight", 0.0lf))
         for (k in range(sc.att.action_count)) {
             vals |> push(vtext(ability_name(sc.att.actions[k]), double(sc.att.actions[k])))
         }
-    } elif (n.kind == EX_CALL && n.text == "sides") {
+    } elif (n.kind == NodeKind.Call && n.text == "sides") {
         for (s in range(1, 4)) {
             vals |> push(vtext(SIDE_LABELS[s], double(s)))
         }
@@ -307,7 +307,7 @@ def private short_name(name : string) : string {
 
 def private short_names(var e : Expr) {
     for (n in e.nodes) {
-        if (n.kind == EX_NAME) {
+        if (n.kind == NodeKind.Name) {
             n.text = short_name(n.text)
         }
     }

@@ -250,11 +250,11 @@ def axis_values2(sc : Scene2; ax : Axis; var vals : array<Value>) : string {
         return "line {ax.line}: no values"
     }
     let n & = unsafe(e.nodes[e.root])
-    if (n.kind == EX_LIST) {
+    if (n.kind == NodeKind.List) {
         for (a in n.args) {
             vals |> push(eval_const(e, a))
         }
-    } elif (n.kind == EX_CALL && n.text == "span") {
+    } elif (n.kind == NodeKind.Call && n.text == "span") {
         let lo = eval_const(e, n.args[0]).num
         let hi = eval_const(e, n.args[1]).num
         var st = length(n.args) > 2 ? abs(eval_const(e, n.args[2]).num) : 1.0lf
@@ -270,30 +270,30 @@ def axis_values2(sc : Scene2; ax : Axis; var vals : array<Value>) : string {
             vals |> push(vnum(x))
             x += st
         }
-    } elif (n.kind == EX_CALL && n.text == "jobs") {
+    } elif (n.kind == NodeKind.Call && n.text == "jobs") {
         for (j in range(1, 249)) {
             let name = job_name(j)
             if (name != "" && name != "-" && !has_text2(vals, name)) {
                 vals |> push(vtext(name, double(j)))
             }
         }
-    } elif (n.kind == EX_CALL && n.text == "weapons") {
+    } elif (n.kind == NodeKind.Call && n.text == "weapons") {
         for (iid in range(1, item_count())) {
             let it = read_item2(iid)
             if (is_weapon2(it) && it.name != "" && it.name != "-") {
                 vals |> push(item_value2(it))
             }
         }
-    } elif (n.kind == EX_CALL && n.text == "supports") {
+    } elif (n.kind == NodeKind.Call && n.text == "supports") {
         vals |> push(vtext("none", 0.0lf))
         for (id in range(851, 882)) {
             vals |> push(vtext(read_ability2(id).name, double(id)))
         }
-    } elif (n.kind == EX_CALL && n.text == "actions") {
+    } elif (n.kind == NodeKind.Call && n.text == "actions") {
         for (id in explore_actions2()) {
             vals |> push(action_value(id))
         }
-    } elif (n.kind == EX_CALL && n.text == "sides") {
+    } elif (n.kind == NodeKind.Call && n.text == "sides") {
         for (s in range(1, 4)) {
             vals |> push(vtext(SIDE2_LABELS[s], double(s)))
         }
@@ -370,7 +370,7 @@ def private short_script_names2(var s : Script) {
     }
     for (st in s.steps) {
         for (n in st.e.nodes) {
-            if (n.kind == EX_NAME) {
+            if (n.kind == NodeKind.Name) {
                 n.text = short_name2(n.text)
             }
         }
@@ -378,7 +378,7 @@ def private short_script_names2(var s : Script) {
     for (a in s.plot) {
         for (e in a.exprs) {
             for (n in e.nodes) {
-                if (n.kind == EX_NAME) {
+                if (n.kind == NodeKind.Name) {
                     n.text = short_name2(n.text)
                 }
             }

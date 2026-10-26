@@ -23,6 +23,7 @@ options indenting = 4
 module explore shared public
 
 require math
+require daslib/match
 require strings
 require daslib/strings_boost
 require peg/peg
@@ -80,20 +81,43 @@ def value_equal(a, b : Value) : bool {
 
 // ------------------------------------------------------------ expressions
 
-let EX_NUM = 1
-let EX_STR = 2
-let EX_NAME = 3
-let EX_CALL = 4
-let EX_UNARY = 5
-let EX_BINARY = 6
-let EX_TERNARY = 7
-let EX_LIST = 8
+
+// What a node of the grammar is: an expression (Num .. List, the kinds of
+// an ExprNode too), a statement, or an option of plot / scene.
+enum NodeKind {
+    Num
+    Str
+    Name
+    Call
+    Unary
+    Binary
+    Ternary
+    List
+    Expression                      // a statement: a lone expression
+    Vary
+    Let
+    Where
+    Sort
+    SortDesc
+    Plot
+    Scene
+    Items                           // Exprs: the items in args
+    PlotY                           // plot options: the y list
+    PlotBy
+    PlotPer
+    PlotKind
+    PlotLog
+    PlotTitle
+    SceneVs                         // scene options
+    SceneWith
+    SceneFrom
+}
 
 struct ExprNode {
-    kind : int
+    kind : NodeKind
     num : double
     text : string                   // name, function, operator
-    col : int = -1                  // EX_NAME: the column, after bind
+    col : int = -1                  // NodeKind.Name: the column, after bind
     args : array<int>
 }
 
@@ -116,33 +140,15 @@ let FUNCTIONS = fixed_array<string>("abs", "min", "max", "clamp", "round", "floo
 // with the same name (internal error in the interpreter, wrong calls in
 // the AOT C++).
 struct PNode {
-    kind : int                      // EX_*, or a statement / an argument
+    kind : NodeKind
     num : double
     text : string                   // for: the path, let: the column
     args : array<PNode?>
 }
 
-let SK_EXPR = 100
-let SK_VARY = 101
-let SK_LET = 102
-let SK_WHERE = 103
-let SK_SORT = 104
-let SK_SORT_DESC = 105
-let SK_PLOT = 106
-let SK_SCENE = 107
-let PK_LIST = 112                   // Exprs: the items in args
-let PO_Y = 120                      // plot options: the y list
-let PO_BY = 121
-let PO_PER = 122
-let PO_KIND = 123
-let PO_LOG = 124
-let PO_TITLE = 125
-let SO_VS = 130                     // scene options
-let SO_WITH = 131
-let SO_FROM = 132
 
 // a fresh node of kind with the items of a list node
-def private relist(kind : int; text : string; var l : PNode?) : PNode? {
+def private relist(kind : NodeKind; text : string; var l : PNode?) : PNode? {
     var n = new PNode(kind = kind, text = text)
     for (a in l.args) {
         n.args |> push(a)
@@ -150,23 +156,23 @@ def private relist(kind : int; text : string; var l : PNode?) : PNode? {
     return n
 }
 
-def private pn(kind : int; text : string = ""; num : double = 0.0lf) : PNode? {
+def private pn(kind : NodeKind; text : string = ""; num : double = 0.0lf) : PNode? {
     return new PNode(kind = kind, text = text, num = num)
 }
 
-def private pn_args(kind : int; text : string; var args : array<PNode?>) : PNode? {
+def private pn_args(kind : NodeKind; text : string; var args : array<PNode?>) : PNode? {
     var n = new PNode(kind = kind, text = text)
     n.args <- args
     return n
 }
 
-def private pn1(kind : int; text : string; var a : PNode?) : PNode? {
+def private pn1(kind : NodeKind; text : string; var a : PNode?) : PNode? {
     var n = new PNode(kind = kind, text = text)
     n.args |> push(a)
     return n
 }
 
-def private pn2(kind : int; text : string; var a, b : PNode?) : PNode? {
+def private pn2(kind : NodeKind; text : string; var a, b : PNode?) : PNode? {
     var n = new PNode(kind = kind, text = text)
     n.args |> push(a)
     n.args |> push(b)
@@ -174,7 +180,7 @@ def private pn2(kind : int; text : string; var a, b : PNode?) : PNode? {
 }
 
 def private pn3(var a, b, c : PNode?) : PNode? {
-    var n = new PNode(kind = EX_TERNARY)
+    var n = new PNode(kind = NodeKind.Ternary)
     n.args |> push(a)
     n.args |> push(b)
     n.args |> push(c)
@@ -190,107 +196,107 @@ def private peg_statement(src : string; blk : block<(st : PNode?; err : array<Pa
             return st
         }
         rule(S, Expr as e, S, EOF) {
-            return pn1(SK_EXPR, "", e)
+            return pn1(NodeKind.Expression, "", e)
         }
 
         var Stmt : PNode?
         rule("vary", SS, "{Name}" as path, SS, Values as v) {
-            return pn1(SK_VARY, path, v)
+            return pn1(NodeKind.Vary, path, v)
         }
         rule("where", SS, Expr as e) {
-            return pn1(SK_WHERE, "", e)
+            return pn1(NodeKind.Where, "", e)
         }
         rule("sort", SS, Expr as e, SS, "desc", End) {
-            return pn1(SK_SORT_DESC, "", e)
+            return pn1(NodeKind.SortDesc, "", e)
         }
         rule("sort", SS, Expr as e, SS, "asc", End) {
-            return pn1(SK_SORT, "", e)
+            return pn1(NodeKind.Sort, "", e)
         }
         rule("sort", SS, Expr as e) {
-            return pn1(SK_SORT, "", e)
+            return pn1(NodeKind.Sort, "", e)
         }
         rule("plot", SS, Exprs as ys, *PlotOpt as opts) {
-            opts |> push(relist(PO_Y, "", ys))
-            return pn_args(SK_PLOT, "", opts)
+            opts |> push(relist(NodeKind.PlotY, "", ys))
+            return pn_args(NodeKind.Plot, "", opts)
         }
         rule("scene", +SceneOpt as opts) {
-            return pn_args(SK_SCENE, "", opts)
+            return pn_args(NodeKind.Scene, "", opts)
         }
         rule("{Ident}" as col, S, "=", S, Expr as e) {
-            return pn1(SK_LET, col, e)
+            return pn1(NodeKind.Let, col, e)
         }
 
         // vary: from..to [step s] (both ends included), a, b, c, or a
         // generator of the game: jobs, weapons "Sword"
         var Values : PNode?
         rule(Expr as a, S, "..", S, Expr as b, SS, "step", SS, Expr as st) {
-            var n = pn2(EX_CALL, "span", a, b)
+            var n = pn2(NodeKind.Call, "span", a, b)
             n.args |> push(st)
             return n
         }
         rule(Expr as a, S, "..", S, Expr as b) {
-            return pn2(EX_CALL, "span", a, b)
+            return pn2(NodeKind.Call, "span", a, b)
         }
         rule("{Ident}" as g, SS, string_ as arg) {
-            return pn1(EX_CALL, g, pn(EX_STR, arg))
+            return pn1(NodeKind.Call, g, pn(NodeKind.Str, arg))
         }
         rule(Exprs as l) {
-            return relist(EX_LIST, "", l)
+            return relist(NodeKind.List, "", l)
         }
 
         // plot y1, y2 [by x] [per series] [line|bar|scatter] [log x|y|xy] [title "..."]
         var PlotOpt : PNode?
         rule(SS, "by", SS, Expr as e) {
-            return pn1(PO_BY, "", e)
+            return pn1(NodeKind.PlotBy, "", e)
         }
         rule(SS, "per", SS, Expr as e) {
-            return pn1(PO_PER, "", e)
+            return pn1(NodeKind.PlotPer, "", e)
         }
         rule(SS, "line", End) {
-            return pn(PO_KIND, "line")
+            return pn(NodeKind.PlotKind, "line")
         }
         rule(SS, "bar", End) {
-            return pn(PO_KIND, "bar")
+            return pn(NodeKind.PlotKind, "bar")
         }
         rule(SS, "scatter", End) {
-            return pn(PO_KIND, "scatter")
+            return pn(NodeKind.PlotKind, "scatter")
         }
         rule(SS, "log", SS, "xy", End) {
-            return pn(PO_LOG, "xy")
+            return pn(NodeKind.PlotLog, "xy")
         }
         rule(SS, "log", SS, "x", End) {
-            return pn(PO_LOG, "x")
+            return pn(NodeKind.PlotLog, "x")
         }
         rule(SS, "log", SS, "y", End) {
-            return pn(PO_LOG, "y")
+            return pn(NodeKind.PlotLog, "y")
         }
         rule(SS, "title", SS, string_ as t) {
-            return pn(PO_TITLE, t)
+            return pn(NodeKind.PlotTitle, t)
         }
 
         // scene Marc vs Euver | with Fire | with "First Aid" | from back
         var SceneOpt : PNode?
         rule(SS, Word as a, SS, "vs", SS, Word as b) {
-            return pn2(SO_VS, "", a, b)
+            return pn2(NodeKind.SceneVs, "", a, b)
         }
         rule(SS, "with", SS, Word as w) {
-            return pn1(SO_WITH, "", w)
+            return pn1(NodeKind.SceneWith, "", w)
         }
         rule(SS, "from", SS, "{Ident}" as side) {
-            return pn(SO_FROM, side)
+            return pn(NodeKind.SceneFrom, side)
         }
         var Word : PNode?
         rule(string_ as s) {
-            return pn(EX_STR, s)
+            return pn(NodeKind.Str, s)
         }
         rule("{Ident}" as s) {
-            return pn(EX_STR, s)
+            return pn(NodeKind.Str, s)
         }
 
         var Exprs : PNode?
         rule(*CommaExpr as els, Expr as last) {
             els |> push(last)
-            return pn_args(PK_LIST, "", els)
+            return pn_args(NodeKind.Items, "", els)
         }
         var CommaExpr : PNode?
         rule(Expr as e, S, ",", S) {
@@ -307,73 +313,73 @@ def private peg_statement(src : string; blk : block<(st : PNode?; err : array<Pa
         }
         var Or : PNode?
         rule(Or as a, S, "||", S, And as b) {
-            return pn2(EX_BINARY, "||", a, b)
+            return pn2(NodeKind.Binary, "||", a, b)
         }
         rule(And as x) {
             return x
         }
         var And : PNode?
         rule(And as a, S, "&&", S, Eq as b) {
-            return pn2(EX_BINARY, "&&", a, b)
+            return pn2(NodeKind.Binary, "&&", a, b)
         }
         rule(Eq as x) {
             return x
         }
         var Eq : PNode?
         rule(Eq as a, S, "==", S, Rel as b) {
-            return pn2(EX_BINARY, "==", a, b)
+            return pn2(NodeKind.Binary, "==", a, b)
         }
         rule(Eq as a, S, "!=", S, Rel as b) {
-            return pn2(EX_BINARY, "!=", a, b)
+            return pn2(NodeKind.Binary, "!=", a, b)
         }
         rule(Rel as x) {
             return x
         }
         var Rel : PNode?
         rule(Rel as a, S, "<=", S, Add as b) {
-            return pn2(EX_BINARY, "<=", a, b)
+            return pn2(NodeKind.Binary, "<=", a, b)
         }
         rule(Rel as a, S, ">=", S, Add as b) {
-            return pn2(EX_BINARY, ">=", a, b)
+            return pn2(NodeKind.Binary, ">=", a, b)
         }
         rule(Rel as a, S, "<", S, Add as b) {
-            return pn2(EX_BINARY, "<", a, b)
+            return pn2(NodeKind.Binary, "<", a, b)
         }
         rule(Rel as a, S, ">", S, Add as b) {
-            return pn2(EX_BINARY, ">", a, b)
+            return pn2(NodeKind.Binary, ">", a, b)
         }
         rule(Add as x) {
             return x
         }
         var Add : PNode?
         rule(Add as a, S, "+", S, Mul as b) {
-            return pn2(EX_BINARY, "+", a, b)
+            return pn2(NodeKind.Binary, "+", a, b)
         }
         rule(Add as a, S, "-", S, Mul as b) {
-            return pn2(EX_BINARY, "-", a, b)
+            return pn2(NodeKind.Binary, "-", a, b)
         }
         rule(Mul as x) {
             return x
         }
         var Mul : PNode?
         rule(Mul as a, S, "*", S, Unary as b) {
-            return pn2(EX_BINARY, "*", a, b)
+            return pn2(NodeKind.Binary, "*", a, b)
         }
         rule(Mul as a, S, "/", S, Unary as b) {
-            return pn2(EX_BINARY, "/", a, b)
+            return pn2(NodeKind.Binary, "/", a, b)
         }
         rule(Mul as a, S, "%", S, Unary as b) {
-            return pn2(EX_BINARY, "%", a, b)
+            return pn2(NodeKind.Binary, "%", a, b)
         }
         rule(Unary as x) {
             return x
         }
         var Unary : PNode?
         rule("-", S, Unary as a) {
-            return pn1(EX_UNARY, "-", a)
+            return pn1(NodeKind.Unary, "-", a)
         }
         rule("!", S, Unary as a) {
-            return pn1(EX_UNARY, "!", a)
+            return pn1(NodeKind.Unary, "!", a)
         }
         rule(Primary as x) {
             return x
@@ -384,26 +390,26 @@ def private peg_statement(src : string; blk : block<(st : PNode?; err : array<Pa
             return e
         }
         rule("{Number}" as t) {
-            return pn(EX_NUM, "", double(t))
+            return pn(NodeKind.Num, "", double(t))
         }
         rule(string_ as t) {
-            return pn(EX_STR, t)
+            return pn(NodeKind.Str, t)
         }
         rule("true", End) {
-            return pn(EX_NUM, "", 1.0lf)
+            return pn(NodeKind.Num, "", 1.0lf)
         }
         rule("false", End) {
-            return pn(EX_NUM, "", 0.0lf)
+            return pn(NodeKind.Num, "", 0.0lf)
         }
         rule("{Ident}" as f, S, "(", S, ")") {
             var none : array<PNode?>
-            return pn_args(EX_CALL, f, none)
+            return pn_args(NodeKind.Call, f, none)
         }
         rule("{Ident}" as f, S, "(", S, Exprs as l, S, ")") {
-            return relist(EX_CALL, f, l)
+            return relist(NodeKind.Call, f, l)
         }
         rule("{Name}" as n) {
-            return pn(EX_NAME, n)
+            return pn(NodeKind.Name, n)
         }
 
         var Number : PNode?
@@ -488,7 +494,7 @@ def parse_expression(src : string; var e : Expr) : string {
     peg_statement(src) $(st; errs) {
         if (length(errs) > 0 || st == null) {
             err = length(errs) > 0 ? syntax_error(src, 1, errs) : "line 1: syntax error"
-        } elif (st.kind != SK_EXPR) {
+        } elif (st.kind != NodeKind.Expression) {
             err = "line 1: an expression, not a statement"
         } else {
             e = to_expr(st.args[0], 1)
@@ -500,7 +506,7 @@ def parse_expression(src : string; var e : Expr) : string {
 // the names an expression reads (to know which columns it needs)
 def expr_names(e : Expr; var names : array<string>) {
     for (n in e.nodes) {
-        if (n.kind == EX_NAME && find_index(names, n.text) < 0) {
+        if (n.kind == NodeKind.Name && find_index(names, n.text) < 0) {
             names |> push(n.text)
         }
     }
@@ -520,14 +526,14 @@ def column_index(t : ETable; name : string) : int {
 // names -> columns; "" or the error with the known names
 def bind(var e : Expr; t : ETable) : string {
     for (n in e.nodes) {
-        if (n.kind == EX_NAME) {
+        if (n.kind == NodeKind.Name) {
             n.col = column_index(t, n.text)
             if (n.col < 0) {
                 return "line {e.line}: no column '{n.text}' (columns: {join(t.names, ", ")})"
             }
-        } elif (n.kind == EX_CALL && find_index(FUNCTIONS, n.text) < 0) {
+        } elif (n.kind == NodeKind.Call && find_index(FUNCTIONS, n.text) < 0) {
             return "line {e.line}: unknown function '{n.text}' (functions: {join(FUNCTIONS, ", ")})"
-        } elif (n.kind == EX_LIST) {
+        } elif (n.kind == NodeKind.List) {
             return "line {e.line}: a list [ ] is only allowed in `for` and in plot(y = ...)"
         }
     }
@@ -576,67 +582,55 @@ def private eval_call(e : Expr; row : array<Value>; n : ExprNode) : Value {
     return vnum(0.0lf)
 }
 
+def private vbool(b : bool) : Value => vnum(b ? 1.0lf : 0.0lf)
+
 def private eval_binary(op : string; a, b : Value) : Value {
-    if (op == "==") {
-        return vnum(value_equal(a, b) ? 1.0lf : 0.0lf)
-    } elif (op == "!=") {
-        return vnum(value_equal(a, b) ? 0.0lf : 1.0lf)
-    } elif (op == "&&") {
-        return vnum(is_true(a) && is_true(b) ? 1.0lf : 0.0lf)
-    } elif (op == "||") {
-        return vnum(is_true(a) || is_true(b) ? 1.0lf : 0.0lf)
-    }
     let x = a.num
     let y = b.num
-    if (op == "+") {
-        return vnum(x + y)
-    } elif (op == "-") {
-        return vnum(x - y)
-    } elif (op == "*") {
-        return vnum(x * y)
-    } elif (op == "/") {
-        return vnum(x / y)
-    } elif (op == "%") {
-        return vnum(y != 0.0lf ? x - y * floor(x / y) : 0.0lf)
-    } elif (op == "<") {
-        return vnum(value_less(a, b) ? 1.0lf : 0.0lf)
-    } elif (op == ">") {
-        return vnum(value_less(b, a) ? 1.0lf : 0.0lf)
-    } elif (op == "<=") {
-        return vnum(value_less(b, a) ? 0.0lf : 1.0lf)
-    } elif (op == ">=") {
-        return vnum(value_less(a, b) ? 0.0lf : 1.0lf)
+    return match (op) {
+        "==" => vbool(value_equal(a, b))
+        "!=" => vbool(!value_equal(a, b))
+        "&&" => vbool(is_true(a) && is_true(b))
+        "||" => vbool(is_true(a) || is_true(b))
+        "+" => vnum(x + y)
+        "-" => vnum(x - y)
+        "*" => vnum(x * y)
+        "/" => vnum(x / y)
+        "%" => vnum(y != 0.0lf ? x - y * floor(x / y) : 0.0lf)
+        "<" => vbool(value_less(a, b))
+        ">" => vbool(value_less(b, a))
+        "<=" => vbool(!value_less(b, a))
+        ">=" => vbool(!value_less(a, b))
+        _ => vnum(0.0lf)
     }
-    return vnum(0.0lf)
+}
+
+// && and || stop early, as in daslang
+def private eval_binary_node(e : Expr; row : array<Value>; n : ExprNode) : Value {
+    let a = eval_node(e, row, n.args[0])
+    if (n.text == "&&" && !is_true(a)) {
+        return vnum(0.0lf)
+    }
+    if (n.text == "||" && is_true(a)) {
+        return vnum(1.0lf)
+    }
+    return eval_binary(n.text, a, eval_node(e, row, n.args[1]))
 }
 
 def eval_node(e : Expr; row : array<Value>; i : int) : Value {
-    let n & = unsafe(e.nodes[i])
-    if (n.kind == EX_NUM) {
-        return vnum(n.num)
-    } elif (n.kind == EX_STR) {
-        return vtext(n.text)
-    } elif (n.kind == EX_NAME) {
-        return n.col >= 0 && n.col < length(row) ? row[n.col] : vnum(0.0lf)
-    } elif (n.kind == EX_CALL) {
-        return eval_call(e, row, n)
-    } elif (n.kind == EX_UNARY) {
-        let a = eval_node(e, row, n.args[0])
-        return n.text == "!" ? vnum(is_true(a) ? 0.0lf : 1.0lf) : vnum(-a.num)
-    } elif (n.kind == EX_BINARY) {
-        // && and || stop early, as in daslang
-        let a = eval_node(e, row, n.args[0])
-        if (n.text == "&&" && !is_true(a)) {
-            return vnum(0.0lf)
-        }
-        if (n.text == "||" && is_true(a)) {
-            return vnum(1.0lf)
-        }
-        return eval_binary(n.text, a, eval_node(e, row, n.args[1]))
-    } elif (n.kind == EX_TERNARY) {
-        return is_true(eval_node(e, row, n.args[0])) ? eval_node(e, row, n.args[1]) : eval_node(e, row, n.args[2])
+    assume n = e.nodes[i]
+    return match (n.kind) {
+        NodeKind.Num => vnum(n.num)
+        NodeKind.Str => vtext(n.text)
+        NodeKind.Name => n.col >= 0 && n.col < length(row) ? row[n.col] : vnum(0.0lf)
+        NodeKind.Call => eval_call(e, row, n)
+        NodeKind.Unary => (n.text == "!" ? vbool(!is_true(eval_node(e, row, n.args[0])))
+            : vnum(-eval_node(e, row, n.args[0]).num))
+        NodeKind.Binary => eval_binary_node(e, row, n)
+        NodeKind.Ternary => (is_true(eval_node(e, row, n.args[0])) ? eval_node(e, row, n.args[1])
+            : eval_node(e, row, n.args[2]))
+        _ => vnum(0.0lf)
     }
-    return vnum(0.0lf)
 }
 
 def eval_expr(e : Expr; row : array<Value>) : Value {
@@ -651,10 +645,12 @@ def eval_const(e : Expr; i : int) : Value {
 
 // ------------------------------------------------------------ script
 
-let ST_LET = 1
-let ST_WHERE = 2
-let ST_ORDER = 3
-let ST_ORDER_DESC = 4
+enum StepKind {
+    Let
+    Where
+    Order
+    OrderDesc
+}
 
 struct Axis {
     path : string                   // attacker.watk
@@ -663,8 +659,8 @@ struct Axis {
 }
 
 struct Step {
-    kind : int
-    name : string                   // ST_LET: the new column
+    kind : StepKind
+    name : string                   // Let: the new column
     e : Expr = Expr()
     line : int
 }
@@ -771,30 +767,30 @@ def private arg_of(name : string; p : PNode?; line : int) : NamedArg {
 def private plot_args(p : PNode?; line : int; var s : Script) : string {
     var kinds = 0
     for (o in p.args) {
-        if (o.kind == PO_Y) {
+        if (o.kind == NodeKind.PlotY) {
             var na = NamedArg(name = "y", line = line, list = true)
             for (v in o.args) {
                 na.exprs |> emplace(to_expr(v, line))
             }
             s.plot |> emplace(na)
-        } elif (o.kind == PO_BY || o.kind == PO_PER) {
-            let name = o.kind == PO_BY ? "x" : "series"
+        } elif (o.kind == NodeKind.PlotBy || o.kind == NodeKind.PlotPer) {
+            let name = o.kind == NodeKind.PlotBy ? "x" : "series"
             if (find_arg(s.plot, name) >= 0) {
-                return "line {line}: plot has two '{o.kind == PO_BY ? "by" : "per"}'"
+                return "line {line}: plot has two '{o.kind == NodeKind.PlotBy ? "by" : "per"}'"
             }
             s.plot |> emplace(arg_of(name, o.args[0], line))
-        } elif (o.kind == PO_KIND) {
+        } elif (o.kind == NodeKind.PlotKind) {
             kinds++
-            s.plot |> emplace(arg_of("kind", pn(EX_STR, o.text), line))
-        } elif (o.kind == PO_LOG) {
+            s.plot |> emplace(arg_of("kind", pn(NodeKind.Str, o.text), line))
+        } elif (o.kind == NodeKind.PlotLog) {
             if (o.text == "x" || o.text == "xy") {
-                s.plot |> emplace(arg_of("log_x", pn(EX_NUM, "", 1.0lf), line))
+                s.plot |> emplace(arg_of("log_x", pn(NodeKind.Num, "", 1.0lf), line))
             }
             if (o.text == "y" || o.text == "xy") {
-                s.plot |> emplace(arg_of("log_y", pn(EX_NUM, "", 1.0lf), line))
+                s.plot |> emplace(arg_of("log_y", pn(NodeKind.Num, "", 1.0lf), line))
             }
-        } elif (o.kind == PO_TITLE) {
-            s.plot |> emplace(arg_of("title", pn(EX_STR, o.text), line))
+        } elif (o.kind == NodeKind.PlotTitle) {
+            s.plot |> emplace(arg_of("title", pn(NodeKind.Str, o.text), line))
         }
     }
     return kinds > 1 ? "line {line}: plot is line, bar or scatter - one of them" : ""
@@ -804,20 +800,37 @@ let SIDE_WORDS = fixed_array<string>("auto", "front", "side", "back")
 
 def private scene_args(p : PNode?; line : int; var s : Script) : string {
     for (o in p.args) {
-        if (o.kind == SO_VS) {
+        if (o.kind == NodeKind.SceneVs) {
             s.scene |> emplace(arg_of("attacker", o.args[0], line))
             s.scene |> emplace(arg_of("target", o.args[1], line))
-        } elif (o.kind == SO_WITH) {
+        } elif (o.kind == NodeKind.SceneWith) {
             s.scene |> emplace(arg_of("action", o.args[0], line))
-        } elif (o.kind == SO_FROM) {
+        } elif (o.kind == NodeKind.SceneFrom) {
             let k = find_index(SIDE_WORDS, o.text)
             if (k < 0) {
                 return "line {line}: from front, side, back or auto - not '{o.text}'"
             }
-            s.scene |> emplace(arg_of("side", pn(EX_NUM, "", double(k)), line))
+            s.scene |> emplace(arg_of("side", pn(NodeKind.Num, "", double(k)), line))
         }
     }
     return ""
+}
+
+// the statements that become a step over the table
+def private is_step(k : NodeKind) : bool {
+    return match (k) {
+        NodeKind.Let | NodeKind.Where | NodeKind.Sort | NodeKind.SortDesc => true
+        _ => false
+    }
+}
+
+def private step_kind(k : NodeKind) : StepKind {
+    return match (k) {
+        NodeKind.Let => StepKind.Let
+        NodeKind.Where => StepKind.Where
+        NodeKind.Sort => StepKind.Order
+        _ => StepKind.OrderDesc
+    }
 }
 
 // "" or "line N: what is wrong"
@@ -840,31 +853,29 @@ def parse_script(src : string; var s : Script) : string {
                 return
             }
             let line = ss.line
-            if (p.kind == SK_VARY) {
+            if (p.kind == NodeKind.Vary) {
                 var ax = Axis(path = p.text, line = line)
                 let v = p.args[0]
                 // a lone name is a generator of the game: jobs, weapons
-                if (v.kind == EX_LIST && length(v.args) == 1 && v.args[0].kind == EX_NAME) {
+                if (v.kind == NodeKind.List && length(v.args) == 1 && v.args[0].kind == NodeKind.Name) {
                     var none : array<PNode?>
-                    ax.src = to_expr(pn_args(EX_CALL, v.args[0].text, none), line)
+                    ax.src = to_expr(pn_args(NodeKind.Call, v.args[0].text, none), line)
                 } else {
                     ax.src = to_expr(v, line)
                 }
                 s.axes |> emplace(ax)
-            } elif (p.kind == SK_LET || p.kind == SK_WHERE || p.kind == SK_SORT || p.kind == SK_SORT_DESC) {
-                let kind = p.kind == SK_LET ? ST_LET : (p.kind == SK_WHERE ? ST_WHERE : (p.kind == SK_SORT ? ST_ORDER :
-                    ST_ORDER_DESC))
-                var st = Step(kind = kind, name = p.text, line = line)
+            } elif (is_step(p.kind)) {
+                var st = Step(kind = step_kind(p.kind), name = p.text, line = line)
                 st.e = to_expr(p.args[0], line)
                 s.steps |> emplace(st)
-            } elif (p.kind == SK_PLOT) {
+            } elif (p.kind == NodeKind.Plot) {
                 if (s.has_plot) {
                     res = "line {line}: only one plot per experiment"
                     return
                 }
                 s.has_plot = true
                 res = plot_args(p, line, s)
-            } elif (p.kind == SK_SCENE) {
+            } elif (p.kind == NodeKind.Scene) {
                 res = scene_args(p, line, s)
             } else {
                 res = "line {line}: {word} needs more, like: {word} ..."
@@ -902,19 +913,19 @@ def script_names(s : Script; var names : array<string>) {
 // let / where / order_by over the table, in the script's order
 def run_steps(var s : Script; var t : ETable) : string {
     for (st in s.steps) {
-        if (st.kind == ST_LET && column_index(t, st.name) >= 0) {
+        if (st.kind == StepKind.Let && column_index(t, st.name) >= 0) {
             return "line {st.line}: column '{st.name}' already exists"
         }
         let err = bind(st.e, t)
         if (err != "") {
             return err
         }
-        if (st.kind == ST_LET) {
+        if (st.kind == StepKind.Let) {
             t.names |> push(st.name)
             for (row in t.rows) {
                 row |> push(eval_expr(st.e, row))
             }
-        } elif (st.kind == ST_WHERE) {
+        } elif (st.kind == StepKind.Where) {
             var kept : array<array<Value>>
             for (row in t.rows) {
                 if (is_true(eval_expr(st.e, row))) {
@@ -927,7 +938,7 @@ def run_steps(var s : Script; var t : ETable) : string {
             for (i in range(length(t.rows))) {
                 keys |> push((eval_expr(st.e, t.rows[i]), i))
             }
-            let desc = st.kind == ST_ORDER_DESC
+            let desc = st.kind == StepKind.OrderDesc
             sort(keys) $(a, b) {
                 // stable: equal keys keep their order
                 if (value_less(a._0, b._0)) {
@@ -950,9 +961,11 @@ def run_steps(var s : Script; var t : ETable) : string {
 
 // ------------------------------------------------------------ chart data
 
-let CH_LINE = 0
-let CH_BAR = 1
-let CH_SCATTER = 2
+enum ChartKind {
+    Line
+    Bar
+    Scatter
+}
 
 struct ChartSeries {
     name : string
@@ -963,7 +976,7 @@ struct ChartSeries {
 
 // what plot( ) asks for, with the values from the table
 struct Chart {
-    kind : int
+    kind : ChartKind
     log_x : bool
     log_y : bool
     title : string
@@ -981,41 +994,41 @@ def expr_text(e : Expr) : string {
     return e.root >= 0 ? node_text(e, e.root, 0) : ""
 }
 
+def private parens(on : bool; s : string) : string => on ? "({s})" : s
+
+def private args_text(e : Expr; n : ExprNode) : string => join([for (a in n.args); node_text(e, a, 0)], ", ")
+
+// outer: the binding power of the operator around (parentheses when lower)
 def private node_text(e : Expr; i, outer : int) : string {
-    let n & = unsafe(e.nodes[i])
-    if (n.kind == EX_NUM) {
-        return value_text(vnum(n.num))
-    } elif (n.kind == EX_STR) {
-        return "\"{n.text}\""
-    } elif (n.kind == EX_NAME) {
-        return n.text
-    } elif (n.kind == EX_CALL || n.kind == EX_LIST) {
-        let parts <- [for (a in n.args); node_text(e, a, 0)]
-        return n.kind == EX_CALL ? "{n.text}({join(parts, ", ")})" : "[{join(parts, ", ")}]"
-    } elif (n.kind == EX_UNARY) {
-        return "{n.text}{node_text(e, n.args[0], 9)}"
-    } elif (n.kind == EX_TERNARY) {
-        let s = "{node_text(e, n.args[0], 1)} ? {node_text(e, n.args[1], 0)} : {node_text(e, n.args[2], 0)}"
-        return outer > 0 ? "({s})" : s
+    assume n = e.nodes[i]
+    return match (n.kind) {
+        NodeKind.Num => value_text(vnum(n.num))
+        NodeKind.Str => "\"{n.text}\""
+        NodeKind.Name => n.text
+        NodeKind.Call => "{n.text}({args_text(e, n)})"
+        NodeKind.List => "[{args_text(e, n)}]"
+        NodeKind.Unary => "{n.text}{node_text(e, n.args[0], 9)}"
+        NodeKind.Ternary => parens(outer > 0,
+            "{node_text(e, n.args[0], 1)} ? {node_text(e, n.args[1], 0)} : {node_text(e, n.args[2], 0)}")
+        NodeKind.Binary => binary_text(e, n, outer)
+        _ => ""
     }
+}
+
+def private binary_text(e : Expr; n : ExprNode; outer : int) : string {
     let p = binary_power(n.text)
-    let s = "{node_text(e, n.args[0], p)} {n.text} {node_text(e, n.args[1], p + 1)}"
-    return p < outer ? "({s})" : s
+    return parens(p < outer, "{node_text(e, n.args[0], p)} {n.text} {node_text(e, n.args[1], p + 1)}")
 }
 
 def private binary_power(op : string) : int {
-    if (op == "||") {
-        return 1
-    } elif (op == "&&") {
-        return 2
-    } elif (op == "==" || op == "!=") {
-        return 3
-    } elif (op == "<" || op == "<=" || op == ">" || op == ">=") {
-        return 4
-    } elif (op == "+" || op == "-") {
-        return 5
+    return match (op) {
+        "||" => 1
+        "&&" => 2
+        "==" | "!=" => 3
+        "<" | "<=" | ">" | ">=" => 4
+        "+" | "-" => 5
+        _ => 6
     }
-    return 6
 }
 
 def private plot_flag(s : Script; name : string) : bool {
@@ -1039,7 +1052,7 @@ def build_chart(var s : Script; t : ETable; default_x, default_y : string; var c
     if (xi >= 0) {
         xe := s.plot[xi].exprs[0]
     } else {
-        xe.nodes |> emplace(ExprNode(kind = EX_NAME, text = default_x))
+        xe.nodes |> emplace(ExprNode(kind = NodeKind.Name, text = default_x))
         xe.root = 0
     }
     let yi = find_arg(s.plot, "y")
@@ -1049,7 +1062,7 @@ def build_chart(var s : Script; t : ETable; default_x, default_y : string; var c
         }
     } else {
         var e = Expr()
-        e.nodes |> emplace(ExprNode(kind = EX_NAME, text = default_y))
+        e.nodes |> emplace(ExprNode(kind = NodeKind.Name, text = default_y))
         e.root = 0
         ys |> emplace(e)
     }
@@ -1091,8 +1104,13 @@ def build_chart(var s : Script; t : ETable; default_x, default_y : string; var c
     for (row in t.rows) {
         text_x = text_x || eval_expr(xe, row).text != ""
     }
-    c.kind = kind == "bar" ? CH_BAR : (kind == "scatter" ? CH_SCATTER : (kind == "line" || !text_x ? CH_LINE : CH_BAR))
-    let categorical = text_x || c.kind == CH_BAR
+    c.kind = match (kind) {
+        "bar" => ChartKind.Bar
+        "scatter" => ChartKind.Scatter
+        "line" => ChartKind.Line
+        _ => text_x ? ChartKind.Bar : ChartKind.Line
+    }
+    let categorical = text_x || c.kind == ChartKind.Bar
     var keys : array<string>
     for (r in range(length(t.rows))) {
         let row & = unsafe(t.rows[r])
