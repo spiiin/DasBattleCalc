@@ -329,7 +329,7 @@ class FftaGame : GameModule {
 
     // the loaded state with the edited units, as a new file; "" or the
     // error, notes: what could not be written
-    def export_files(var notes : string) : string {
+    def export_files(var notes : string&) : string {
         ensure(export_path != "" && export_path != state_path, "choose a path other than the loaded state")
         try_ok(export_battle(battle_map, units, saved, export_path, notes))
         return ""
