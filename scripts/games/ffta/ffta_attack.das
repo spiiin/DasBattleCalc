@@ -228,18 +228,14 @@ def roll_probability(p : int) : float {
 
 // d after the element: weak x1.5, immune 0, absorb -d, half d / 2
 def element_damage(d, affinity : int) : int {
-    if (affinity == 0) {
-        return (d * 384) >> 8
-    } elif (affinity == 2) {
-        return 0
-    } elif (affinity == 3) {
-        return -d
-    } elif (affinity == 4) {
-        return d >> 1
+    return match (affinity) {
+        0 => (d * 384) >> 8             // weak
+        2 => 0                          // nullifies
+        3 => -d                         // absorbs
+        4 => d >> 1                     // halves
+        _ => d
     }
-    return d
 }
-
 def private finish_damage(var r : AttackResult; tgt : BattleUnit) {
     var d = element_damage(r.damage, r.affinity)
     var c = (d * 384) >> 8
@@ -328,28 +324,19 @@ def ability_data(ability : int) : AbilityData {
 }
 
 def tech_info(ability : int) : TechInfo {
-    if (ability == 0) {
-        return TechInfo(kind = TechKind.Fight, effect = "HP damage")
-    } elif (ability == 76) {
-        return TechInfo(kind = TechKind.Heal, effect = "HP up (the user only)", self_only = true, beneficial = true)
-    } elif (ability == 77) {
-        return TechInfo(kind = TechKind.Status, effect = "+0xEC & 0x10: W.Atk x0.9")
-    } elif (ability == 78) {
-        return TechInfo(kind = TechKind.Status, effect = "+0xEC & 0x40: M.Pow x0.9")
-    } elif (ability == 79) {
-        return TechInfo(kind = TechKind.MpDamage, effect = "MP damage")
-    } elif (ability == 80) {
-        return TechInfo(kind = TechKind.Status, effect = "+0xEC & 0x04: Speed / 2")
-    } elif (ability == 81) {
-        return TechInfo(kind = TechKind.Damage, effect = "HP damage, steals gil")
-    } elif (ability == 82) {
-        return TechInfo(kind = TechKind.Status, effect = "Berserk (+0xE8 & 0x80): W.Atk x1.2")
-    } elif (ability == 83) {
-        return TechInfo(kind = TechKind.Info, effect = "shows the target's info")
+    return match (ability) {
+        0 => TechInfo(kind = TechKind.Fight, effect = "HP damage")
+        76 => TechInfo(kind = TechKind.Heal, effect = "HP up (the user only)", self_only = true, beneficial = true)
+        77 => TechInfo(kind = TechKind.Status, effect = "+0xEC & 0x10: W.Atk x0.9")
+        78 => TechInfo(kind = TechKind.Status, effect = "+0xEC & 0x40: M.Pow x0.9")
+        79 => TechInfo(kind = TechKind.MpDamage, effect = "MP damage")
+        80 => TechInfo(kind = TechKind.Status, effect = "+0xEC & 0x04: Speed / 2")
+        81 => TechInfo(kind = TechKind.Damage, effect = "HP damage, steals gil")
+        82 => TechInfo(kind = TechKind.Status, effect = "Berserk (+0xE8 & 0x80): W.Atk x1.2")
+        83 => TechInfo(kind = TechKind.Info, effect = "shows the target's info")
+        _ => effect_info(ability, ability_data(ability))
     }
-    return effect_info(ability, ability_data(ability))
 }
-
 def private is_formula(f : uint) : bool {
     return f == 0x0813189Du || f == 0x081318D5u || f == 0x08131A99u || f == 0x081319FDu || f == 0x08131931u
 }

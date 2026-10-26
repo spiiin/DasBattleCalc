@@ -15,6 +15,7 @@ require daslib/linq_boost
 require ../../core/gba_struct.das
 require ../../core/result_try.das
 require ../../core/teams.das public
+require daslib/match
 
 let UNIT_STRIDE = 0x108u          // unit record size
 let WRAPPER_STRIDE = 0x90u        // battle participant ("wrapper") size
@@ -130,57 +131,56 @@ struct BattleUnit {
 // FFTA text: 0xB1.. A-Z, 0xCB.. a-z, 0x00 ends; other codes are shown as
 // <xx>. Names typed by the player (in RAM) are 0x80 + (code - 1).
 def ffta_text(ptr : uint; max_len : int = 24) : string {
-    var res = ""
     var a = ptr
-    for (_ in range(max_len)) {
-        var c = int(gba_read8(a))
-        a++
-        if (c == 0x80) {
-            c = int(gba_read8(a)) + 1
+    return build_string() $(var w) {
+        for (_ in range(max_len)) {
+            var c = int(gba_read8(a))
             a++
-        }
-        if (c == 0) {
-            break
-        } elif (c == 1) {
-            continue
-        } elif (c == 0x40) {
-            // 0x40 0x3C n: kerning; 0x40 0x3E n and 0x40 0x73: space
-            let k = int(gba_read8(a))
-            a += k == 0x3C || k == 0x3E ? 2u : 1u
-            if (k != 0x3C) {
-                res += " "
+            if (c == 0x80) {
+                c = int(gba_read8(a)) + 1
+                a++
             }
-        } elif (c == 0x81) {
-            // 0x81 n: a symbol ("Damage > MP" has 0x81 0x03)
-            let k = int(gba_read8(a))
-            a++
-            res += k == 3 ? ">" : "?"
-        } elif (c == 0xF5) {
-            res += "'"
-        } elif (c == 0xFF) {
-            res += "-"
-        } elif (c >= 0xA7 && c <= 0xB0) {
-            // digits: "Masamune 100", "LV3 Def-less", "Excalibur2"
-            res += to_char(c - 0xA7 + '0')
-        } elif (c == 0xE5) {
-            res += "."
-        } elif (c == 0xEB) {
-            res += "?"
-        } elif (c == 0xEF) {
-            res += ":"                  // "Steal: Armor", "Aim: Legs"
-        } elif (c == 0xFE) {
-            res += "+"                  // "Weapon Atk+"
-        } elif (c >= 0xB1 && c <= 0xCA) {
-            res += to_char(c - 0xB1 + 'A')
-        } elif (c >= 0xCB && c <= 0xE4) {
-            res += to_char(c - 0xCB + 'a')
-        } else {
-            res += "<{fmt(":02x", c)}>"
+            if (c == 0) {
+                break
+            } elif (c == 1) {
+                continue
+            } elif (c == 0x40) {
+                // 0x40 0x3C n: kerning; 0x40 0x3E n and 0x40 0x73: space
+                let k = int(gba_read8(a))
+                a += k == 0x3C || k == 0x3E ? 2u : 1u
+                if (k != 0x3C) {
+                    w |> write(" ")
+                }
+            } elif (c == 0x81) {
+                // 0x81 n: a symbol ("Damage > MP" has 0x81 0x03)
+                let k = int(gba_read8(a))
+                a++
+                w |> write(k == 3 ? ">" : "?")
+            } elif (c >= 0xA7 && c <= 0xB0) {
+                // digits: "Masamune 100", "LV3 Def-less", "Excalibur2"
+                w |> write_char(c - 0xA7 + '0')
+            } elif (c >= 0xB1 && c <= 0xCA) {
+                w |> write_char(c - 0xB1 + 'A')
+            } elif (c >= 0xCB && c <= 0xE4) {
+                w |> write_char(c - 0xCB + 'a')
+            } else {
+                w |> write(ffta_symbol(c))
+            }
         }
     }
-    return res
 }
 
+def private ffta_symbol(c : int) : string {
+    return match (uint(c)) {
+        0xF5u => "'"
+        0xFFu => "-"
+        0xE5u => "."
+        0xEBu => "?"
+        0xEFu => ":"                    // "Steal: Armor", "Aim: Legs"
+        0xFEu => "+"                    // "Weapon Atk+"
+        _ => "<{fmt(":02x", c)}>"
+    }
+}
 // text number id of the ROM text table (items, jobs, ...)
 def ffta_text_id(id : int) : string {
     return gba_has_rom() ? ffta_text(gba_read32(TEXT_TABLE + uint(id) * 4u), 32) : "#{id}"
@@ -322,16 +322,14 @@ def race_choices(race, kind : int) : array<RaceAbility> {
 
 // The jobs of a race (+0x06): 1 Human, 2 Bangaa, 3 Nu Mou, 4 Viera,
 // 5 Moogle; other races (monsters, judges) keep their job.
-def race_jobs(race : int) : array<int> {
-    var res : array<int>
-    let lo = race == 1 ? 2 : (race == 2 ? 13 : (race == 3 ? 20 : (race == 4 ? 28 : (race == 5 ? 36 : 0))))
-    let hi = race == 1 ? 12 : (race == 2 ? 19 : (race == 3 ? 27 : (race == 4 ? 35 : (race == 5 ? 43 : -1))))
-    for (j in range(lo, hi + 1)) {
-        res |> push(j)
-    }
-    return <- res
-}
+// the job ids of a race (1 human .. 5 moogle): first, last
+let private RACE_JOBS = fixed_array<int2>(int2(0, -1), int2(2, 12), int2(13, 19), int2(20, 27), int2(28, 35),
+    int2(36, 43))
 
+def race_jobs(race : int) : array<int> {
+    let r = race >= 1 && race <= 5 ? RACE_JOBS[race] : RACE_JOBS[0]
+    return <- [for (j in range(r.x, r.y + 1)); j]
+}
 def job_name(job, job2 : int) : string {
     return ffta_text_id(int(read_job(uint(job), uint(job2)).name))
 }

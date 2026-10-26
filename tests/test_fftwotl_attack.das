@@ -55,7 +55,7 @@ def main() : int {
             show(action_w(agrias, t, ATTACK_W, side_of_w(agrias, t)), agrias, t)
         }
     }
-    let acts <- unit_actions(agrias, false)
+    let acts <- unit_actions(agrias)
     for (a in acts) {
         let g = action_w(agrias, lez, a, side_of_w(agrias, lez))
         if (printing) {

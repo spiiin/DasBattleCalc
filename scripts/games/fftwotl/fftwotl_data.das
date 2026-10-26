@@ -114,18 +114,18 @@ def wotl_char(c, next : int; var len : int&) : string {
 
 // the string at a (up to 0xFE, at most max_len bytes)
 def wotl_text(a : uint; max_len : int = 64) : string {
-    var res = ""
     var i = 0
-    while (i < max_len) {
-        let c = int(gba_read8(a + uint(i)))
-        if (c == 0xFE) {
-            break
+    return build_string() $(var w) {
+        while (i < max_len) {
+            let c = int(gba_read8(a + uint(i)))
+            if (c == 0xFE) {
+                break
+            }
+            var len = 1
+            w |> write(wotl_char(c, int(gba_read8(a + uint(i) + 1u)), len))
+            i += len
         }
-        var len = 1
-        res += wotl_char(c, int(gba_read8(a + uint(i) + 1u)), len)
-        i += len
     }
-    return res
 }
 
 struct private NameCache {

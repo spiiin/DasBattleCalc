@@ -129,27 +129,25 @@ struct Unit2 {
 // line break, 0xC1 / 0xC3 00 end, 0xC2 .. 0xCF (but C0, C3, C8) take a
 // parameter byte and are dropped.
 def ffta2_text(buf, off, len : int) : string {
-    var res = ""
     var i = 0
-    while (i < len) {
-        let c = int(nds_buf_read8(buf, off + i))
-        i++
-        if (c < length(FFTA2_CHARS)) {
-            res += FFTA2_CHARS[c]
-        } elif (c == 0xC0) {
-            res += " "
+    return build_string() $(var w) {
+        while (i < len) {
+            let c = int(nds_buf_read8(buf, off + i))
             i++
-        } elif (c == 0xC1 || c == 0xC3) {
-            break
-        } elif (c == 0xC8) {
-            i++
-        } elif (c >= 0xC2 && c <= 0xCF) {
-            i++                         // a parameter: a variable, a sprite
-        } else {
-            res += "<{fmt(":02X", c)}>"
+            if (c < length(FFTA2_CHARS)) {
+                w |> write(FFTA2_CHARS[c])
+            } elif (c == 0xC0) {
+                w |> write(" ")
+                i++
+            } elif (c == 0xC1 || c == 0xC3) {
+                break
+            } elif (c >= 0xC2 && c <= 0xCF) {
+                i++                     // a parameter: a variable, a sprite
+            } else {
+                w |> write("<{fmt(":02X", c)}>")
+            }
         }
     }
-    return res
 }
 
 // a string of a JD_message table: i16 count, then (i32 length, u32

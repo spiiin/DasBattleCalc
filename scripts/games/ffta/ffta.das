@@ -32,6 +32,7 @@ require ffta_field
 require ffta_explore
 require ffta_gfx
 require ../../core/util.das
+require daslib/match
 
 let MAX_TURNS = 200
 
@@ -97,9 +98,13 @@ def right_text(x, baseline : float; s : string; color : uint) {
 }
 
 def turn_end_text(how : TurnEnd) : string {
-    return how == TurnEnd.MoveAndAct ? "Move + Act" : (how == TurnEnd.ActOnly ? "Act" : (how == TurnEnd.MoveOnly ? "Move" : "Wait"))
+    return match (how) {
+        TurnEnd.MoveAndAct => "Move + Act"
+        TurnEnd.ActOnly => "Act"
+        TurnEnd.MoveOnly => "Move"
+        _ => "Wait"
+    }
 }
-
 // last used paths, next to the project (not in the repository)
 class FftaGame : GameModule {
     units : array<BattleUnit>

@@ -122,7 +122,7 @@ def best_thrown(item_type : int) : int {
     var best = 0
     var best_wp = -1
     for (item in range(1, 254)) {
-        if (int(gba_read8(INVENTORY + uint(item))) > 0 && int(gba_read8(ITEM_TABLE + uint(item) * 12u + 5u)) == item_type) {
+        if (int(gba_read8(INVENTORY + uint(item))) > 0 && int(gba_read8(ITEM_TABLE_PSX + uint(item) * 12u + 5u)) == item_type) {
             let wp = int(gba_read8(WEAPON_TABLE + item_index(item) * 8u + 4u))
             if (wp > best_wp) {
                 best = item

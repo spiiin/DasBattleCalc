@@ -15,6 +15,7 @@ require strings
 require daslib/strings_boost
 require fftwotl_data
 require fftwotl_battle
+require daslib/match
 
 enum SideW {
     Front
@@ -144,18 +145,14 @@ def zodiac_w(att, tgt : UnitW) : int {
 let ZODIAC_REL_NAMES = fixed_array<string>("neutral", "good", "bad", "best", "worst")
 
 def private zodiac_apply(v, rel : int) : int {
-    if (rel == 1) {
-        return v + v / 4
-    } elif (rel == 2) {
-        return v - v / 4
-    } elif (rel == 3) {
-        return v + v / 2
-    } elif (rel == 4) {
-        return v - v / 2
+    return match (rel) {
+        1 => v + v / 4                  // good
+        2 => v - v / 4                  // bad
+        3 => v + v / 2                  // best
+        4 => v - v / 2                  // worst
+        _ => v
     }
-    return v
 }
-
 // v = v * num / den (truncated), noted when it changes the value
 def private scale(var v : int&; num, den : int; why : string; var mods : array<string>) {
     let old = v
@@ -1014,7 +1011,7 @@ def action_name_w(id : int) : string {
 // the actions a unit can use from its skillsets (and Attack, id 0), for
 // the Attack tab: normal abilities, items, Aim, Throw; the Jumps as one
 // action (0x18A: the learned ones only set its reach)
-def unit_actions(u : UnitW; all_known : bool) : array<int> {
+def unit_actions(u : UnitW) : array<int> {
     var res : array<int>
     res |> push(ATTACK_W)
     for (ss in [u.primary, u.secondary]) {
@@ -1139,8 +1136,9 @@ def reaction_w(att, tgt : UnitW; f : FightW; arith : bool = false) : ReactionW {
         r.id = tgt.reaction
     } else {
         for (rid in range(422, 454)) {      // 0x1A6 .. 0x1C5
-            if (r.id == 0 && has_ability_w(tgt, rid)) {
+            if (has_ability_w(tgt, rid)) {
                 r.id = rid
+                break
             }
         }
     }

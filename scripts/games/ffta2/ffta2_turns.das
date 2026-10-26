@@ -15,6 +15,7 @@ module ffta2_turns shared public
 
 require math
 require ffta2_battle
+require daslib/match
 
 let TURN_READY = 100
 
@@ -26,9 +27,13 @@ struct Turn2 {
 }
 
 def turn_cost(how : TurnEnd2) : int {
-    return how == TurnEnd2.MoveAndAct ? 100 : (how == TurnEnd2.ActOnly ? 70 : (how == TurnEnd2.MoveOnly ? 80 : 50))
+    return match (how) {
+        TurnEnd2.MoveAndAct => 100
+        TurnEnd2.ActOnly => 70
+        TurnEnd2.MoveOnly => 80
+        _ => 50
+    }
 }
-
 // what a tick adds (0x02060F18)
 def tick_amount(u : Unit2; privilege : int = 0) : int {
     var s = u.speed

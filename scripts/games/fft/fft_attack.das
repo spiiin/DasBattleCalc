@@ -18,13 +18,12 @@ require math
 require strings
 require fft_battle
 
-// the battle data in RAM (the executable's tables)
-let ITEM_TABLE = 0x80062EB8u        // 12 B: +3 flags (0x80 weapon, 0x40 shield, 0x08 accessory), +4 index, +5 type
+// the battle data in RAM (the executable's tables; the item and job
+// tables are fft_battle's ITEM_TABLE_PSX (12 B: +3 flags 0x80 weapon, 0x40
+// shield, 0x08 accessory, +4 index, +5 type) and JOB_TABLE (+25: C-Ev))
 let WEAPON_TABLE = 0x80063AB8u      // 8 B: range, flags, formula, -, WP, W-Ev, element, status
 let SHIELD_TABLE = 0x80063EB8u      // 2 B: physical, magic evade
 let ACCESSORY_TABLE = 0x80063F58u   // 2 B: physical, magic evade
-let JOB_CLASS_EV = 0x800610D1u      // the job table, 48 B a job: Move, Jump, C-Ev
-let JOB_SIZE = 48u
 
 let AB_WEAPON_GUARD = int(0x1BF)
 let AB_ABANDON = int(0x1C1)
@@ -77,11 +76,11 @@ struct FftWeapon {
 }
 
 def item_flags(item : int) : int {
-    return item > 0 && item < 0xFF ? int(gba_read8(ITEM_TABLE + uint(item) * 12u + 3u)) : 0
+    return item > 0 && item < 0xFF ? int(gba_read8(ITEM_TABLE_PSX + uint(item) * 12u + 3u)) : 0
 }
 
 def item_index(item : int) : uint {
-    return gba_read8(ITEM_TABLE + uint(item) * 12u + 4u)
+    return gba_read8(ITEM_TABLE_PSX + uint(item) * 12u + 4u)
 }
 
 // the weapon in the right hand, else the left; bare hands: item 0
@@ -90,7 +89,8 @@ def unit_weapon(u : FftUnit) : FftWeapon {
         let item = u.equip[slot]
         if ((item_flags(item) & 0x80) != 0) {
             let w = WEAPON_TABLE + item_index(item) * 8u
-            return FftWeapon(item = item, name = item_name(item), kind = int(gba_read8(ITEM_TABLE + uint(item) * 12u + 5u)),
+            return FftWeapon(item = item, name = item_name(item),
+                kind = int(gba_read8(ITEM_TABLE_PSX + uint(item) * 12u + 5u)),
                 wp = int(gba_read8(w + 4u)), w_ev = int(gba_read8(w + 5u)), reach = int(gba_read8(w)),
                 flags = int(gba_read8(w + 1u)),
                 element = int(gba_read8(w + 6u)))
@@ -100,7 +100,7 @@ def unit_weapon(u : FftUnit) : FftWeapon {
 }
 
 def class_evade(u : FftUnit) : int {
-    return int(gba_read8(JOB_CLASS_EV + uint(u.job_id) * JOB_SIZE))
+    return int(gba_read8(JOB_TABLE + 25u + uint(u.job_id) * JOB_SIZE_PSX))
 }
 
 // the physical evade of the shields (both shield slots)

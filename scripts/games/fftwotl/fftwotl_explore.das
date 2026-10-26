@@ -249,7 +249,7 @@ def axis_values_w(sc : SceneW; ax : Axis; var vals : array<Value>) : string {
             vals |> push(vtext(ability_name_w(id), double(id)))
         }
     } elif (n.kind == NodeKind.Call && n.text == "actions") {
-        for (id in unit_actions(sc.att, false)) {
+        for (id in unit_actions(sc.att)) {
             vals |> push(action_value_w(id))
         }
     } elif (n.kind == NodeKind.Call && n.text == "sides") {

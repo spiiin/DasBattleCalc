@@ -867,7 +867,7 @@ class WotlGame : GameModule {
                 }
             }
         } else {
-            actions <- unit_actions(units[selected], false)
+            actions <- unit_actions(units[selected])
         }
         action = 0
         let want = gui_arg("--action", "")

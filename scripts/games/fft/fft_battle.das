@@ -61,32 +61,32 @@ let ZODIAC_NAMES = fixed_array<string>("Aries", "Taurus", "Gemini", "Cancer", "L
 // FFT text: 0..9, A..Z, a..z, 0xFA space, 0x42 '+', 0xFE the end;
 // 0xD0..0xDA start a two-byte character: D1 1D '-', DA 76 '''
 def fft_text(at : uint; max_len : int) : string {
-    var res = ""
     var i = 0
-    while (i < max_len) {
-        let c = int(gba_read8(at + uint(i)))
-        i++
-        if (c == 0xFE || c == 0xFF) {
-            break
-        } elif (c < 10) {
-            res += to_char('0' + c)
-        } elif (c < 36) {
-            res += to_char('A' + c - 10)
-        } elif (c < 62) {
-            res += to_char('a' + c - 36)
-        } elif (c == 0xFA) {
-            res += " "
-        } elif (c == 0x42) {
-            res += "+"
-        } elif (c >= 0xD0 && c <= 0xDA) {
-            let d = int(gba_read8(at + uint(i)))
+    return build_string() $(var w) {
+        while (i < max_len) {
+            let c = int(gba_read8(at + uint(i)))
             i++
-            res += c == 0xD1 && d == 0x1D ? "-" : (c == 0xDA && d == 0x76 ? "'" : "?")
-        } else {
-            res += "?"
+            if (c == 0xFE || c == 0xFF) {
+                break
+            } elif (c < 10) {
+                w |> write_char('0' + c)
+            } elif (c < 36) {
+                w |> write_char('A' + c - 10)
+            } elif (c < 62) {
+                w |> write_char('a' + c - 36)
+            } elif (c == 0xFA) {
+                w |> write(" ")
+            } elif (c == 0x42) {
+                w |> write("+")
+            } elif (c >= 0xD0 && c <= 0xDA) {
+                let d = int(gba_read8(at + uint(i)))
+                i++
+                w |> write(c == 0xD1 && d == 0x1D ? "-" : (c == 0xDA && d == 0x76 ? "'" : "?"))
+            } else {
+                w |> write("?")
+            }
         }
     }
-    return res
 }
 
 enum TurnEnd {

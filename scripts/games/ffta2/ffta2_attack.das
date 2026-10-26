@@ -14,6 +14,7 @@ module ffta2_attack shared public
 require math
 require strings
 require ffta2_battle
+require daslib/match
 
 enum Side2 {
     Front
@@ -119,15 +120,12 @@ def private add_spread(var out : array<float2>; base : int; p : float) {
 // or 23..29 for the attacker's race), the attacker's Critical up status
 // and Death Strike support +3 each
 def crit_chance(privilege : int; att : Unit2) : int {
-    var c = 5
-    if (privilege == 19 || privilege == 20) {
-        c = 8
-    } elif (privilege == 17 || privilege == 18) {
-        c = 7
-    } elif (privilege == 16) {
-        c = 6
-    } elif (privilege >= 23 && privilege <= 29 && clan_member(att) && att.race_id == privilege - 22) {
-        c = 6
+    var c = match (privilege) {
+        19 | 20 => 8
+        17 | 18 => 7
+        16 => 6
+        p && p >= 23 && p <= 29 && clan_member(att) && att.race_id == p - 22 => 6
+        _ => 5
     }
     if (has_status2(att, 18)) {
         c += 3
@@ -137,7 +135,6 @@ def crit_chance(privilege : int; att : Unit2) : int {
     }
     return c
 }
-
 def is_weapon2(it : Item2) : bool {
     return it.id != 0 && it.kind >= 1 && it.kind <= 25
 }
