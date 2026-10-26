@@ -291,6 +291,22 @@ def inflict_text(n : int) : string {
     return length(names) > 0 ? "{how}{join(names, ", ")}" : ""
 }
 
+// an inflict entry adds the status (not "cancels")
+def inflicts(n, status : int) : bool {
+    if (n <= 0 || n >= 128) {
+        return false
+    }
+    let e = INFLICT_TABLE + uint(n) * 6u
+    return (gba_read8(e) & 0x10u) == 0u && (gba_read8(e + 1u + uint(status / 8)) & (0x80u >> uint(status % 8))) != 0u
+}
+
+// an immortal unit: record +0x05 bit 0x04 (every unit of the prologue at
+// Orbonne, Delita at Gariland) - it can not be KO'd nor turned into a
+// frog
+def is_immortal(u : FftUnit) : bool {
+    return (u.flags & 0x04) != 0
+}
+
 struct AbilityForecast {
     known : bool                    // the formula is modelled
     effect : string                 // "damage", "heal", "status", "PA +1", ...
@@ -559,10 +575,11 @@ def ability_forecast(a, t : FftUnit; ab : FftAbility) : AbilityForecast {
         f.known = false
         f.effect = "formula 0x{fmt(":02x", fo)}"
     }
-    if (ab.id == 0x1D || ab.id == 0x1E) {
-        // research/fft/notes.md, "Frog and Death": as the model at
-        // Gariland, 0% for everyone in the prologue (Orbonne)
-        f.notes |> push("the prologue battle (Orbonne) shows 0% for Frog / Death on everyone; elsewhere as here")
+    if ((fo == 0x0E || inflicts(ab.inflict, ST_DEAD) || inflicts(ab.inflict, ST_FROG)) && is_immortal(t)) {
+        // research/fft/notes.md, "Frog and Death": 0% (no status named)
+        // on everyone in the prologue, at Gariland 71% / 60% on Candy
+        f.hit = 0
+        f.notes |> push("the target is immortal (+0x05 bit 0x04): no KO, no Frog")
     }
     if (st != "" && fo != 0x2D && fo != 0x0A && fo != 0x0B && fo != 0x38) {
         f.notes |> push("status: {st}")

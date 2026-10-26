@@ -132,8 +132,7 @@ Choose it in the **Game** menu (or `--game fft`); the save is a BizHawk save sta
   Attack UP, Protect, Fire).
 
 The critical hit: 3000 attacks in the game give its most (2 XA - 1) x YA and 3.5-4% of the hits (5% in the model;
-research/fft/notes.md). The prologue battle shows 0% for Frog and Death on everyone (elsewhere the model's numbers) - its flag is
-not found. RAM layout, tables and formulas: [research/fft/notes.md](research/fft/notes.md).
+research/fft/notes.md). Immortal units (the record's bit, everyone in the prologue) get 0% from Death and Frog, as in the game. RAM layout, tables and formulas: [research/fft/notes.md](research/fft/notes.md).
 
 ## Checked against the game
 

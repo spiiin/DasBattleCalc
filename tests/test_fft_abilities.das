@@ -160,6 +160,19 @@ def main() : int {
                 f.amount_min == tc._1 && f.hit == 66)
         }
     }
+    // the prologue (Orbonne): every unit immortal (+0x05 bit 0x04) - the
+    // game: Ramza's Frog and Death at Lezales 0%, Poison 49%; without the
+    // bit Frog and Death are the formula's again
+    check("Lezales immortal (+0x05 0x{fmt(":02x", lez.flags)})", is_immortal(lez))
+    for (pc in fixed_array<tuple<int; int>>((28, 49), (29, 0), (30, 0))) {
+        let f = ability_forecast(ramza, lez, read_ability(pc._0))
+        check("prologue, {ability_name(pc._0)} at Lezales: {f.hit}%, the game: {pc._1}%", f.hit == pc._1)
+    }
+    var mortal = lez
+    mortal.flags = mortal.flags & ~4
+    let mf = ability_forecast(ramza, mortal, read_ability(29))
+    let md = ability_forecast(ramza, mortal, read_ability(30))
+    check("without the bit: Frog {mf.hit}%, Death {md.hit}% (> 0)", mf.hit > 0 && md.hit > 0)
     // --battle2 (Gariland): Barney given Black Magic and MP 99 at Candy
     // (Scorpio vs Taurus: the best pair, x 3 / 2 on MA + X) - the game:
     // Poison 95%, Frog 71%, Death 60% (the prologue at Orbonne shows 0%
@@ -178,6 +191,10 @@ def main() : int {
                 let f = ability_forecast(barney, bu[ci], read_ability(sc._0))
                 check("{ability_name(sc._0)} at Candy: {f.hit}%, the game: {sc._1}%", f.hit == sc._1)
             }
+            // Delita (a guest, +0x05 0x84) is immortal here
+            let di = find_unit(bu, "Delita")
+            check("Delita immortal: Death {ability_forecast(barney, bu[di], read_ability(30)).hit}%",
+                is_immortal(bu[di]) && !is_immortal(bu[ci]) && ability_forecast(barney, bu[di], read_ability(30)).hit == 0)
         }
     }
     // --math (fft_test_math: battle 2, Barney given Math Skill, Black Magic

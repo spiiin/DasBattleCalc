@@ -504,8 +504,12 @@ At Gariland (Barney given Black Magic by edits, MP 99, at Candy): Poison
 X) x 3 / 2 (the best zodiac pair, before Faith) x Fa x Fa / 10000. In the
 prologue at Orbonne (fft_test_ramza2: Ramza given the same at Lezales)
 Frog and Death show 0% with no status name, Poison 49%: no immunity in
-the records (+0x53..), the jobs (+31..) or the items' attributes - a flag
-of that battle, not found. The model's note says so.
+the records (+0x53..), the jobs (+31..) or the items' attributes.
+Found later (the WotL session's "immortal" bit): record +0x05 bit 0x04 -
+every unit of the prologue has it (0xCC, 0x84, 0x94, 0x04 ...), at
+Gariland only Delita (0x84; the others 0x08 / 0x90 / 0x0B). An immortal
+unit can not be KO'd nor turned into a frog: Death (formula 0E) and an
+inflict of Dead or Frog get 0% (`is_immortal`, test_fft_abilities).
 
 ## Math Skill (2026-10-26)
 
