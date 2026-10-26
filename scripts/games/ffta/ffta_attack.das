@@ -183,6 +183,52 @@ def private scale_by(var v : int&; k : int; why : string; var mods : array<strin
     mods |> push("{why} x{fmt(":.2f", float(k) / 256.0)}")
 }
 
+enum private Applies {
+    Always
+    Physical
+    Magical
+}
+
+// a status that scales attack or defense: when, its bit (the record's
+// byte and mask), the factor (/ 256)
+struct private StatusScale {
+    when : Applies
+    byte : uint
+    mask : uint
+    k : int
+    name : string
+}
+
+// the attacker's statuses after the supports, Berserk and Frog, in the
+// game's order (each step rounds)
+let private ATTACK_STATUSES = fixed_array<StatusScale>(
+    StatusScale(when = Applies.Physical, byte = 0xE9u, mask = 0x40u, k = 384, name = "+E9&40"),
+    StatusScale(when = Applies.Physical, byte = 0xECu, mask = 0x08u, k = 281, name = "+EC&08"),
+    StatusScale(when = Applies.Physical, byte = 0xECu, mask = 0x10u, k = 230, name = "Powerbreak"),
+    StatusScale(when = Applies.Magical, byte = 0xECu, mask = 0x20u, k = 281, name = "+EC&20"),
+    StatusScale(when = Applies.Magical, byte = 0xECu, mask = 0x40u, k = 230, name = "Mindbreak"))
+
+// the target's statuses after its support
+let private DEFENSE_STATUSES = fixed_array<StatusScale>(
+    StatusScale(when = Applies.Physical, byte = 0xEBu, mask = 0x02u, k = 358, name = "Protect"),
+    StatusScale(when = Applies.Magical, byte = 0xEBu, mask = 0x01u, k = 358, name = "Shell"),
+    StatusScale(when = Applies.Always, byte = 0xE8u, mask = 0x40u, k = 460, name = "+E8&40"),
+    StatusScale(when = Applies.Always, byte = 0xE9u, mask = 0x01u, k = 25, name = "Frog"),
+    StatusScale(when = Applies.Always, byte = 0xE9u, mask = 0x20u, k = 358, name = "+E9&20"),
+    StatusScale(when = Applies.Physical, byte = 0xECu, mask = 0x80u, k = 358, name = "+EC&80"),
+    StatusScale(when = Applies.Physical, byte = 0xEDu, mask = 0x01u, k = 179, name = "+ED&01"),
+    StatusScale(when = Applies.Magical, byte = 0xEDu, mask = 0x02u, k = 358, name = "+ED&02"),
+    StatusScale(when = Applies.Magical, byte = 0xEDu, mask = 0x04u, k = 179, name = "+ED&04"))
+
+def private scale_by_statuses(var v : int&; u : BattleUnit; phys : bool; scales; var mods : array<string>) {
+    for (s in scales) {
+        let applies = s.when == Applies.Always || (s.when == Applies.Physical) == phys
+        if (applies && has_status(u, s.byte, s.mask)) {
+            scale_by(v, s.k, s.name, mods)
+        }
+    }
+}
+
 // 0x0812F5E0: weapon W.Atk (job +0x33 bare-handed) + W.Atk of the other
 // non-weapon equipment; nothing when Frog
 def attack_power(att : BattleUnit; weapon : int) : int {
@@ -490,21 +536,8 @@ def act(m : BattleMap; att, tgt0 : BattleUnit; ability : int; choice : SideChoic
     if (frog_att) {
         scale_by(a, 25, "Frog", amods)
     }
-    if (phys && has_status(att, 0xE9, 0x40u)) {
-        scale_by(a, 384, "+E9&40", amods)
-    }
-    if (phys && has_status(att, 0xEC, 0x08u)) {
-        scale_by(a, 281, "+EC&08", amods)
-    }
-    if (phys && has_status(att, 0xEC, 0x10u)) {
-        scale_by(a, 230, "Powerbreak", amods)
-    }
-    if (!phys && has_status(att, 0xEC, 0x20u)) {
-        scale_by(a, 281, "+EC&20", amods)
-    }
-    if (!phys && has_status(att, 0xEC, 0x40u)) {
-        scale_by(a, 230, "Mindbreak", amods)
-    }
+    scale_by_statuses(a, att, phys, ATTACK_STATUSES, amods)
+
     r.attack = min(999, a + r.power)
     r.attack_mods = join(amods, ", ")
     // defense: record stat x support x target statuses + equipment
@@ -514,33 +547,8 @@ def act(m : BattleMap; att, tgt0 : BattleUnit; ability : int; choice : SideChoic
     if (phys && tgt.support == 2) {
         scale_by(d, 358, "Weapon Def+", dmods)
     }
-    if (phys && has_status(tgt, 0xEB, 0x02u)) {
-        scale_by(d, 358, "Protect", dmods)
-    }
-    if (!phys && has_status(tgt, 0xEB, 0x01u)) {
-        scale_by(d, 358, "Shell", dmods)
-    }
-    if (has_status(tgt, 0xE8, 0x40u)) {
-        scale_by(d, 460, "+E8&40", dmods)
-    }
-    if (has_status(tgt, 0xE9, 0x01u)) {
-        scale_by(d, 25, "Frog", dmods)
-    }
-    if (has_status(tgt, 0xE9, 0x20u)) {
-        scale_by(d, 358, "+E9&20", dmods)
-    }
-    if (phys && has_status(tgt, 0xEC, 0x80u)) {
-        scale_by(d, 358, "+EC&80", dmods)
-    }
-    if (phys && has_status(tgt, 0xED, 0x01u)) {
-        scale_by(d, 179, "+ED&01", dmods)
-    }
-    if (!phys && has_status(tgt, 0xED, 0x02u)) {
-        scale_by(d, 358, "+ED&02", dmods)
-    }
-    if (!phys && has_status(tgt, 0xED, 0x04u)) {
-        scale_by(d, 179, "+ED&04", dmods)
-    }
+    scale_by_statuses(d, tgt, phys, DEFENSE_STATUSES, dmods)
+
     r.defense_items = has_status(tgt, 0xE9, 0x01u) ? 0 : tgt.stat_items[def_stat]
     r.defense = min(999, d + r.defense_items)
     r.defense_mods = join(dmods, ", ")

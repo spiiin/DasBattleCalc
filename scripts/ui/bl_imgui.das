@@ -481,7 +481,8 @@ def bl_string(id : string; var value : string&; w : float; sharp : int = 0) : bo
     let p = GetCursorScreenPos()
     let h = u(21.0)
     if (string_edit.id == id) {
-        if (inline_edit(string_edit, "##{id}_str", ImGuiInputTextFlags.EnterReturnsTrue, float2(p.x, p.y), w, h, sharp)) {
+        let flags = ImGuiInputTextFlags.EnterReturnsTrue
+        if (inline_edit(string_edit, "##{id}_str", flags, float2(p.x, p.y), w, h, sharp)) {
             value = to_string(string_edit.buf)
             return true
         }
