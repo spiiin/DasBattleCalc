@@ -133,6 +133,7 @@ struct FftUnit {
     @hide gender : int              // +0x06: 0x80 male, 0x40 female, 0x20 monster
     @hide zodiac : int              // +0x09 high nibble: 0 Aries .. 11 Pisces, 12 Serpentarius
     @hide innate : int[4]           // +0x0A 4 x u16: the job's innate abilities (Throw Item)
+    @hide raw : int[5]              // +0x72 3 B each: raw HP, MP, Speed, PA, MA (job_stat)
     @hide primary : int             // +0x12 skillset
     @hide secondary : int           // +0x13
     @hide reaction : int            // +0x14 u16 ability id (0x1BF Weapon Guard)
@@ -213,6 +214,10 @@ def read_unit(slot : int) : FftUnit {
     u.zodiac = int(gba_read8(rec + 0x09u)) >> 4
     for (k in range(4)) {
         u.innate[k] = int(gba_read16(rec + 0x0Au + uint(k) * 2u))
+    }
+    for (k in range(5)) {
+        let a = rec + 0x72u + uint(k) * 3u
+        u.raw[k] = int(gba_read8(a)) | int(gba_read8(a + 1u)) << 8 | int(gba_read8(a + 2u)) << 16
     }
     u.primary = int(gba_read8(rec + 0x12u))
     u.secondary = int(gba_read8(rec + 0x13u))
@@ -525,11 +530,20 @@ def item_fits(item, slot : int) : bool {
         : (slot == 3 || slot == 5 ? (f & 0x80) != 0 : (f & 0x40) != 0))))
 }
 
+// A stat of a job (0 max HP, 1 max MP, 2 Speed, 3 PA, 4 MA) without the
+// equipment: raw x the job's multiplier / 1638400 (job table +14, +16,
+// .. +22), floored - so all 55 units of five saves, any job and level
+def job_stat(u : FftUnit; job, k : int) : int {
+    let m = int64(gba_read8(JOB_TABLE + uint(job) * JOB_SIZE_PSX + 14u + uint(k) * 2u))
+    return int(int64(u.raw[k]) * m / 1638400l)
+}
+
 // After an edit of the job, the equipment or the R/S/M: the derived
 // fields the game keeps in the record, again - the ability bits (the
 // innate ones and the set R/S/M), the elements (the job's and the
 // equipment's), PA / MA / Speed / Move / Jump and max HP / MP moved by
-// the equipment's bonuses (from `before`, the unit before the edit).
+// the equipment's bonuses (from `before`, the unit before the edit); a
+// new job moves them by its multipliers too (job_stat).
 def recompute_unit(var u : FftUnit; before : FftUnit) {
     for (k in range(11)) {
         u.skills[k] = uint8(0)
@@ -561,17 +575,23 @@ def recompute_unit(var u : FftUnit; before : FftUnit) {
     for (k in range(5)) {
         u.elements[k] = uint8(el[k])
     }
-    u.pa = max(before.pa + dstat[0], 0)
-    u.ma = max(before.ma + dstat[1], 0)
-    u.speed = max(before.speed + dstat[2], 1)
+    var dj : int[5]
+    if (u.job_id != before.job_id) {
+        for (k in range(5)) {
+            dj[k] = job_stat(u, u.job_id, k) - job_stat(u, before.job_id, k)
+        }
+    }
+    u.pa = max(before.pa + dstat[0] + dj[3], 0)
+    u.ma = max(before.ma + dstat[1] + dj[4], 0)
+    u.speed = max(before.speed + dstat[2] + dj[2], 1)
     // a new job: its own Move / Jump (+ the equipment's)
     let jb = JOB_TABLE + uint(before.job_id) * JOB_SIZE_PSX
     let dmove = int(gba_read8(j + 23u)) - int(gba_read8(jb + 23u))
     let djump = int(gba_read8(j + 24u)) - int(gba_read8(jb + 24u))
     u.move = max(before.move + dstat[3] + (u.job_id != before.job_id ? dmove : 0), 0)
     u.jump = max(before.jump + dstat[4] + (u.job_id != before.job_id ? djump : 0), 0)
-    u.max_hp = max(before.max_hp + dhp, 1)
-    u.max_mp = max(before.max_mp + dmp, 0)
+    u.max_hp = max(before.max_hp + dhp + dj[0], 1)
+    u.max_mp = max(before.max_mp + dmp + dj[1], 0)
     u.hp = min(u.hp, u.max_hp)
     u.mp = min(u.mp, u.max_mp)
     update_unit(u)
@@ -583,7 +603,7 @@ def recompute_unit(var u : FftUnit; before : FftUnit) {
 // calculator edits (the inspector), not the position. Brave / Faith set the original and the current;
 // PA / MA / Speed the current (+0x36..) and move the original (+0x30..)
 // by the same amount, so a buff seen in the state stays.
-def write_unit(u : FftUnit) {
+def write_unit(u : FftUnit; m : FftMap) {
     let r = u.record
     gba_edit8(r + 0x23u, uint(clamp(u.brave, 0, 100)))
     gba_edit8(r + 0x24u, uint(clamp(u.brave, 0, 100)))
@@ -633,9 +653,59 @@ def write_unit(u : FftUnit) {
             gba_edit8(r + 0x5Du + uint(k), 32u)
         }
     }
-    // not the tile (+0x47 / +0x48) nor the facing: the game takes them
-    // (its Move range follows), but the sprite stays where it was - its
-    // object keeps its own position (not found yet)
+    write_position(u, m)
+}
+
+// the units' objects (sprites): 0x440 B each from 0x800B7348 (the
+// address of their world X), +0xF4 the unit's record
+let UNIT_OBJECTS = 0x800B7348u
+let UNIT_OBJECT_SIZE = 0x440u
+
+// the object of a unit's record, 0u none
+def unit_object(rec : uint) : uint {
+    for (k in range(21)) {
+        let o = UNIT_OBJECTS + uint(k) * UNIT_OBJECT_SIZE
+        if (gba_read32(o + 0xF4u) == rec) {
+            return o
+        }
+    }
+    return 0u
+}
+
+// The tile and facing: the record (+0x47 x, +0x48 y, +0x49 facing and
+// bit 7 the upper floor) and the unit's object - the world position
+// (+0 X = x * 28 + 14, +2 Y = -height in half units x 6, +4 Z = y * 28 +
+// 14), the tile three times (+0x3C, +0x40, +0x44: x, y) and the facing
+// (+0x2C (f + 3) & 3, +0x2E (4 f + 14) & 15, +0x30 f x 1024). With the
+// record alone the game finds no unit on the new tile (no forecast);
+// with both it targets him there (Lezales moved next to Ramza: 42 74%
+// from the side, 42 100% from behind, a lower tile)
+def write_position(u : FftUnit; m : FftMap) {
+    let r = u.record
+    if (u.x == int(gba_read8(r + 0x47u)) && u.y == int(gba_read8(r + 0x48u)) &&
+            u.facing == int(gba_read8(r + 0x49u) & 3u) && u.upper == ((gba_read8(r + 0x49u) & 0x80u) != 0u)) {
+        return
+    }
+    let o = unit_object(r)
+    if (o == 0u || u.x < 0 || u.y < 0 || u.x >= m.w || u.y >= m.h) {
+        return
+    }
+    let i = u.y * m.w + u.x
+    let h2 = u.upper && m.upper[i] >= 0 ? m.upper[i] : m.height[i]
+    gba_edit8(r + 0x47u, uint(u.x))
+    gba_edit8(r + 0x48u, uint(u.y))
+    gba_edit8(r + 0x49u, uint(u.facing & 3) | (u.upper ? 0x80u : 0u))
+    gba_edit16(o, uint(u.x * 28 + 14))
+    gba_edit16(o + 2u, uint(-h2 * 6) & 0xFFFFu)
+    gba_edit16(o + 4u, uint(u.y * 28 + 14))
+    for (k in range(3)) {
+        gba_edit8(o + 0x3Cu + uint(k) * 4u, uint(u.x))
+        gba_edit8(o + 0x3Du + uint(k) * 4u, uint(u.y))
+    }
+    let f = u.facing & 3
+    gba_edit8(o + 0x2Cu, uint((f + 3) & 3))
+    gba_edit8(o + 0x2Eu, uint((4 * f + 14) & 15))
+    gba_edit16(o + 0x30u, uint(f * 1024))
 }
 
 // Writes the loaded BizHawk state with the units to path. "" or the error.
@@ -643,9 +713,11 @@ def export_battle(units : array<FftUnit>; path : string) : string {
     if (!gba_has_state()) {
         return "no state loaded"
     }
+    var m : FftMap
+    read_map(m)
     gba_edit_begin()
     for (u in units) {
-        write_unit(u)
+        write_unit(u, m)
     }
     return gba_save_state(path)
 }

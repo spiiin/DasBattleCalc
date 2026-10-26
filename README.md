@@ -117,16 +117,18 @@ Choose it in the **Game** menu (or `--game fft`); the save is a BizHawk save sta
   Concentrate), statuses (Protect, Berserk, Sleep, Charging, Chicken, Frog, Darkness, Defending), evades by side as
   the game takes them; the abilities the unit knows (or all): Guts, Battle Skill breaks, Black / White / Time Magic,
   Holy Sword, Dark Sword, Punch Art, Charge, Items, Throw and Jump; elements (absorb, cancel, half, weak,
-  strengthen) and the target's reaction. **57 forecasts of the game match**, in two battles.
+  strengthen) and the target's reaction. **62 forecasts of the game match**, in two battles.
 - **Editor**: Brave, Faith, HP / MP, PA / MA / Speed, CT, Move / Jump, the job, the skillsets, reaction / support /
   movement, the equipment (an item picker by slot and job) and statuses; the stats, elements and ability bits the
-  game keeps follow. **Export state with edits** writes a new BizHawk state (the tile and facing are not written yet).
+  game keeps follow; a new job moves PA / MA / Speed and max HP / MP by its multipliers on the unit's raw stats.
+  **Export state with edits** writes a new BizHawk state, a unit moved on the field included (its sprite follows).
 - **Explore** with its own parameters (`atk.pa`, `atk.brave`, `atk.weapon`, `atk.support`, `tgt.zodiac`,
   `tgt.status.protect`, `action`, `side`, ...); the experiments give the game's forecasts (sides, zodiac, weapons,
   Attack UP, Protect, Fire).
 
-Not yet: the critical hit's chance, a job's PA / MA multipliers when the job changes, the tile in the export. Frog and
-Death showed 0% on every unit in the first battle - not explained. RAM layout, tables and formulas: [research/fft/notes.md](research/fft/notes.md).
+The critical hit: 1000 attacks in the game give its damage (XA + rand(0..XA - 1)) x YA and ~4% of the hits (5% in
+the model). The prologue battle shows 0% for Frog and Death on everyone (elsewhere the model's numbers) - its flag is
+not found. RAM layout, tables and formulas: [research/fft/notes.md](research/fft/notes.md).
 
 ## Checked against the game
 

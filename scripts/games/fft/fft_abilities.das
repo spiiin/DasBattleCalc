@@ -488,8 +488,9 @@ def ability_forecast(a, t : FftUnit; ab : FftAbility) : AbilityForecast {
         f.effect = "formula 0x{fmt(":02x", fo)}"
     }
     if (ab.id == 0x1D || ab.id == 0x1E) {
-        // research/fft/notes.md, "Abilities": the first battle showed 0%
-        f.notes |> push("unverified: the game's forecast showed 0% for Frog / Death on every unit in battle 1")
+        // research/fft/notes.md, "Frog and Death": as the model at
+        // Gariland, 0% for everyone in the prologue (Orbonne)
+        f.notes |> push("the prologue battle (Orbonne) shows 0% for Frog / Death on everyone; elsewhere as here")
     }
     if (st != "" && fo != 0x2D && fo != 0x0A && fo != 0x0B && fo != 0x38) {
         f.notes |> push("status: {st}")

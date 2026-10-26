@@ -90,6 +90,18 @@ def main() : int {
     check("every weapon: {err} {length(t.rows)} rows", err == "" && length(t.rows) > 50)
     err = run(sc, m, "vary atk.nothing 1, 2\n", t)
     check("an unknown parameter: '{err}'", starts_with(err, "line 1: no parameter"))
+    // a job (the raw stats x its multipliers): Ramza (Squire) as a Knight,
+    // a Monk; the generic jobs first
+    err = run(sc, m, "vary atk.job 76, 78
+", t)
+    let kpa = job_stat(units[ri], 76, 3)
+    let mpa = job_stat(units[ri], 78, 3)
+    check("Ramza as Knight / Monk: {err} PA {kpa} / {mpa}, {column(t, "damage")}",
+        err == "" && column(t, "damage") == "{kpa * 7} {mpa * 7}" && kpa != mpa)
+    err = run(sc, m, "vary atk.job jobs
+", t)
+    check("jobs: {err} {length(t.rows)}, first {length(t.rows) > 0 ? value_text(t.rows[0][0]) : ""}",
+        err == "" && length(t.rows) > 60 && value_text(t.rows[0][0]) == "Squire")
     // the ready experiments run (the scene line is the UI's: here Attack)
     for (k in range(length(EXPLORE_F_EXAMPLES))) {
         err = run(sc, m, EXPLORE_F_EXAMPLES[k], t)

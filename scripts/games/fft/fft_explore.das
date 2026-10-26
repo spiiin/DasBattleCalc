@@ -11,17 +11,19 @@ options indenting = 4
 // max_mp ct level move jump, zodiac (0 Aries .. 11 Pisces, 12
 // Serpentarius), weapon (the right hand; the item's bonuses follow),
 // support, status.<name> (0 / 1: status.protect, status.shell, ...), job
-// (read only: a job's PA / MA multipliers are not modelled). Scene: action
+// (its multipliers on the raw stats, Move / Jump, innate abilities, as the
+// editor's recompute_unit). Scene: action
 // (an ability, Attack = 0), side (1 front, 2 side, 3 back, 0 = by the
 // positions).
-// Values of vary: from..to [step s], a, b, ..., weapons, supports, actions,
-// sides.
+// Values of vary: from..to [step s], a, b, ..., jobs, weapons, supports,
+// actions, sides.
 // Columns of every row: the axes, the parameters the script reads, and
 // damage healing dmg_min dmg_max hit crit expected reach distance mp_cost
 // xa ya zodiac_rel.
 module fft_explore shared public
 
 require math
+require gba_mem
 require strings
 require daslib/strings_boost
 require ../../core/explore.das
@@ -39,7 +41,7 @@ let SIDE_F_LABELS = fixed_array<string>("Auto", "Front", "Side", "Back")
 
 let ZODIAC_REL_F = fixed_array<string>("worst", "bad", "neutral", "good", "best")
 
-let EXPLORE_F_GENERATORS = fixed_array<string>("weapons", "supports", "actions", "sides")
+let EXPLORE_F_GENERATORS = fixed_array<string>("jobs", "weapons", "supports", "actions", "sides")
 
 // the Jump abilities make one action (their reach: the best learned)
 let JUMP_FIRST = 394
@@ -203,6 +205,13 @@ def set_unit_param_f(var u : FftUnit; key : string; v : Value) : string {
         u.jump = n
     } elif (key == "zodiac") {
         u.zodiac = clamp(n, 0, 12)
+    } elif (key == "job") {
+        u.job_id = n
+        u.job = job_name(n)
+        for (k in range(4)) {
+            u.innate[k] = int(gba_read16(JOB_TABLE + uint(n) * JOB_SIZE_PSX + 1u + uint(k) * 2u))
+        }
+        recompute_unit(u, before)
     } elif (key == "weapon") {
         // the item's PA / MA / Speed bonuses and element follow
         u.equip[3] = n <= 0 ? 255 : n
@@ -319,6 +328,15 @@ def axis_values_f(sc : SceneF; ax : Axis; var vals : array<Value>) : string {
             vals |> push(vnum(x))
             x += st
         }
+    } elif (n.kind == EX_CALL && n.text == "jobs") {
+        // the generic jobs (Squire .. Mime), then the story ones by name
+        for (j in range(1, 156)) {
+            let jj = (j + 73) % 155
+            let name = job_name(jj)
+            if (jj > 0 && name != "" && name != "None" && !has_text_f(vals, name)) {
+                vals |> push(vtext(name, double(jj)))
+            }
+        }
     } elif (n.kind == EX_CALL && n.text == "weapons") {
         for (item in range(1, 128)) {
             let name = item_name(item)
@@ -343,7 +361,7 @@ def axis_values_f(sc : SceneF; ax : Axis; var vals : array<Value>) : string {
             vals |> push(vtext(SIDE_F_LABELS[s], double(s)))
         }
     } else {
-        return "line {ax.line}: values are from..to [step s], a, b, ..., weapons, supports, actions, sides - not '{n.text}'"
+        return "line {ax.line}: values are from..to [step s], a, b, ..., jobs, weapons, supports, actions, sides - not '{n.text}'"
     }
     if (length(vals) == 0) {
         return "line {ax.line}: no values for {ax.path}"

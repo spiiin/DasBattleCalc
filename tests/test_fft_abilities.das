@@ -9,7 +9,7 @@ options indenting = 4
 // Dash and Throw Stone: the forecast shows one roll of rand(1..Y) - 3 and
 // 2 in this state - so the game's number is PA' x that roll. Also Wish
 // (caster's max HP / 5 x 2), Chakra, Potion, Charge with a bow at Viggs.
-//   battlecalc tests/test_fft_abilities.das --state <fft_test_ramza2.State> [--throw <fft_test_throw.State>]
+//   battlecalc tests/test_fft_abilities.das --state <fft_test_ramza2.State> [--throw <fft_test_throw.State>] [--battle2 <fft_test_battle2.State>]
 require gba_mem
 require gui_common
 require math
@@ -158,6 +158,26 @@ def main() : int {
             let f = ability_forecast(tr, tl, ab)
             check("Throw {ab.name}: {f.effect} {f.amount_min} {f.hit}%, the game: {tc._1} 66%",
                 f.amount_min == tc._1 && f.hit == 66)
+        }
+    }
+    // --battle2 (Gariland): Barney given Black Magic and MP 99 at Candy
+    // (Scorpio vs Taurus: the best pair, x 3 / 2 on MA + X) - the game:
+    // Poison 95%, Frog 71%, Death 60% (the prologue at Orbonne shows 0%
+    // for Frog / Death on everyone)
+    let b2 = gui_arg("--battle2", "")
+    if (b2 != "") {
+        check("battle 2 loads", gba_load_state(b2) == "")
+        var bu : array<FftUnit>
+        read_battle(bu)
+        let bi = find_unit(bu, "Barney")
+        let ci = find_unit(bu, "Candy")
+        if (bi >= 0 && ci >= 0) {
+            var barney = bu[bi]
+            barney.mp = 99
+            for (sc in fixed_array<tuple<int; int>>((28, 95), (29, 71), (30, 60))) {
+                let f = ability_forecast(barney, bu[ci], read_ability(sc._0))
+                check("{ability_name(sc._0)} at Candy: {f.hit}%, the game: {sc._1}%", f.hit == sc._1)
+            }
         }
     }
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")

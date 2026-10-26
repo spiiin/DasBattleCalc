@@ -76,6 +76,24 @@ def main() : int {
         }
         check("{un.name}: the recompute gives the record back", same)
     }
+    // the raw stats (+0x72): raw x the job's multiplier / 1638400 gives
+    // the record's max HP / MP (without the equipment), Speed, PA, MA
+    for (un in units) {
+        var hpb = 0
+        var mpb = 0
+        for (s in range(EQUIP_SLOTS)) {
+            let b = item_bonus(un.equip[s])
+            hpb += b.hp
+            mpb += b.mp
+        }
+        let rec = fixed_array<int>(un.max_hp - hpb, un.max_mp - mpb, int(gba_read8(un.record + 0x32u)),
+            int(gba_read8(un.record + 0x30u)), int(gba_read8(un.record + 0x31u)))
+        var same = true
+        for (k in range(5)) {
+            same = same && job_stat(un, un.job_id, k) == rec[k]
+        }
+        check("{un.name}: the raw stats x the job give the record's", same)
+    }
     print(failed == 0 ? "PASS {total} cases\n" : "FAIL {failed} of {total}\n")
     return failed == 0 ? 0 : 1
 }

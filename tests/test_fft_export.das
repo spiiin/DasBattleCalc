@@ -3,9 +3,10 @@ options indenting = 4
 
 // FFT export (fft_battle.das export_battle): edits of Ramza (HP 77,
 // Brave 70, Faith 40, PA 9, Speed 8, CT 50, Move 6) go into a new BizHawk
-// state; reading it back gives the edits, the other units unchanged. A
-// unit moved on the field (Lezales to (4, 3)) is not written: the game
-// would take the tile but keep the sprite where it was. Loaded in BizHawk
+// state; reading it back gives the edits, the other units unchanged.
+// Lezales moved to (6, 4) facing +x: his record and his sprite's object
+// (world position, tile copies, facing) - the game then targets him there
+// (Ramza's Attack 42 74% from the side, as the model). Loaded in BizHawk
 // the game shows the edits (HP 077/113, Move 6's range).
 //   battlecalc tests/test_fft_export.das --state <fft_test_ramza2.State> --out <new.State>
 require gba_mem
@@ -56,9 +57,9 @@ def main() : int {
     units[ri].speed = 8
     units[ri].ct = 50
     units[ri].move = 6
-    units[li].x = 4
-    units[li].y = 3
-    units[li].facing = 0
+    units[li].x = 6
+    units[li].y = 4
+    units[li].facing = 3
     check("export", export_battle(units, out) == "")
     check("reload", gba_load_state(out) == "")
     var after : array<FftUnit>
@@ -73,8 +74,11 @@ def main() : int {
     check("Ramza's original Brave {gba_read8(r.record + 0x23u)}, PA {gba_read8(r.record + 0x30u)}",
         gba_read8(r.record + 0x23u) == 70u && gba_read8(r.record + 0x30u) == 9u)
     let l = after[li]
-    check("Lezales not moved: {l.x}, {l.y} facing {l.facing}", l.x == before[li].x && l.y == before[li].y
-        && l.facing == before[li].facing)
+    let lo = unit_object(l.record)
+    check("Lezales moved: {l.x}, {l.y} facing {l.facing}, object {lo}", l.x == 6 && l.y == 4 && l.facing == 3 && lo != 0u)
+    check("his object: X {gba_read16(lo)} Y {int(gba_read16(lo + 2u)) - 65536} Z {gba_read16(lo + 4u)}, tile {gba_read8(lo + 0x3Cu)} {gba_read8(lo + 0x3Du)}, angle {gba_read16(lo + 0x30u)}",
+        gba_read16(lo) == 182u && gba_read16(lo + 2u) == 65404u && gba_read16(lo + 4u) == 126u && gba_read8(lo + 0x3Cu) == 6u
+        && gba_read8(lo + 0x45u) == 4u && gba_read16(lo + 0x30u) == 3072u)
     var same = true
     for (i in range(length(after))) {
         if (i != ri && i != li) {

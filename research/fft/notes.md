@@ -451,3 +451,58 @@ Scorpio, male) at Candy (Taurus, female: the best pair, XA 5 -> 7):
 | Dash | 18 100% | one roll of PA 6 x rand(1..4) |
 
 The probe's edit values are decimal (`1924E9:1:19`, not `13`).
+
+## Raw stats and a job change (2026-10-26)
+
+The battle record keeps the raw stats, 3 B each: +0x72 HP, +0x75 MP,
++0x78 Speed, +0x7B PA, +0x7E MA. A stat of a job = raw x the job's
+multiplier / 1638400, floored; the multipliers are at job table +14
+(HP), +16 (MP), +18 (Speed), +20 (PA), +22 (MA) (+13.. odd bytes: the
+growth constants). It gives the record's original PA / MA / Speed
+(+0x30..+0x32) and max HP / MP without the equipment for all 55 units
+of fft_test_battle1, ramza2, battle2, throw and haste (Lv 1 to 10,
+generic and story jobs). Lv 1 generics start with Speed 98304, PA 81920
+/ MA 65536 (male) or 65536 / 81920 (female). The editor and Explore
+(`atk.job`, `jobs`) move the stats by the jobs' difference.
+
+## A unit's position (2026-10-26)
+
+The tile is also in the unit's object (its sprite), 0x440 B each from
+0x800B7348 (the address of the world X), +0xF4 the unit's record:
++0 X = x x 28 + 14, +2 Y = -height in half units x 6 (11 -> -132, 9.5 ->
+-114), +4 Z = y x 28 + 14; the tile (x, y bytes) at +0x3C, +0x40, +0x44;
+the facing at +0x2C ((f + 3) & 3), +0x2E ((4 f + 14) & 15) and +0x30 (f x
+1024). A real step of Ramza (Move to (6, 4)) changed the record (+0x48,
++0x49, +0x187 "moved") and these; the cursor, the camera and the GPU
+lists too. With the record edited alone the game finds no unit on the
+new tile (no forecast; thieves moved next to Barney in battle 2 were not
+targets); with the object too it targets him there: Lezales exported at
+(6, 4) facing +x - Ramza's Attack 42 74% (side), at (7, 3) facing -x
+(a tile lower, 10h) - 42 66% (front), as the model; the sprite stands
+on the new tile. Not seen: other copies (the probe found none in a
+tile grid; the battle's AI may keep its own).
+
+The probe's mistake on the way: Lezales' record is 0x8019118C (slot 5 x
+0x1C0), not 0x80190E8C.
+
+## The critical hit (statistics, 2026-10-26)
+
+`crit_probe.lua`: a state saved at "Execute?" of Ramza's Attack at
+Lezales (42, 66%); each trial loads it, writes its own seed to the RNG
+(0x80009010, PsyQ rand: seed x 0x41C64E6D + 0x3039 - 4835 steps during
+the attack; idle frames do not move it), presses ○ and reads Lezales' HP.
+1000 trials (`crit_1000.txt`): 331 misses, 648 x 42, criticals 49 / 56 /
+63 / 70 / 77 (4, 3, 3, 4, 7) = (XA 6 + r) x WP 7, r = 1..5, the most
+77 = the model's crit_max. Hits 66.9% (the forecast 66%). A critical
+with r = 0 looks like 42; with that, ~25 of 669 hits, 3.8% +- 0.8%: the
+model's 5% is ~1.5 sigma off - kept.
+
+## Frog and Death (2026-10-26)
+
+At Gariland (Barney given Black Magic by edits, MP 99, at Candy): Poison
+95%, Frog 71%, Death 60% (-41 HP: all of Candy's) - as the model: (MA +
+X) x 3 / 2 (the best zodiac pair, before Faith) x Fa x Fa / 10000. In the
+prologue at Orbonne (fft_test_ramza2: Ramza given the same at Lezales)
+Frog and Death show 0% with no status name, Poison 49%: no immunity in
+the records (+0x53..), the jobs (+31..) or the items' attributes - a flag
+of that battle, not found. The model's note says so.
