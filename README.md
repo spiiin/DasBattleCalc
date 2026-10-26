@@ -73,6 +73,8 @@ Choose it in the **Game** menu (or `--game fftwotl`); the save is a PPSSPP save 
 No ISO is needed: the game's tables and texts are read from the RAM in the state. The ISO (optional, in the ROM
 field) gives the graphics: the units' sprites, the items' icons and the battle map's textured mesh.
 
+![FFT: WotL - the first battle with the map's textures and the units' sprites from the ISO, Attack's forecast step by step, the inspector](docs/images/fftwotl.png)
+
 - **Battle from a save**: the units (names, jobs, levels, Brave / Faith, HP / MP, CT, zodiac, positions, teams and
   guests), their stats, evades, elements, equipment and statuses; whose turn it is.
 - **Turn order** by clock ticks (Speed, Haste / Slow / Stop, the CT a turn costs).
@@ -109,6 +111,8 @@ Choose it in the **Game** menu (or `--game fft`); the save is a BizHawk save sta
 `.bin` in the ROM field) is optional and only gives the graphics.
 
 ![FFT: the battle map's textured mesh from the disc, the units' sprites, the reach of Attack, an ability's forecast](docs/images/fft.png)
+
+![FFT: Gariland - Math Skill (Height, Prime Number, Fire): who it hits and how, as in the game](docs/images/fft_math.png)
 
 - **Battle from a save**: the units (names, jobs, levels, Brave / Faith, HP / MP, PA / MA / Speed, CT, Move / Jump,
   zodiac, equipment with icons, statuses, the active reactions / supports / movement abilities), the battle map with
