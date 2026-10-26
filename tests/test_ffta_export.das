@@ -22,7 +22,7 @@ def find(units : array<BattleUnit>; name : string) : int {
 }
 
 // write the edited units to out, then load that file and read it back
-def export_and_reload(battle : BattleMap; units, orig : array<BattleUnit>; out : string; var notes : string;
+def export_and_reload(battle : BattleMap; units, orig : array<BattleUnit>; out : string; var notes : string&;
                       var back : array<BattleUnit>) : string {
     try_ok(export_battle(battle, units, orig, out, notes), "export: ")
     try_ok(gba_load_state(out), "reload: ")
@@ -73,6 +73,7 @@ def main() : int {
     for (i in range(length(units))) {
         recompute_unit(units[i])
     }
+    units[ni].stat_base[int(Stat.Move)] += 1    // from the job: only a note
     var notes = ""
     var back : array<BattleUnit>
     err = export_and_reload(battle, units, orig, out, notes, back)
@@ -82,6 +83,11 @@ def main() : int {
     }
     print("notes: {notes}\n")
     var failed = 0
+    // the notes reach the caller (they were lost when passed by value)
+    if (find(notes, "Montblanc: Move comes from the job") < 0) {
+        print("notes: FAIL, no note on Montblanc's Move\n")
+        failed++
+    }
     for (i in range(length(units))) {
         with_(units[i], back[i]) $(a, b) {
             var same = (a.hp == b.hp && a.mp == b.mp && a.max_hp == b.max_hp && a.ct == b.ct && a.reserve == b.reserve

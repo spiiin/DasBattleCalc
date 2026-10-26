@@ -866,7 +866,7 @@ def write_unit(m : BattleMap; u, orig : BattleUnit) : string {
 
 // Writes the loaded state with the edited units to path. Returns an
 // error ("") and the notes on what could not be written.
-def export_battle(m : BattleMap; units, orig : array<BattleUnit>; path : string; var notes : string) : string {
+def export_battle(m : BattleMap; units, orig : array<BattleUnit>; path : string; var notes : string&) : string {
     notes = ""
     ensure(gba_has_state(), "no state loaded")
     gba_edit_begin()
